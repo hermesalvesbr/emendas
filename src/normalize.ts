@@ -5,15 +5,32 @@ import type { AutorTipo, Confianca, EmendaExtraida, EmpenhoBruto, EmpenhoRow } f
 const NUMERO_EMENDA_RE = /EMENDA\s+PARLAMENTAR\s+N\s*[º°]?\s*(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
 const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4}))?/i;
 
-const AUTOR_PATTERNS: Array<[RegExp, "explicito"]> = [
-  [/AUTORA?:\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i, "explicito"],
-  [/DO\s+DEPUTADOS?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i, "explicito"],
-  [/\bDEPUTAD[AO]S?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i, "explicito"],
-  [/DEP\.\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i, "explicito"],
-  [/^\s*[-,]\s*([^,)]+?)(?=\s{2,}|,|\)|$)/, "explicito"],
+const AUTOR_PATTERNS: RegExp[] = [
+  /AUTORA?:\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i,
+  // "DO (A) PARLAMENTAR <nome> PARA O MUNICÍPIO..." — rótulo comum nos empenhos
+  // de repasse (achado empírico: ~29% dos registros órfãos usam esse formato).
+  /\bPARLAMENTAR\s+([^,)(]+?)(?=\s+PARA\b|\s{2,}|,|\)|\(|$)/i,
+  /DO\s+DEPUTADOS?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i,
+  /\bDEPUTAD[AO]S?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i,
+  /DEP\.\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i,
+  /^\s*[-,]\s*([^,)]+?)(?=\s{2,}|,|\)|$)/,
 ];
 
 const COLETIVA_MARKERS = ["JUNTAS", "BANCADA", "CONJUNTA", "TODOS OS DEPUTADOS"];
+
+/**
+ * Sinaliza onde o "nome" capturado por `AUTOR_PATTERNS` vira texto de
+ * descrição do objeto/processo — texto livre real não respeita o separador de
+ * espaço duplo com a mesma disciplina do exemplo da spec (achado empírico ao
+ * validar contra dados reais: sem isso, ~22% dos registros "confiança alta"
+ * carregavam a descrição inteira grudada no nome).
+ */
+const STOP_MARKERS =
+  /\b(N[ºO°]|CONF(ORME)?\b|CI\b|POA\b|SEI\b|SEPLAG|FEM\b|REFERENTE|DESTINAD[AO]|DESTINA-SE|RECURSOS|OBS[;:]|QUANTIDADE|PARA\b|OBJETO|CUSTEIO|P\/|TER\.|ADESAO|DECRETO|PROJETO|REPROGRAMACAO|MUNIC[IÍ]P[IÍ]O|ESTADUAL|PERFURA|CONSTRU|AQUISI|REFORM|AMPLIA|IMPLANTA|MANUTEN|A?VIMENTA|RECUPERA|CAPACITA)/i;
+
+/** Palavras que, no início do trecho capturado, indicam que não é um nome. */
+const LEADING_NON_NAME =
+  /^(DESTINAD[AO]|DESTINA-SE|PARA|OBJETO|REFERENTE|RECURSOS|CONVENIO|OFERECER|AQUISI[CÇ][AÃ]O|CONSTRU[CÇ][AÃ]O|REFORMA|AMPLIA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|A?VIMENTA[CÇ][AÃ]O|PERFURA[CÇ][AÃ]O|IMPLANTA[CÇ][AÃ]O|RECUPERA[CÇ][AÃ]O|ESTADUAL|MUNICIPAL|CAPACITA[CÇ][AÃ]O|EQUIPAMENTOS?|MATERIA(IS|L)|SERVI[CÇ]OS?|PRESTA[CÇ][AÃ]O)\b/i;
 
 /** Extrai o que dá para extrair de uma única linha de `obs` (primeiro passe). */
 export function extrairEmenda(
@@ -73,21 +90,45 @@ export function extrairEmenda(
     exercicio_emenda: exercicioEmenda,
     subacao_codigo: subacaoCodigo,
     autor_bruto: autor.bruto,
-    autor_normalizado: normalizarAutor(autor.bruto),
-    autor_tipo: classificarAutorTipo(autor.bruto),
+    autor_normalizado: normalizarAutor(autor.limpo),
+    autor_tipo: classificarAutorTipo(autor.limpo),
     confianca: "alta",
   };
 }
 
-function extrairAutor(tail: string): { bruto: string } | null {
-  for (const [re] of AUTOR_PATTERNS) {
+/**
+ * `bruto` é o trecho cru capturado pelo regex (sem tratamento, §5.5); `limpo`
+ * é o mesmo trecho depois de cortado em `STOP_MARKERS`/pontuação — só esse
+ * segundo passa a validação de "parece um nome" antes de virar `autor_alta`.
+ */
+function extrairAutor(tail: string): { bruto: string; limpo: string } | null {
+  for (const re of AUTOR_PATTERNS) {
     const m = re.exec(tail);
-    if (m?.[1]) {
-      const bruto = m[1].trim();
-      if (bruto.length > 0) return { bruto };
-    }
+    if (!m?.[1]) continue;
+    const bruto = m[1].trim();
+    if (bruto.length === 0) continue;
+    const limpo = limparNomeCapturado(bruto);
+    if (limpo) return { bruto, limpo };
   }
   return null;
+}
+
+function limparNomeCapturado(bruto: string): string | null {
+  const stopMatch = STOP_MARKERS.exec(bruto);
+  let cortado = stopMatch ? bruto.slice(0, stopMatch.index) : bruto;
+
+  const pontoMatch = /\./.exec(cortado);
+  if (pontoMatch) cortado = cortado.slice(0, pontoMatch.index);
+
+  const limpo = cortado.replace(/^[.\-,\s]+|[.\-,\s]+$/g, "");
+  if (limpo.length === 0) return null;
+
+  const palavras = limpo.split(/\s+/).filter(Boolean);
+  if (palavras.length === 0 || palavras.length > 5) return null;
+  if (/\d/.test(limpo)) return null;
+  if (LEADING_NON_NAME.test(palavras[0]!)) return null;
+
+  return limpo;
 }
 
 function classificarAutorTipo(autorBruto: string): AutorTipo {

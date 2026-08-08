@@ -149,3 +149,34 @@ permitido), então não existe `node_modules/.bin/tsc` local — `tsc --noEmit`
 puro falha com "comando não encontrado". `bunx tsc` resolve isso: baixa e
 cacheia o pacote `typescript` sob demanda sem declará-lo em `package.json`.
 O script `check` usa `bunx tsc --noEmit && bun test`.
+
+## 13. Validação pós-coleta contra dados reais achou dois buracos em `normalize.ts`
+
+Pedido do usuário: validar a coleta buscando pelas emendas da deputada Socorro
+Pimentel (conferido contra `https://www.alepe.pe.gov.br/parlamentar/socorro-pimentel/`
+— a página não lista emendas, só confirma que é uma parlamentar real, PSD;
+`robots.txt` do domínio permite crawling geral, então uma consulta pontual foi
+autorizada pelo usuário e feita). A checagem achou:
+
+1. **Rótulo "DO (A) PARLAMENTAR \<nome\> PARA O MUNICÍPIO..."** não estava em
+   nenhum dos padrões de §5.5 — 216+ empenhos usam exatamente esse formato nos
+   repasses "Transferências Especiais", ~29% dos registros que ficavam órfãos.
+   Adicionado como novo padrão em `AUTOR_PATTERNS`.
+2. **O separador de "espaço duplo" (§5.5) não é confiável sozinho** — nos dados
+   reais, ~22% dos registros "confiança alta" tinham a descrição do objeto inteira
+   grudada no nome (`"SOCORRO PIMENTEL PERFURAÇÃODE POÇOS ARTESIANOS EM
+   IPUBI"`, `"WILLIAM BRIGIDO Nº 252 DESTINADA A CAPACITACAO..."`), por typos
+   de origem (espaço faltando) ou rótulos sem separador nenhum (`"DEPUTADO -
+   AGLAILSON VICTOR .OBS; 2.59 X 38.500"`). Adicionada uma etapa de limpeza
+   (`limparNomeCapturado`) que corta no primeiro marcador de "isso é descrição,
+   não nome" (`STOP_MARKERS`) ou no primeiro ponto, e um validador
+   (`LEADING_NON_NAME` + checagem de dígito/tamanho) que rejeita a captura
+   inteira — volta pra `confianca: "nula"` — em vez de aceitar um nome
+   claramente errado.
+
+Resultado antes/depois no dataset completo (2022–2025, 4383 empenhos): confiança
+alta subiu de 43,0% para 52,6% (627→768 emendas), capturas visivelmente
+garbled (autor com mais de 4 palavras) caíram de 138 (22% dos "alta") para 0.
+`autor_bruto` continua guardando o trecho cru capturado pelo regex, sem
+tratamento — só `autor_normalizado` passa pela limpeza — preservando o que
+§5.5 pede.

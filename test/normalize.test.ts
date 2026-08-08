@@ -75,6 +75,73 @@ describe("consolidarEmenda", () => {
   });
 });
 
+// Casos achados validando contra dados reais do CKAN (08/08/2026, busca por
+// "SOCORRO PIMENTEL" e amostragem de registros "confiança alta" suspeitos).
+describe("extrairEmenda — casos reais de validação pós-coleta", () => {
+  test('rótulo "DO (A) PARLAMENTAR <nome> PARA O MUNICÍPIO" (achado: ~29% dos órfãos usavam esse formato)', () => {
+    const result = extrairEmenda(
+      {
+        obs: "EMPENHO REFERENTE AO PAGAMENTO DA EP 179/2024 NA MODALIDADE DE TRANSFERÊNCIAS ESPECIAIS DO (A) PARLAMENTAR CLÉBER CHAPARRAL PARA O MUNICÍPIO DE  OROBÓ. GD 4.  DECRETO Nº 56.110, DE 31 DE JANEIRO DE 2024.",
+        cd_nm_subacao: "EABC",
+      },
+      2024,
+    );
+    expect(result.numero_emenda).toBe("179");
+    expect(result.autor_normalizado).toBe("CLEBER CHAPARRAL");
+    expect(result.confianca).toBe("alta");
+  });
+
+  test("nome seguido de descrição sem espaço duplo (typo de origem) não vaza para autor_normalizado", () => {
+    const result = extrairEmenda(
+      { obs: "EMENDA PARLAMENTAR N º 60082/2024 - AUTORA: SOCORRO PIMENTEL PERFURAÇÃODE POÇOS ARTESIANOS EM IPUBI", cd_nm_subacao: "EM4H" },
+      2024,
+    );
+    expect(result.autor_normalizado).toBe("SOCORRO PIMENTEL");
+  });
+
+  test('rótulo "DEP." colado sem espaço, nome seguido de ponto e mais texto', () => {
+    const result = extrairEmenda(
+      {
+        obs: "VALOR EMPENHADO AO REPASSE,FEM III/15 AO MUNICIPIO DE SERRA TALHADA/PE 2ª PARCELA,EP 571/18 DEP.TERESA LEITÃO.AVIMENTAÇÃO ASFÁLTICA NA RUA: LUIZ ALVES DE MELO LIMA",
+        cd_nm_subacao: "EG1H",
+      },
+      2022,
+    );
+    expect(result.autor_normalizado).toBe("TERESA LEITAO");
+  });
+
+  test('rótulo "DEPUTADO" seguido de hífen e nome, com texto de quantidade depois', () => {
+    const result = extrairEmenda(
+      {
+        obs: "SERVIÇO DE PERFURAÇÃO DE POÇOS - EMENDA PARLAMENTAR Nº 3010/2022 - DERIVADA, EM MACAPARANA -DEPUTADO - AGLAILSON VICTOR .OBS; 2.59 X 38.500,00 = 99.715,00 .",
+        cd_nm_subacao: "EIN6",
+      },
+      2022,
+    );
+    expect(result.autor_normalizado).toBe("AGLAILSON VICTOR");
+  });
+
+  test("texto descritivo sem nome real não vira autor falso-positivo (sem rótulo nem hífen inicial)", () => {
+    const result = extrairEmenda(
+      {
+        obs: "EMENDA PARLAMENTAR Nº 236/2021 DESTINADA PARA GARANTIA DE OFERTA DE PROCEDIMENTOS DE MEDIA E ALTA COMPLEXIDADE AMBULATORIAL E HOSPITALAR.",
+        cd_nm_subacao: "EZZZ",
+      },
+      2021,
+    );
+    expect(result.autor_normalizado).toBeNull();
+    expect(result.confianca).toBe("nula");
+  });
+
+  test("hífen seguido de descrição (não nome) é rejeitado pelo fallback bare-dash", () => {
+    const result = extrairEmenda(
+      { obs: "EMENDA PARLAMENTAR Nº 93/2022 - PARA CURSOS PROFISSIONALIZANTES COM O INTUITO DE REINSERCAO", cd_nm_subacao: "EZZZ" },
+      2022,
+    );
+    expect(result.autor_normalizado).toBeNull();
+  });
+});
+
 describe("consolidarLote", () => {
   test("reduz múltiplos empenhos da mesma emenda a um registro, mantendo a melhor confiança", () => {
     const empenhos = [
