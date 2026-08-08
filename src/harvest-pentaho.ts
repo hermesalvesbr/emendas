@@ -2,6 +2,7 @@
 // ordem de grandeza mais rápido e não precisa de Chrome.
 
 import type { Db, NewEmpenho } from "./db.ts";
+import { classificarAutorTipo, extrairBeneficiario, extrairMunicipio, extrairNumeroEmenda, normalizarAutor } from "./normalize.ts";
 import { HarvestError, insist } from "./retry.ts";
 import type { Config, DiscoveredCall, EndpointsFile } from "./types.ts";
 import { runWithConcurrency, yearsUpToCurrent } from "./util.ts";
@@ -19,16 +20,21 @@ const PAGE_SIZE = 50;
 const COLUMN_ALIASES: Record<string, string[]> = {
   numero_empenho: ["numero_empenho"],
   unidade_gestora: ["unidade_gestora", "nome_ug", "nm_ug"],
-  credor: ["credor", "nm_credor"],
+  credor: ["credor", "nm_credor", "nome_credor"],
   cd_nm_funcao: ["cd_nm_funcao", "funcao", "nm_funcao"],
   cd_nm_subfuncao: ["cd_nm_subfuncao", "subfuncao"],
   cd_nm_prog: ["cd_nm_prog", "programa"],
   cd_nm_acao: ["cd_nm_acao", "acao", "nm_acao"],
   cd_nm_subacao: ["cd_nm_subacao", "subacao", "nm_subacao"],
-  obs: ["obs", "observacao"],
-  vlrempenhado: ["vlrempenhado", "vlr_emp_original", "vlr_empenhado"],
-  vlrliquidado: ["vlrliquidado", "vlr_liquidado"],
-  vlrtotalpago: ["vlrtotalpago", "vlr_total_pago", "vlr_pago"],
+  obs: ["obs", "observacao", "observacao_empenho"],
+  vlrempenhado: ["vlrempenhado", "vlr_emp_original", "vlr_empenhado", "valor_empenhado"],
+  vlrliquidado: ["vlrliquidado", "vlr_liquidado", "valor_liquidado"],
+  vlrtotalpago: ["vlrtotalpago", "vlr_total_pago", "vlr_pago", "valor_pago"],
+  // Achado central (NOTAS.md item 13/14): a tabela principal do painel tem
+  // autoria NATIVA — quando presente, dispensa toda a mineração de texto que
+  // normalize.ts faz sobre `obs` para as fontes CKAN.
+  autor: ["autor", "nm_autor", "deputado", "nome_autor"],
+  municipio: ["municipio", "nm_municipio"],
 };
 
 export type PentahoHarvestResult = {
@@ -37,6 +43,7 @@ export type PentahoHarvestResult = {
   status: "ok" | "empty" | "http" | "timeout" | "parse";
   inserted: number;
   total: number;
+  comAutorNativo: number;
 };
 
 export async function harvestPentaho(
@@ -86,6 +93,7 @@ async function harvestOne(db: Db, config: Config, template: DiscoveredCall, year
   let page = 0;
   let inserted = 0;
   let totalRows = 0;
+  let comAutorNativo = 0;
   let anyOk = false;
   let lastStatus: PentahoHarvestResult["status"] = "ok";
 
@@ -119,8 +127,14 @@ async function harvestOne(db: Db, config: Config, template: DiscoveredCall, year
 
     if (year !== null && looksLikeEmpenhoTable(body.metadata)) {
       for (const row of mapRows(body.metadata, body.resultset)) {
-        const result = db.insertEmpenho({ ...row, exercicio: year, fonte: "pentaho" });
+        const { autor, municipioNativo, ...empenhoFields } = row;
+        const result = db.insertEmpenho({ ...empenhoFields, exercicio: year, fonte: "pentaho" });
         if (result.inserted) inserted++;
+
+        if (autor && autor.trim().length > 0) {
+          const gravou = upsertEmendaComAutorNativo(db, empenhoFields, autor, municipioNativo, year);
+          if (gravou) comAutorNativo++;
+        }
       }
     }
 
@@ -138,7 +152,45 @@ async function harvestOne(db: Db, config: Config, template: DiscoveredCall, year
     offset += PAGE_SIZE;
   }
 
-  return { exercicio: year, dataAccessId, status: anyOk ? "ok" : lastStatus, inserted, total: totalRows };
+  return { exercicio: year, dataAccessId, status: anyOk ? "ok" : lastStatus, inserted, total: totalRows, comAutorNativo };
+}
+
+/**
+ * Grava `emenda` direto da autoria nativa do painel — pula toda a mineração
+ * de texto de `normalize.ts` para o campo autor (o painel já responde isso),
+ * mas ainda reaproveita `extrairNumeroEmenda`/`extrairBeneficiario`/
+ * `extrairMunicipio` para os demais campos derivados, exatamente como o
+ * caminho CKAN. `db.upsertEmenda` nunca rebaixa confiança já gravada (§ ver
+ * NOTAS.md item 14), então isso é seguro de rodar a qualquer momento.
+ */
+function upsertEmendaComAutorNativo(
+  db: Db,
+  empenho: { obs: string | null; cd_nm_subacao: string | null; credor: string | null },
+  autorNativo: string,
+  municipioNativo: string | null | undefined,
+  exercicioArquivo: number,
+): boolean {
+  const numero = extrairNumeroEmenda(empenho.obs ?? "", exercicioArquivo) ?? extrairNumeroEmenda(empenho.cd_nm_subacao ?? "", exercicioArquivo);
+  if (!numero) return false;
+
+  const subacaoCodigo = empenho.cd_nm_subacao ? empenho.cd_nm_subacao.trim().slice(0, 4).toUpperCase() : null;
+  const autorLimpo = autorNativo.trim();
+  const { cnpj, nome } = extrairBeneficiario(empenho.credor);
+  const municipio = municipioNativo?.trim() ? normalizarAutor(municipioNativo) : extrairMunicipio(empenho.credor, empenho.obs);
+
+  db.upsertEmenda({
+    numero_emenda: numero.numeroEmenda,
+    exercicio_emenda: numero.exercicioEmenda,
+    subacao_codigo: subacaoCodigo,
+    autor_bruto: autorLimpo,
+    autor_normalizado: normalizarAutor(autorLimpo),
+    autor_tipo: classificarAutorTipo(autorLimpo),
+    municipio,
+    beneficiario_cnpj: cnpj,
+    beneficiario_nome: nome,
+    confianca: "alta",
+  });
+  return true;
 }
 
 function buildParams(templateParams: Record<string, string>, year: number | null, offset: number | null): Record<string, string> {
@@ -188,7 +240,9 @@ function looksLikeEmpenhoTable(metadata: CdaColumn[]): boolean {
   return metadata.some((c) => c.colName.toLowerCase() === "numero_empenho");
 }
 
-function mapRows(metadata: CdaColumn[], resultset: unknown[][]): Array<Omit<NewEmpenho, "exercicio" | "fonte">> {
+type MappedRow = Omit<NewEmpenho, "exercicio" | "fonte"> & { autor: string | null; municipioNativo: string | null };
+
+function mapRows(metadata: CdaColumn[], resultset: unknown[][]): MappedRow[] {
   const indexByTarget: Record<string, number> = {};
   for (const [target, aliases] of Object.entries(COLUMN_ALIASES)) {
     const col = metadata.find((c) => aliases.includes(c.colName.toLowerCase()));
@@ -211,6 +265,8 @@ function mapRows(metadata: CdaColumn[], resultset: unknown[][]): Array<Omit<NewE
       vlrempenhado: toNumber(get(row, "vlrempenhado")),
       vlrliquidado: toNumber(get(row, "vlrliquidado")),
       vlrtotalpago: toNumber(get(row, "vlrtotalpago")),
+      autor: get(row, "autor") as string | null,
+      municipioNativo: get(row, "municipio") as string | null,
     }))
     .filter((r) => r.numero_empenho.length > 0);
 }

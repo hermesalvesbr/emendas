@@ -2,18 +2,28 @@
 
 import type { AutorTipo, Confianca, EmendaExtraida, EmpenhoBruto, EmpenhoRow } from "./types.ts";
 
-const NUMERO_EMENDA_RE = /EMENDA\s+PARLAMENTAR\s+N\s*[º°]?\s*(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
+// Aceita "Nº"/"N°"/"N º" (obs) e também "NO."/"NO" (comum no texto de
+// cd_nm_subacao, ex. "EKZF - EMENDA PARLAMENTAR NO.650/2023" — achado ao usar
+// extrairNumeroEmenda também sobre subacao, não só sobre obs; ver NOTAS.md).
+const NUMERO_EMENDA_RE = /EMENDA\s+PARLAMENTAR\s+N\s*(?:[º°]|O\.?)?\s*(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
 const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4}))?/i;
 
+// Parada comum a quase todos os rótulos: espaço duplo, " - " (dash isolado),
+// vírgula, parêntese ou fim da string.
+const STOP = "(?=\\s{2,}|\\s-\\s|,|\\)|$)";
+
 const AUTOR_PATTERNS: RegExp[] = [
-  /AUTORA?:\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i,
+  new RegExp(`AUTORA?:\\s*([^,)]+?)${STOP}`, "i"),
   // "DO (A) PARLAMENTAR <nome> PARA O MUNICÍPIO..." — rótulo comum nos empenhos
   // de repasse (achado empírico: ~29% dos registros órfãos usam esse formato).
-  /\bPARLAMENTAR\s+([^,)(]+?)(?=\s+PARA\b|\s{2,}|,|\)|\(|$)/i,
-  /DO\s+DEPUTADOS?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i,
-  /\bDEPUTAD[AO]S?\s+([^,)]+?)(?=\s{2,}|,|\)|$)/i,
-  /DEP\.\s*([^,)]+?)(?=\s{2,}|,|\)|$)/i,
-  /^\s*[-,]\s*([^,)]+?)(?=\s{2,}|,|\)|$)/,
+  /\bPARLAMENTAR\s+([^,)(]+?)(?=\s+PARA\b|\s{2,}|\s-\s|,|\)|\(|$)/i,
+  new RegExp(`DO\\s+DEPUTADOS?\\s+([^,)]+?)${STOP}`, "i"),
+  // "DEPUTADO(A) ESTADUAL <nome>" — o qualificador "ESTADUAL" não deve entrar
+  // na captura (achado: sem isso, a limpeza rejeitava a captura inteira e o
+  // fallback bare-dash pegava a palavra errada antes, ex. "DERIVADA").
+  new RegExp(`\\bDEPUTAD[AO]S?\\s+(?:ESTADUAL\\s+)?([^,)]+?)${STOP}`, "i"),
+  new RegExp(`DEP\\.\\s*([^,)]+?)${STOP}`, "i"),
+  new RegExp(`^\\s*[-,]\\s*([^,)]+?)${STOP}`),
 ];
 
 const COLETIVA_MARKERS = ["JUNTAS", "BANCADA", "CONJUNTA", "TODOS OS DEPUTADOS"];
@@ -30,7 +40,30 @@ const STOP_MARKERS =
 
 /** Palavras que, no início do trecho capturado, indicam que não é um nome. */
 const LEADING_NON_NAME =
-  /^(DESTINAD[AO]|DESTINA-SE|PARA|OBJETO|REFERENTE|RECURSOS|CONVENIO|OFERECER|AQUISI[CÇ][AÃ]O|CONSTRU[CÇ][AÃ]O|REFORMA|AMPLIA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|A?VIMENTA[CÇ][AÃ]O|PERFURA[CÇ][AÃ]O|IMPLANTA[CÇ][AÃ]O|RECUPERA[CÇ][AÃ]O|ESTADUAL|MUNICIPAL|CAPACITA[CÇ][AÃ]O|EQUIPAMENTOS?|MATERIA(IS|L)|SERVI[CÇ]OS?|PRESTA[CÇ][AÃ]O)\b/i;
+  /^(DESTINAD[AO]|DESTINA-SE|PARA|OBJETO|REFERENTE|RECURSOS|CONVENIO|OFERECER|AQUISI[CÇ][AÃ]O|CONSTRU[CÇ][AÃ]O|REFORMA|AMPLIA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|A?VIMENTA[CÇ][AÃ]O|PERFURA[CÇ][AÃ]O|IMPLANTA[CÇ][AÃ]O|RECUPERA[CÇ][AÃ]O|ESTADUAL|MUNICIPAL|CAPACITA[CÇ][AÃ]O|EQUIPAMENTOS?|MATERIA(IS|L)|SERVI[CÇ]OS?|PRESTA[CÇ][AÃ]O|DERIVAD[AO]|EMENDA)\b/i;
+
+/**
+ * Só o número/exercício da emenda a partir de `obs`, sem tentar extrair
+ * autor — usado tanto pelo primeiro passe de `extrairEmenda` quanto por
+ * `harvest-pentaho.ts` quando o autor já vem nativo do painel (sem precisar
+ * minerar texto para esse campo).
+ */
+export function extrairNumeroEmenda(
+  obs: string,
+  exercicioArquivo: number,
+): { numeroEmenda: string; exercicioEmenda: number; tail: string } | null {
+  let match = NUMERO_EMENDA_RE.exec(obs);
+  if (!match) match = NUMERO_EP_RE.exec(obs);
+  if (!match) return null;
+
+  const numeroEmenda = match[1] ?? "";
+  if (!numeroEmenda) return null;
+  const anoCapturado = match[2] ? Number(match[2]) : null;
+  const exercicioEmenda = anoCapturado ?? exercicioArquivo;
+  const tail = obs.slice((match.index ?? 0) + match[0].length);
+
+  return { numeroEmenda, exercicioEmenda, tail };
+}
 
 /** Extrai o que dá para extrair de uma única linha de `obs` (primeiro passe). */
 export function extrairEmenda(
@@ -52,10 +85,8 @@ export function extrairEmenda(
     };
   }
 
-  let match = NUMERO_EMENDA_RE.exec(obs);
-  if (!match) match = NUMERO_EP_RE.exec(obs);
-
-  if (!match) {
+  const numero = extrairNumeroEmenda(obs, exercicioArquivo);
+  if (!numero) {
     return {
       numero_emenda: null,
       exercicio_emenda: null,
@@ -67,11 +98,7 @@ export function extrairEmenda(
     };
   }
 
-  const numeroEmenda = match[1] ?? null;
-  const anoCapturado = match[2] ? Number(match[2]) : null;
-  const exercicioEmenda = anoCapturado ?? exercicioArquivo;
-  const tail = obs.slice((match.index ?? 0) + match[0].length);
-
+  const { numeroEmenda, exercicioEmenda, tail } = numero;
   const autor = extrairAutor(tail);
   if (!autor) {
     return {
@@ -131,7 +158,7 @@ function limparNomeCapturado(bruto: string): string | null {
   return limpo;
 }
 
-function classificarAutorTipo(autorBruto: string): AutorTipo {
+export function classificarAutorTipo(autorBruto: string): AutorTipo {
   const normalizado = normalizarAutor(autorBruto);
   if (COLETIVA_MARKERS.some((marker) => normalizado.includes(marker))) return "coletiva";
   return "individual";

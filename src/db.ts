@@ -41,11 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_emenda_subacao ON emenda(subacao_codigo);
 `;
 
 export type NewEmpenho = Omit<EmpenhoRow, "id" | "hash" | "coletado_em">;
-export type NewEmenda = EmendaRow & {
-  municipio: string | null;
-  beneficiario_cnpj: string | null;
-  beneficiario_nome: string | null;
-};
+export type NewEmenda = EmendaRow;
 export type NewHarvestLog = Omit<HarvestLogRow, "id" | "quando">;
 
 export type OrfaoRow = {
@@ -62,7 +58,7 @@ export type Db = {
   countEmpenhos(): number;
   listEmpenhos(): EmpenhoRow[];
   listAutores(): Array<{ autor_normalizado: string; total_emendas: number }>;
-  emendasPorAutor(nome: string): Array<EmendaRow & { municipio: string | null }>;
+  emendasPorAutor(nome: string): EmendaRow[];
   empenhosPorMunicipio(municipio: string): EmpenhoRow[];
   empenhosPorExercicio(exercicio: number): EmpenhoRow[];
   orfaos(): OrfaoRow[];
@@ -91,6 +87,10 @@ export function openDb(path = "data/emendas.sqlite"): Db {
       VALUES ($exercicio, $numero_empenho, $unidade_gestora, $credor, $obs, $cd_nm_subacao, $cd_nm_funcao,
               $vlrempenhado, $vlrliquidado, $vlrtotalpago, $fonte, $hash, $coletado_em)
     `),
+    // A cláusula WHERE evita que uma reexecução de "normalizar" (regex sobre
+    // obs) rebaixe um registro que já veio com confiança melhor — em especial
+    // autoria nativa do Pentaho (confianca "alta" sem mineração de texto),
+    // que não deve ser sobrescrita por um "nula"/"media" de uma nova rodada.
     upsertEmenda: raw.query(`
       INSERT INTO emenda
         (numero_emenda, exercicio_emenda, subacao_codigo, autor_bruto, autor_normalizado, autor_tipo,
@@ -106,6 +106,8 @@ export function openDb(path = "data/emendas.sqlite"): Db {
         beneficiario_cnpj = excluded.beneficiario_cnpj,
         beneficiario_nome = excluded.beneficiario_nome,
         confianca = excluded.confianca
+      WHERE (CASE emenda.confianca WHEN 'alta' THEN 2 WHEN 'media' THEN 1 ELSE 0 END)
+          <= (CASE excluded.confianca WHEN 'alta' THEN 2 WHEN 'media' THEN 1 ELSE 0 END)
     `),
     logHarvest: raw.query(`
       INSERT INTO harvest_log (alvo, exercicio, status, tentativas, http_status, duracao_ms, mensagem, quando)
@@ -207,7 +209,7 @@ export function openDb(path = "data/emendas.sqlite"): Db {
     },
 
     emendasPorAutor(nome) {
-      return stmts.emendasPorAutor.all({ nome: nome }) as Array<EmendaRow & { municipio: string | null }>;
+      return stmts.emendasPorAutor.all({ nome: nome }) as EmendaRow[];
     },
 
     empenhosPorMunicipio(municipio) {

@@ -140,6 +140,17 @@ describe("extrairEmenda — casos reais de validação pós-coleta", () => {
     );
     expect(result.autor_normalizado).toBeNull();
   });
+
+  test('"EMENDA ... - DERIVADA  DEPUTADA ESTADUAL <nome> - EM <cidade>" extrai o nome real, não "DERIVADA"', () => {
+    const result = extrairEmenda(
+      {
+        obs: "SERVIÇO DE PERFURAÇÃO DE POÇOS - EMENDA PARLAMENTAR Nº 3116/2022- DERIVADA  DEPUTADA ESTADUAL ROBERTA ARRAES - EM ARARIPINA -- OBS; QUANTIDADE 28.55 X 38.500,00 =1.099.175,00",
+        cd_nm_subacao: "EJFY",
+      },
+      2022,
+    );
+    expect(result.autor_normalizado).toBe("ROBERTA ARRAES");
+  });
 });
 
 describe("consolidarLote", () => {

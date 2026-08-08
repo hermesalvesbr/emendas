@@ -63,6 +63,10 @@ export type EmendaRow = {
   autor_bruto: string | null;
   autor_normalizado: string | null;
   autor_tipo: AutorTipo | null;
+  // municipio/beneficiario_* estendem o schema literal de §5.6 — ver NOTAS.md item 8.
+  municipio: string | null;
+  beneficiario_cnpj: string | null;
+  beneficiario_nome: string | null;
   confianca: Confianca;
 };
 

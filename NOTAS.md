@@ -180,3 +180,54 @@ garbled (autor com mais de 4 palavras) caíram de 138 (22% dos "alta") para 0.
 `autor_bruto` continua guardando o trecho cru capturado pelo regex, sem
 tratamento — só `autor_normalizado` passa pela limpeza — preservando o que
 §5.5 pede.
+
+## 14. Ranking regional achou mais um garbled ("DERIVADA") e motivou proteção contra rebaixamento de confiança
+
+Pedido do usuário: ranking de deputados por emendas para o Sertão do Araripe.
+Cruzando `credor`/`obs` contra os 10 municípios da microrregião achei
+`"DERIVADA"` como "autor" de uma emenda de R$ 1,1 milhão — não é nome de
+pessoa, é resíduo de "EMENDA ... DERIVADA". Causa raiz: o rótulo `DEPUTADA
+ESTADUAL <nome>` não pulava o qualificador "ESTADUAL", a limpeza rejeitava a
+captura inteira, e o fallback bare-dash pegava a palavra errada antes do nome
+real (`"- DERIVADA  DEPUTADA ESTADUAL ROBERTA ARRAES - EM ARARIPINA"`).
+Corrigido: `DEPUTAD[AO]S?\s+(?:ESTADUAL\s+)?(...)`, `" - "` isolado adicionado
+como marcador de parada em todos os rótulos, e `"DERIVADA"`/`"EMENDA"`
+adicionados a `LEADING_NON_NAME` como segunda linha de defesa.
+
+Isso expôs um risco maior: `db.upsertEmenda` sobrescrevia sem checar
+confiança — uma rodada futura de `normalizar` (ou uma harvest do Pentaho com
+autoria nativa, ver item seguinte) podia rebaixar um registro `"alta"` para
+`"nula"`/`"media"` sem querer. Corrigido no UPSERT em si (não em código JS):
+`ON CONFLICT ... DO UPDATE ... WHERE rank(emenda.confianca) <=
+rank(excluded.confianca)` — uma tentativa de gravar confiança pior que a já
+salva vira no-op. Testado (`db.ts` embute o teste isolado da cláusula SQL,
+`harvest-pentaho.test.ts` cobre o caso de ponta a ponta).
+
+## 15. Painel Pentaho tem coluna `autor` nativa — agora capturada, protegida contra rebaixamento
+
+Pedido do usuário: instalar cron OS-level persistente insistindo no painel,
+usando Socorro Pimentel como critério de sucesso. Isso expôs que
+`harvest-pentaho.ts` descartava a coluna `autor` nativa da tabela principal
+(ver item 11) — mapeava só as colunas no formato do CKAN. Corrigido:
+`COLUMN_ALIASES` ganhou `autor`/`municipio` nativos; quando uma linha tem
+`autor` não vazio, `harvest-pentaho.ts` grava `emenda` direto com `confianca:
+"alta"` **sem** passar pela mineração de texto de `normalize.ts` — só
+reaproveita `extrairNumeroEmenda`/`extrairBeneficiario`/`extrairMunicipio`
+para os demais campos. Protegido contra rebaixamento pelo item 14.
+
+Isso por sua vez expôs outro achado: `extrairNumeroEmenda` (usada agora
+também sobre `cd_nm_subacao`, não só `obs`) não reconhecia o formato `"NO."`
+(letra O, não `º`/`°`) — comum em `cd_nm_subacao`
+(`"EKZF - EMENDA PARLAMENTAR NO.650/2023"`). O teste sintético de
+`harvest-pentaho.test.ts` pegou isso antes de rodar contra dado real.
+Corrigido: `N\s*(?:[º°]|O\.?)?\s*(\d+)`. Rodando de novo contra o dataset
+completo (que já não tem "NO." em `obs`, só em `cd_nm_subacao` às vezes)
+subiu 1459→1460 emendas identificadas — o ganho real deste fix é para o
+caminho Pentaho, ainda não mensurável porque o painel está com `sql_tabela`
+vazio (item 11).
+
+Também corrigido um gap de tipos pré-existente: `EmendaRow` (types.ts) não
+incluía `municipio`/`beneficiario_*`, embora a tabela real tenha essas
+colunas desde o item 8 — `db.ts` reconstruía isso com um `& { municipio }`
+ad-hoc que já tinha esquecido `beneficiario_nome`. Consolidado: `EmendaRow`
+agora é a fonte de verdade do schema real, `NewEmenda` é só um alias dele.
