@@ -151,6 +151,30 @@ describe("extrairEmenda — casos reais de validação pós-coleta", () => {
     );
     expect(result.autor_normalizado).toBe("ROBERTA ARRAES");
   });
+
+  test('"EMENDA PARLAMENTAR <numero>/<ano>" sem nenhum "Nº"/"N°" entre PARLAMENTAR e o número', () => {
+    const result = extrairEmenda(
+      { obs: "EMENDA PARLAMENTAR 8011-WANDERSON FLORÊNCIO - REALIZAÇÃO DE AULAS DE FORRÓ NAS ESCOLAS", cd_nm_subacao: "EXXX" },
+      2022,
+    );
+    expect(result.numero_emenda).toBe("8011");
+    expect(result.autor_normalizado).toBe("WANDERSON FLORENCIO");
+  });
+
+  test('"EMENDA N° <numero>/<ano>" sem a palavra PARLAMENTAR', () => {
+    const result = extrairEmenda(
+      { obs: "PARA A TRANSFERÊNCIA DE RECURSOS ATRAVÉS DE EMENDA  N° 864/2019,PARLAMENTAR WANDERSON FLORENCIO", cd_nm_subacao: "EXXX" },
+      2019,
+    );
+    expect(result.numero_emenda).toBe("864");
+    expect(result.exercicio_emenda).toBe(2019);
+  });
+
+  test("ano com 2 dígitos (ex. /17, /19) não impede a extração do número — só o ano fica sem captura", () => {
+    const result = extrairEmenda({ obs: "EMENDA PARLAMENTAR Nº 368/17, REF. A AQUISIÇÃO DE AMBULÂNCIA", cd_nm_subacao: "EXXX" }, 2018);
+    expect(result.numero_emenda).toBe("368");
+    expect(result.exercicio_emenda).toBe(2018); // cai no ano do arquivo, já que "/17" não bate \d{4}
+  });
 });
 
 describe("consolidarLote", () => {

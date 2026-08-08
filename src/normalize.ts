@@ -2,10 +2,12 @@
 
 import type { AutorTipo, Confianca, EmendaExtraida, EmpenhoBruto, EmpenhoRow } from "./types.ts";
 
-// Aceita "Nº"/"N°"/"N º" (obs) e também "NO."/"NO" (comum no texto de
-// cd_nm_subacao, ex. "EKZF - EMENDA PARLAMENTAR NO.650/2023" — achado ao usar
-// extrairNumeroEmenda também sobre subacao, não só sobre obs; ver NOTAS.md).
-const NUMERO_EMENDA_RE = /EMENDA\s+PARLAMENTAR\s+N\s*(?:[º°]|O\.?)?\s*(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
+// "PARLAMENTAR"/"PAR." e o "Nº"/"N°"/"N º"/"NO."/"N" são todos opcionais —
+// achado ao investigar por que ~860 registros que citam "EMENDA"/"EP" ficavam
+// órfãos: variações reais incluem "EMENDA 675/2019" (sem N nenhum), "EMENDA
+// N° 864/2019" (sem a palavra PARLAMENTAR) e "EMENDA PAR. <nome> N 477/2020"
+// (abreviado). Ver NOTAS.md.
+const NUMERO_EMENDA_RE = /EMENDA\s+(?:PARLAMENTAR\s+)?(?:PAR\.\s+)?(?:N\s*(?:[º°]|O\.?)?\s*)?(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
 const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4}))?/i;
 
 // Parada comum a quase todos os rótulos: espaço duplo, " - " (dash isolado),

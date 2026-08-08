@@ -231,3 +231,50 @@ incluía `municipio`/`beneficiario_*`, embora a tabela real tenha essas
 colunas desde o item 8 — `db.ts` reconstruía isso com um `& { municipio }`
 ad-hoc que já tinha esquecido `beneficiario_nome`. Consolidado: `EmendaRow`
 agora é a fonte de verdade do schema real, `NewEmenda` é só um alias dele.
+
+## 16. Conferência 2022→hoje: Pentaho é painel do ano corrente, não arquivo histórico
+
+Pedido do usuário: conferir se o SQLite está completo e correto de 2022 até
+hoje via Pentaho. Rodei descoberta+coleta em todos os `dataAccessId`, todos os
+anos, zero falhas no `harvest_log`. Achado central, confirmado direto na
+fonte: `sql_tabela_count` retorna **0** para 2022–2025 e **2076** só para
+2026 — o painel não é um arquivo histórico, é operacional do exercício
+corrente (os lookups `sql_autor`/`sql_subacao`/`sql_n_emenda` para anos
+antigos também só têm o placeholder `"TODOS"`, sem dado real). CKAN continua
+sendo a única fonte para 2022–2025, e já está confirmado 100% coletado
+(1.561/718/1.330/774 empenhos, batendo com os totais que a própria spec
+registrou para 2024/2025).
+
+Dentro de 2026: dos 2.076 registros do painel, só 354 têm `numero_empenho`
+preenchido (os outros 1.722 são linhas de orçamento alocado mas ainda não
+empenhado — plausível em agosto, ~2/3 do ano fiscal). Conferido arquivo por
+arquivo (42 páginas) que os 354 batem exato com o que está no banco. Zero
+hashes duplicados na base inteira.
+
+## 17. Segunda rodada de regex ampliou ~29% dos "órfãos que citam EMENDA/EP mas não casavam"
+
+Pedido do usuário: como ampliar os 38,1% sem autor identificado. Investigando
+achei que 2.644 empenhos não linkavam a NENHUMA emenda (não só sem autor —
+sem número extraído), e 860 desses citavam "EMENDA"/"EP" no texto sem casar
+com `NUMERO_EMENDA_RE`/`NUMERO_EP_RE`. Padrões reais faltando:
+
+- `"EMENDA PARLAMENTAR 675/2019"` — sem "Nº"/"N°" nenhum entre PARLAMENTAR e o número.
+- `"EMENDA  N° 864/2019"` — sem a palavra PARLAMENTAR.
+- `"EMENDA PAR. <nome> N 477/2020"` — abreviado.
+- Anos com 2 dígitos (`"368/17"`) já funcionavam (o grupo de ano é opcional),
+  não eram o problema.
+
+Corrigido: `PARLAMENTAR`/`PAR.`/`N[º°/O.]` viraram todos opcionais em
+`NUMERO_EMENDA_RE`, mantendo `EMENDA` como âncora obrigatória — testado contra
+os 860 casos reais (416 passaram a casar, amostra de 20 conferida uma a uma,
+zero falso-positivo óbvio) antes de aplicar.
+
+Resultado no dataset completo: emendas *identificadas* (com número, mesmo sem
+autor) subiram de 1.751 para 1.936; emendas com autor confirmado subiram de
+1.083 para 1.120. O percentual de "confiança alta" caiu de 61,9% para 57,9%
+— **isso não é regressão**, é o denominador crescendo mais rápido que o
+numerador: os 185 registros recém-identificados agora aparecem como órfãos
+visíveis (antes eram invisíveis, nem contavam) na lista de subações órfãs do
+`cobertura.md`, prontos para virar item de pedido de LAI. Zero nomes
+"garbled" na base inteira (checado: nenhum `autor_normalizado` com mais de 4
+palavras entre os 1.120 de confiança alta).
