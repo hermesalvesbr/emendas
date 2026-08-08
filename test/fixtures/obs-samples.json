@@ -1,0 +1,152 @@
+[
+  {
+    "descricao": "padrão simples Nº, sem autor",
+    "obs": "EMENDA PARLAMENTAR Nº 51/2021",
+    "cd_nm_subacao": "E865 - EMENDA PARLAMENTAR NO. 51/2020",
+    "credor": "10261245000126 - FUNDO MUNICIPAL DE SAUDE DE VERTENTES",
+    "exercicioArquivo": 2024,
+    "expected": {
+      "numero_emenda": "51",
+      "exercicio_emenda": 2021,
+      "subacao_codigo": "E865",
+      "autor_normalizado": null,
+      "autor_tipo": "desconhecido",
+      "confianca": "nula"
+    }
+  },
+  {
+    "descricao": "N°, separador hífen, DO DEPUTADO + cidade-PE",
+    "obs": "EMENDA PARLAMENTAR N° 50060/2024 - DO DEPUTADO JOÃOZINHO TENORIO, SALGUEIRO-PE",
+    "cd_nm_subacao": "EN6Z - EMENDA PARLAMENTAR",
+    "credor": "12345678000199 - PREFEITURA MUNICIPAL DE SALGUEIRO",
+    "exercicioArquivo": 2024,
+    "expected": {
+      "numero_emenda": "50060",
+      "exercicio_emenda": 2024,
+      "subacao_codigo": "EN6Z",
+      "autor_normalizado": "JOAOZINHO TENORIO",
+      "autor_tipo": "individual",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "N º com espaço, rótulo AUTORA:",
+    "obs": "EMENDA PARLAMENTAR N º 60026 - AUTORA: SOCORRO PIMENTEL  PERFURAÇÃO DE POÇOS EM DIVERSOS MUNICIPIOS",
+    "cd_nm_subacao": "ENCO - EMENDA PARLAMENTAR",
+    "credor": "98765432000111 - EMPRESA DE PERFURACAO LTDA",
+    "exercicioArquivo": 2025,
+    "expected": {
+      "numero_emenda": "60026",
+      "exercicio_emenda": 2025,
+      "subacao_codigo": "ENCO",
+      "autor_normalizado": "SOCORRO PIMENTEL",
+      "autor_tipo": "individual",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "N° com LOA e SUBAÇÃO parentética",
+    "obs": "EMENDA PARLAMENTAR N° 382/LOA 2023 (SUBAÇÃO: EKCP, DEPUTADO TERESA LEITÃO)",
+    "cd_nm_subacao": "EKCP - EMENDA PARLAMENTAR",
+    "credor": "11111111000122 - MUNICIPIO DE CARUARU",
+    "exercicioArquivo": 2023,
+    "expected": {
+      "numero_emenda": "382",
+      "exercicio_emenda": 2023,
+      "subacao_codigo": "EKCP",
+      "autor_normalizado": "TERESA LEITAO",
+      "autor_tipo": "individual",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "sem espaço antes do hífen, nome solto",
+    "obs": "EMENDA PARLAMENTAR Nº 30011/2025-SOCORRO PIMENTEL, EM FAVOR DA ORGANIZAÇÃO SOCIAL",
+    "cd_nm_subacao": "EM4A - EMENDA PARLAMENTAR",
+    "credor": "22222222000133 - ORGANIZACAO SOCIAL BENEFICENTE",
+    "exercicioArquivo": 2025,
+    "expected": {
+      "numero_emenda": "30011",
+      "exercicio_emenda": 2025,
+      "subacao_codigo": "EM4A",
+      "autor_normalizado": "SOCORRO PIMENTEL",
+      "autor_tipo": "individual",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "EP em vez de EMENDA PARLAMENTAR, rótulo DEP.",
+    "obs": "EMPENHO REF. AO PAGAMENTO DA EP 10014/2025 - DEP. SOCORRO PIMENTEL, NA MODALIDADE FUNDO A FUNDO",
+    "cd_nm_subacao": "EM4A - EMENDA PARLAMENTAR",
+    "credor": "22222222000133 - ORGANIZACAO SOCIAL BENEFICENTE",
+    "exercicioArquivo": 2025,
+    "expected": {
+      "numero_emenda": "10014",
+      "exercicio_emenda": 2025,
+      "subacao_codigo": "EM4A",
+      "autor_normalizado": "SOCORRO PIMENTEL",
+      "autor_tipo": "individual",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "DEPUTADAS JUNTAS é bancada, não pessoa",
+    "obs": "EMENDA PARLAMENTAR N° 154/LOA 2023 (SUBAÇÃO: EJSM, DEPUTADAS JUNTAS)",
+    "cd_nm_subacao": "EJSM - EMENDA PARLAMENTAR",
+    "credor": "33333333000144 - PREFEITURA MUNICIPAL DE GARANHUNS",
+    "exercicioArquivo": 2023,
+    "expected": {
+      "numero_emenda": "154",
+      "exercicio_emenda": 2023,
+      "subacao_codigo": "EJSM",
+      "autor_normalizado": "JUNTAS",
+      "autor_tipo": "coletiva",
+      "confianca": "alta"
+    }
+  },
+  {
+    "descricao": "obs nulo",
+    "obs": null,
+    "cd_nm_subacao": "E865 - EMENDA PARLAMENTAR",
+    "credor": "10261245000126 - FUNDO MUNICIPAL DE SAUDE",
+    "exercicioArquivo": 2024,
+    "expected": {
+      "numero_emenda": null,
+      "exercicio_emenda": null,
+      "subacao_codigo": "E865",
+      "autor_normalizado": null,
+      "autor_tipo": "desconhecido",
+      "confianca": "nula"
+    }
+  },
+  {
+    "descricao": "obs vazio",
+    "obs": "",
+    "cd_nm_subacao": "E865 - EMENDA PARLAMENTAR",
+    "credor": "10261245000126 - FUNDO MUNICIPAL DE SAUDE",
+    "exercicioArquivo": 2024,
+    "expected": {
+      "numero_emenda": null,
+      "exercicio_emenda": null,
+      "subacao_codigo": "E865",
+      "autor_normalizado": null,
+      "autor_tipo": "desconhecido",
+      "confianca": "nula"
+    }
+  },
+  {
+    "descricao": "dois números de emenda na mesma string — usa o primeiro",
+    "obs": "EMENDA PARLAMENTAR Nº 51/2021 (SUBSTITUI EMENDA PARLAMENTAR Nº 99/2020)",
+    "cd_nm_subacao": "E865 - EMENDA PARLAMENTAR",
+    "credor": "10261245000126 - FUNDO MUNICIPAL DE SAUDE",
+    "exercicioArquivo": 2024,
+    "expected": {
+      "numero_emenda": "51",
+      "exercicio_emenda": 2021,
+      "subacao_codigo": "E865",
+      "autor_normalizado": null,
+      "autor_tipo": "desconhecido",
+      "confianca": "nula"
+    }
+  }
+]

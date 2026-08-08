@@ -1,0 +1,26 @@
+# emendas-pe — configuração
+startYear: 2022
+
+pentaho:
+  panelUrl: "https://api.pentaho.transparencia.pe.gov.br/pentaho/api/repos/%3Apublic%3AOpenReports%3APortal_Producao%3APainel_Emendas_Parlamentares%3APainel_Emendas_Parlamentares.wcdf/generatedContent"
+  settleMs: 8000
+  concurrency: 3
+
+ckan:
+  packageShowUrl: "https://dados.pe.gov.br/api/3/action/package_show?id=emendasparlamentaresestaduais"
+  datasetUuid: "7c721673-6f32-467b-853f-297ec1399705"
+
+retry:
+  maxAttempts: 12
+  baseMs: 1000
+  capMs: 60000
+  timeoutMs: 30000
+
+watch:
+  cronPattern: "*/15 * * * *"
+
+http:
+  userAgent: "emendas-pe-coletor/0.1 (+contato: hermes@softagon.com.br)"
+
+server:
+  port: 3000

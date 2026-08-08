@@ -1,0 +1,23 @@
+{
+  "name": "emendas-pe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "descobrir": "bun run src/cli.ts descobrir",
+    "vigiar": "bun run src/cli.ts vigiar",
+    "coletar": "bun run src/cli.ts coletar",
+    "coletar:ckan": "bun run src/cli.ts coletar:ckan",
+    "normalizar": "bun run src/cli.ts normalizar",
+    "relatorio": "bun run src/cli.ts relatorio",
+    "servir": "bun run src/cli.ts servir",
+    "compilar": "bun run src/cli.ts compilar",
+    "cron:install": "bun run src/cli.ts cron:install",
+    "cron:remove": "bun run src/cli.ts cron:remove",
+    "check": "bunx tsc --noEmit && bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

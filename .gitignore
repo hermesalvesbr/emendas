@@ -1,0 +1,10 @@
+node_modules/
+data/emendas.sqlite
+data/emendas.sqlite-shm
+data/emendas.sqlite-wal
+data/raw/
+data/shots/
+data/endpoints.json
+data/cobertura.md
+emendas-pe
+*.log
