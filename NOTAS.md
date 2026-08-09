@@ -349,3 +349,22 @@ aplica sobre `emenda` elevando só registros não-alta — sem inflar o
 denominador da cobertura com emendas nunca executadas, e reportando
 discordâncias com autoria já extraída de texto em vez de sobrescrever. Testado
 de ponta a ponta com XML sintético no formato provado (5 testes).
+
+## 20. Escopo restaurado para 2022→hoje; anos 2012-2021 viraram só camada de conhecimento
+
+O usuário apontou (corretamente) que a spec define o escopo como 2022 → ano
+corrente. Os 10.171 empenhos de 2012-2021 coletados no item 19 foram
+removidos da tabela `empenho` (o raw imutável em `data/raw/ckan/` fica, como
+proveniência). O que a coleta histórica ensinou sobre autoria FICA: as
+emendas resolvidas por textos antigos permanecem em `emenda` como dicionário
+(34 órfãos do escopo atual foram resolvidos por elas), e 1.301 emendas nulas
+sem nenhum vínculo com empenho do escopo foram descartadas. O relatório
+`cobertura.md` agora conta apenas o universo de execução (emendas vinculadas
+a empenho 2022+), então nem numerador nem denominador são inflados pelo
+dicionário.
+
+Também a pedido do usuário: cron OS-level mudou de 6h para 4h
+(`0 */4 * * *` — o Bun materializa como `0 0,4,8,12,16,20 * * *` na crontab)
+e o worker agora escreve `data/cron.log`, append-only, uma linha por
+disparo: `<timestamp> | OK/PARCIAL/FALHOU | principal: ... | historico: ...
+| alepe: ... | validação: ...` — legível com `tail data/cron.log`.

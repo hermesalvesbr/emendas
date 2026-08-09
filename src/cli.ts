@@ -201,7 +201,7 @@ async function cmdColetarAlepe(): Promise<void> {
       console.log(`  ATENÇÃO: ${report.discordancias} discordância(s) entre texto e ALEPE — ver tabela autoria_oficial vs emenda`);
     }
     if (ok.length === 0) {
-      console.log("  (a API da ALEPE costuma ficar fora do ar — o cron de 6h reexecuta sozinho até conseguir)");
+      console.log("  (a API da ALEPE costuma ficar fora do ar — o cron de 4h reexecuta sozinho até conseguir)");
       process.exitCode = 1;
     }
   } finally {
@@ -255,8 +255,16 @@ async function cmdRelatorio(): Promise<void> {
     const autores = db.listAutores();
     const orfaos = db.orfaos();
 
+    // Conta só o universo de execução (emendas vinculadas a algum empenho no
+    // escopo do projeto, 2022→hoje). Emendas guardadas apenas como dicionário
+    // de autoria (aprendidas de textos históricos ou da ALEPE, sem empenho no
+    // escopo) ficam de fora para não inflar numerador nem denominador.
     const contagem = db.raw
-      .query(`SELECT confianca, COUNT(*) as total FROM emenda GROUP BY confianca`)
+      .query(`
+        SELECT e.confianca, COUNT(*) as total FROM emenda e
+        WHERE EXISTS (SELECT 1 FROM empenho em WHERE substr(em.cd_nm_subacao,1,4) = e.subacao_codigo)
+        GROUP BY e.confianca
+      `)
       .all() as Array<{ confianca: string; total: number }>;
     const porConfianca = Object.fromEntries(contagem.map((c) => [c.confianca, c.total]));
     const totalEmendas = contagem.reduce((sum, c) => sum + c.total, 0);
@@ -303,8 +311,8 @@ async function cmdCronInstall(): Promise<void> {
   // cron falha ao resolver o script depois. "./worker.ts" (como no exemplo
   // da spec) não funciona; resolvido relativo a este arquivo (src/cli.ts).
   const workerPath = new URL("../worker.ts", import.meta.url).pathname;
-  await Bun.cron(workerPath, "0 */6 * * *", "emendas-pe");
-  console.log(`cron OS-level instalado: "emendas-pe" (0 */6 * * *) executando ${workerPath}`);
+  await Bun.cron(workerPath, "0 */4 * * *", "emendas-pe");
+  console.log(`cron OS-level instalado: "emendas-pe" (0 */4 * * *) executando ${workerPath}`);
 }
 
 async function cmdCronRemove(): Promise<void> {

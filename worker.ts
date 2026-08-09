@@ -8,6 +8,7 @@
 // se autoremover — os painéis publicam dado novo com o tempo (novos
 // empenhos, o ano corrente avançando), então vale manter sincronizado.
 
+import { appendFileSync } from "node:fs";
 import { loadConfig } from "./src/config.ts";
 import type { Db } from "./src/db.ts";
 import { openDb } from "./src/db.ts";
@@ -17,6 +18,9 @@ import { harvestPentaho } from "./src/harvest-pentaho.ts";
 
 const AUTOR_VALIDACAO = "SOCORRO PIMENTEL";
 const STATUS_PATH = "data/PENTAHO_STATUS.md";
+// Log append-only, uma linha por disparo do cron: o que funcionou e o que
+// não, legível com `tail data/cron.log`. Pedido explícito do usuário.
+const CRON_LOG_PATH = "data/cron.log";
 
 const PAINEIS = [
   { alvo: "principal", endpointsPath: "data/endpoints.json", panelUrlKey: "panelUrl" as const },
@@ -36,6 +40,7 @@ export default {
       await rodar();
     } catch (err) {
       console.error("[worker] erro inesperado nesta rodada (tenta de novo no próximo tick):", err);
+      logRodada(`FALHOU | erro inesperado: ${errorMessage(err)}`);
       await escreverStatus({ resultadosPorPainel: [], validacao: { sucesso: false, detalhe: `erro inesperado: ${errorMessage(err)}` } });
     }
   },
@@ -71,19 +76,32 @@ async function rodar(): Promise<void> {
 
     // Autoria oficial da ALEPE — a API deles cai com frequência; cada
     // disparo do cron tenta de novo até o dicionário estar completo.
+    let alepeStatus: string | null = null;
     try {
       const alepe = await harvestAlepe(db, config);
       const okPloas = alepe.ploas.filter((p) => p.status === "ok").length;
       console.error(
         `[worker] alepe — ${okPloas}/${alepe.ploas.length} PLOA(s), dicionário=${alepe.totalAutoriaOficial}, elevadas=${alepe.elevadas}, discordâncias=${alepe.discordancias}`,
       );
+      alepeStatus =
+        okPloas > 0
+          ? `alepe: OK ${okPloas}/${alepe.ploas.length} PLOA(s), dicionário=${alepe.totalAutoriaOficial}, elevadas=${alepe.elevadas}`
+          : `alepe: FALHOU (0/${alepe.ploas.length} PLOA(s) — API/banco fora?)`;
     } catch (err) {
       console.error("[worker] alepe — erro inesperado (segue no próximo tick):", err);
+      alepeStatus = `alepe: FALHOU (${errorMessage(err)})`;
     }
 
     const validacao = validarSucesso(db);
     console.error(`[worker] validação (${AUTOR_VALIDACAO}): ${validacao.sucesso ? "SUCESSO" : "ainda não"} — ${validacao.detalhe}`);
     await escreverStatus({ resultadosPorPainel, validacao });
+
+    const paineisResumo = resultadosPorPainel
+      .map((r) => `${r.alvo}: ${r.totalLinhas > 0 ? `OK ${r.totalLinhas} linha(s), ${r.inserted} nova(s)` : "FALHOU"}`)
+      .join(" | ");
+    const alepeResumo = alepeStatus ?? "alepe: não rodou";
+    const tudoOk = resultadosPorPainel.every((r) => r.totalLinhas > 0) && (alepeStatus?.includes("OK") ?? false);
+    logRodada(`${tudoOk ? "OK" : "PARCIAL"} | ${paineisResumo} | ${alepeResumo} | validação: ${validacao.sucesso ? "ok" : "pendente"}`);
   } finally {
     db.close();
   }
@@ -137,6 +155,14 @@ ${linhasPainel || "_nenhum painel processado nesta rodada._"}
 Rode \`crontab -l\` para conferir se o cron ainda está agendado, ou \`bun run relatorio\` para ver o estado atual da cobertura.
 `;
   await Bun.write(STATUS_PATH, md);
+}
+
+function logRodada(linha: string): void {
+  try {
+    appendFileSync(CRON_LOG_PATH, `${new Date().toISOString()} | ${linha}\n`);
+  } catch (err) {
+    console.error("[worker] falha ao escrever cron.log:", err);
+  }
 }
 
 function errorMessage(err: unknown): string {
