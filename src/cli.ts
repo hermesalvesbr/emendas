@@ -74,40 +74,62 @@ async function main(): Promise<void> {
   }
 }
 
+/**
+ * Dois painéis Pentaho independentes: o principal só tem o exercício
+ * corrente (ver NOTAS.md item 11), e um "Painel Histórico" separado —
+ * achado em 09/08/2026 navegando o portal de transparência, não linkado a
+ * partir da spec original — cobre 2023-2025 com sua própria estrutura de
+ * dados (ver NOTAS.md item 18). Descobrimos e coletamos dos dois.
+ */
+function paineisPentaho(config: Awaited<ReturnType<typeof loadConfig>>) {
+  return [
+    { alvo: "principal", endpointsPath: "data/endpoints.json", panelUrl: config.pentaho.panelUrl },
+    { alvo: "historico", endpointsPath: "data/endpoints-historico.json", panelUrl: config.pentaho.panelUrlHistorico },
+  ] as const;
+}
+
 async function cmdDescobrir(): Promise<void> {
   const config = await loadConfig();
   const db = openDb();
   try {
-    const report = await discover(config);
-
-    if (report.ok) {
-      db.logHarvest({
-        alvo: "descobrir:painel",
-        exercicio: null,
-        status: "ok",
-        tentativas: report.attempts,
-        http_status: 200,
-        duracao_ms: Math.round(report.elapsedMs),
-        mensagem: `${report.result.callCount} chamadas CDA capturadas`,
+    let algumaFalha = false;
+    for (const painel of paineisPentaho(config)) {
+      const report = await discover(config, {
+        panelUrl: painel.panelUrl,
+        endpointsPath: painel.endpointsPath,
+        label: `descobrir:painel-${painel.alvo}`,
       });
-      console.log(`descoberta ok: ${report.result.callCount} chamadas em ${report.attempts} tentativa(s)`);
-      console.log(`endpoints: ${report.result.endpointsPath}`);
-      console.log(`screenshot: ${report.result.screenshotPath}`);
-      return;
-    }
 
-    db.logHarvest({
-      alvo: "descobrir:painel",
-      exercicio: null,
-      status: report.reason,
-      tentativas: report.attempts,
-      http_status: null,
-      duracao_ms: null,
-      mensagem: report.message,
-    });
-    console.error(`descoberta falhou (${report.reason}) após ${report.attempts} tentativa(s): ${report.message}`);
-    if (report.screenshotPath) console.error(`screenshot de diagnóstico: ${report.screenshotPath}`);
-    process.exitCode = 1;
+      if (report.ok) {
+        db.logHarvest({
+          alvo: `descobrir:painel-${painel.alvo}`,
+          exercicio: null,
+          status: "ok",
+          tentativas: report.attempts,
+          http_status: 200,
+          duracao_ms: Math.round(report.elapsedMs),
+          mensagem: `${report.result.callCount} chamadas CDA capturadas`,
+        });
+        console.log(`descoberta (${painel.alvo}) ok: ${report.result.callCount} chamadas em ${report.attempts} tentativa(s)`);
+        console.log(`  endpoints: ${report.result.endpointsPath}`);
+        console.log(`  screenshot: ${report.result.screenshotPath}`);
+        continue;
+      }
+
+      algumaFalha = true;
+      db.logHarvest({
+        alvo: `descobrir:painel-${painel.alvo}`,
+        exercicio: null,
+        status: report.reason,
+        tentativas: report.attempts,
+        http_status: null,
+        duracao_ms: null,
+        mensagem: report.message,
+      });
+      console.error(`descoberta (${painel.alvo}) falhou (${report.reason}) após ${report.attempts} tentativa(s): ${report.message}`);
+      if (report.screenshotPath) console.error(`  screenshot de diagnóstico: ${report.screenshotPath}`);
+    }
+    if (algumaFalha) process.exitCode = 1;
   } finally {
     db.close();
   }
@@ -133,13 +155,16 @@ async function cmdColetar(): Promise<void> {
   const config = await loadConfig();
   const db = openDb();
   try {
-    if (await Bun.file("data/endpoints.json").exists()) {
-      console.log("coletando via Pentaho (endpoints descobertos)...");
-      const results = await harvestPentaho(db, config);
+    for (const painel of paineisPentaho(config)) {
+      if (!(await Bun.file(painel.endpointsPath).exists())) {
+        console.log(`${painel.endpointsPath} não existe ainda (rode "bun run descobrir" primeiro) — pulando painel ${painel.alvo}.`);
+        continue;
+      }
+      console.log(`coletando via Pentaho (${painel.alvo})...`);
+      const results = await harvestPentaho(db, config, { endpointsPath: painel.endpointsPath });
       const inserted = results.reduce((sum, r) => sum + r.inserted, 0);
-      console.log(`pentaho: ${results.length} chamada(s), ${inserted} linha(s) nova(s)`);
-    } else {
-      console.log('data/endpoints.json não existe ainda (rode "bun run descobrir" primeiro) — seguindo direto para o CKAN.');
+      const comAutorNativo = results.reduce((sum, r) => sum + r.comAutorNativo, 0);
+      console.log(`  ${painel.alvo}: ${results.length} chamada(s), ${inserted} linha(s) nova(s), ${comAutorNativo} com autor nativo`);
     }
 
     await runCkan(db, config);
@@ -247,8 +272,13 @@ async function cmdCompilar(): Promise<void> {
 }
 
 async function cmdCronInstall(): Promise<void> {
-  await Bun.cron("./worker.ts", "0 */6 * * *", "emendas-pe");
-  console.log('cron OS-level instalado: "emendas-pe" (0 */6 * * *) executando worker.ts');
+  // Bun.cron(path, ...) no modo OS-level escreve o caminho literal na
+  // crontab, que roda com outro cwd — precisa ser absoluto ou o próprio
+  // cron falha ao resolver o script depois. "./worker.ts" (como no exemplo
+  // da spec) não funciona; resolvido relativo a este arquivo (src/cli.ts).
+  const workerPath = new URL("../worker.ts", import.meta.url).pathname;
+  await Bun.cron(workerPath, "0 */6 * * *", "emendas-pe");
+  console.log(`cron OS-level instalado: "emendas-pe" (0 */6 * * *) executando ${workerPath}`);
 }
 
 async function cmdCronRemove(): Promise<void> {

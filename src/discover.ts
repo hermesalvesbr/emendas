@@ -27,8 +27,12 @@ class DiscoveryError extends HarvestError {
   }
 }
 
-export async function discover(config: Config): Promise<DiscoveryReport> {
-  const attempt = await insist("descobrir:painel", (signal, n) => attemptDiscovery(config, signal, n), {
+export async function discover(config: Config, opts?: { panelUrl?: string; endpointsPath?: string; label?: string }): Promise<DiscoveryReport> {
+  const panelUrl = opts?.panelUrl ?? config.pentaho.panelUrl;
+  const endpointsPath = opts?.endpointsPath ?? "data/endpoints.json";
+  const label = opts?.label ?? "descobrir:painel";
+
+  const attempt = await insist(label, (signal, n) => attemptDiscovery(config, panelUrl, endpointsPath, signal, n), {
     maxAttempts: config.retry.maxAttempts,
     baseMs: config.retry.baseMs,
     capMs: config.retry.capMs,
@@ -48,7 +52,13 @@ export async function discover(config: Config): Promise<DiscoveryReport> {
   };
 }
 
-async function attemptDiscovery(config: Config, _signal: AbortSignal, attemptNumber: number): Promise<DiscoverySuccess> {
+async function attemptDiscovery(
+  config: Config,
+  panelUrl: string,
+  endpointsPath: string,
+  _signal: AbortSignal,
+  attemptNumber: number,
+): Promise<DiscoverySuccess> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outDir = `data/raw/discovery/${timestamp}-tentativa${attemptNumber}`;
   const screenshotPath = `data/shots/discovery-${timestamp}-tentativa${attemptNumber}.png`;
@@ -87,7 +97,7 @@ async function attemptDiscovery(config: Config, _signal: AbortSignal, attemptNum
   });
 
   try {
-    await view.navigate(config.pentaho.panelUrl);
+    await view.navigate(panelUrl);
   } catch (err) {
     await saveScreenshotBestEffort(view, screenshotPath);
     throw new DiscoveryError("http", `navegação ao painel Pentaho falhou: ${errorMessage(err)}`, screenshotPath, { cause: err });
@@ -128,12 +138,12 @@ async function attemptDiscovery(config: Config, _signal: AbortSignal, attemptNum
 
   const endpointsFile: EndpointsFile = {
     discoveredAt: new Date().toISOString(),
-    panelUrl: config.pentaho.panelUrl,
+    panelUrl,
     calls: manifest,
   };
-  await Bun.write("data/endpoints.json", JSON.stringify(endpointsFile, null, 2));
+  await Bun.write(endpointsPath, JSON.stringify(endpointsFile, null, 2));
 
-  return { outDir, endpointsPath: "data/endpoints.json", screenshotPath, callCount: manifest.length };
+  return { outDir, endpointsPath, screenshotPath, callCount: manifest.length };
 }
 
 async function captureResponseBody(view: Bun.WebView, requestId: string): Promise<unknown> {

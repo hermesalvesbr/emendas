@@ -5,6 +5,7 @@ data/emendas.sqlite-wal
 data/raw/
 data/shots/
 data/endpoints.json
+data/endpoints-historico.json
 data/cobertura.md
 data/PENTAHO_STATUS.md
 emendas-pe

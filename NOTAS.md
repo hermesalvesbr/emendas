@@ -278,3 +278,43 @@ visíveis (antes eram invisíveis, nem contavam) na lista de subações órfãs 
 `cobertura.md`, prontos para virar item de pedido de LAI. Zero nomes
 "garbled" na base inteira (checado: nenhum `autor_normalizado` com mais de 4
 palavras entre os 1.120 de confiança alta).
+
+## 18. Existe um segundo painel Pentaho — "Painel Histórico" (2023-2025) — não linkado da spec original
+
+Pedido do usuário: usar os artifícios técnicos disponíveis para reduzir ao
+máximo as emendas sem autor. `transparencia.pe.gov.br/gestao-estadual/
+emendas-parlamentares/emendas-parlamentares-estaduais/` lista **dois**
+painéis: o principal (`Painel_Emendas_Parlamentares`, só o exercício
+corrente — item 11) e um separado, `Painel_Emendas_Historico`, cobrindo
+2023–2025. A spec original só linkava o principal; achado navegando o
+próprio portal de transparência com `Bun.WebView`, mesma técnica de
+`discover.ts`, contra
+`.../OpenReports/Portal_Producao/Painel_Emendas_Historico/Painel_Emendas_Historico.wcdf/generatedContent`.
+
+O `dataAccessId` principal desse painel é `sql_jndi` (não `sql_tabela`), com
+colunas próprias: `ano_emenda`, `numero_empenho`, `unidade_gestora`,
+`credor`, `nm_funcao`, `nm_subfuncao`, `nm_prog`, `nm_acao`, `nm_subacao`,
+`detalhamento_empenho` (o equivalente a `obs`), `valor_empenhado`,
+`valor_liquidado`, `valor_pago`, entre outras. **Sem coluna `autor` nativa**
+— ao contrário do painel principal (item 15), este é estruturalmente igual
+ao CKAN (autoria só em texto livre dentro de `detalhamento_empenho`).
+`nm_subacao` também não tem o prefixo de código de 4 caracteres que
+`cd_nm_subacao` do CKAN tem (vem só como `"EMENDA PARLAMENTAR NO.181/2022"`,
+sem `"EKZF - "` na frente) — `subacao_codigo` fica `null` para essas linhas,
+então elas não participam da propagação por subação, só da extração direta.
+
+`discover()` e `harvestPentaho()` ganharam `opts.panelUrl`/`opts.endpointsPath`
+para suportar múltiplos painéis sem duplicar código; `config.pentaho.
+panelUrlHistorico` foi adicionado, e `cli.ts`/`worker.ts` agora descobrem e
+coletam dos dois painéis Pentaho a cada rodada, não só do principal.
+
+**Resultado, mesmo sem autoria nativa:** o painel histórico tem seu próprio
+snapshot dos empenhos, com hash natural evitando duplicata contra o CKAN
+(mesma fórmula `exercicio|numero_empenho|obs|vlrempenhado`) — 2023 bateu
+100% com o que o CKAN já tinha (0 linhas novas, confirma consistência entre
+fontes), mas **2024 trouxe 8 empenhos novos e 2025 trouxe 1.009 empenhos
+novos** que o CKAN nunca teve (o arquivo CKAN de 2025 provavelmente foi
+publicado antes de fechar o ano; este painel está mais atualizado). Rodando
+`normalizar` de novo: confiança alta subiu de 1.120 para 1.240, e a
+propagação por subação saltou de ~4 para 69 (mais linhas share subação
+agora). Zero hash duplicado na base inteira (5.754 empenhos, checado).

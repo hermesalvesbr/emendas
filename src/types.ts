@@ -138,6 +138,7 @@ export type Config = {
   startYear: number;
   pentaho: {
     panelUrl: string;
+    panelUrlHistorico: string;
     settleMs: number;
     concurrency: number;
   };

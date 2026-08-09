@@ -26,7 +26,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   cd_nm_prog: ["cd_nm_prog", "programa"],
   cd_nm_acao: ["cd_nm_acao", "acao", "nm_acao"],
   cd_nm_subacao: ["cd_nm_subacao", "subacao", "nm_subacao"],
-  obs: ["obs", "observacao", "observacao_empenho"],
+  obs: ["obs", "observacao", "observacao_empenho", "detalhamento_empenho"],
   vlrempenhado: ["vlrempenhado", "vlr_emp_original", "vlr_empenhado", "valor_empenhado"],
   vlrliquidado: ["vlrliquidado", "vlr_liquidado", "valor_liquidado"],
   vlrtotalpago: ["vlrtotalpago", "vlr_total_pago", "vlr_pago", "valor_pago"],
