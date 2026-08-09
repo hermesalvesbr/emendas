@@ -318,3 +318,34 @@ publicado antes de fechar o ano; este painel está mais atualizado). Rodando
 `normalizar` de novo: confiança alta subiu de 1.120 para 1.240, e a
 propagação por subação saltou de ~4 para 69 (mais linhas share subação
 agora). Zero hash duplicado na base inteira (5.754 empenhos, checado).
+
+## 19. Autoria OFICIAL existe na API da ALEPE — infraestrutura pronta, aguardando o banco deles voltar
+
+Pedido do usuário: buscar na internet fontes para zerar as emendas sem autor.
+Varredura orquestrada (4 investigadores paralelos + aprofundamentos) sobre
+TCE-PE, ALEPE, CKAN/SCGE e portal de transparência. Consolidado:
+
+- **TCE-PE**: nada para 2014-2025 (Tome Conta sem módulo de emendas; API de
+  dados abertos sem entidade de emendas; painel Qlik 404). A Resolução TC nº
+  302/2025 (10/12/2025) obriga órgãos a publicar "Nome do parlamentar autor"
+  nos portais próprios **a partir de 2026** — fonte futura a monitorar.
+- **PDF da LOA sancionada** (ex. Lei 18.123/2022): tem "ANEXO DAS EMENDAS
+  PARLAMENTARES APROVADAS" mas SEM coluna de autor. Confirmou, porém, que a
+  ALEPE numera emendas pelo ano de APRESENTAÇÃO (650/2022 no anexo da LOA
+  2023 = "650/2023" nos empenhos) — o casamento precisa tentar os dois anos.
+- **ALEPE (o achado)**: o detalhe de cada PLOA na API
+  `dadosabertos.alepe.pe.gov.br/api/v1/proposicoes/projetos/?numero=X&ano=Y`
+  inclui `<emendas><emenda numero ano><autores><autor nome tipo>` — o
+  mapeamento oficial (numero, ano) → deputado autor. Formato provado pelo
+  parser do bundle JS oficial do portal proposicoes.alepe.pe.gov.br
+  (main.29724183.js). O banco da API estava fora em toda a janela
+  ("Erro na conexão com o banco de dados", HTTP 200, ~26s por resposta).
+
+Implementado `src/harvest-alepe.ts` + comando `coletar:alepe` + integração no
+worker do cron (a cada 6h): descobre os PLOAs de todas as legislaturas
+(17ª-20ª, 2011-2026), baixa o bloco de emendas de cada um, grava no dicionário
+`autoria_oficial` (tabela nova, com exercicio_apresentacao E exercicio_loa) e
+aplica sobre `emenda` elevando só registros não-alta — sem inflar o
+denominador da cobertura com emendas nunca executadas, e reportando
+discordâncias com autoria já extraída de texto em vez de sobrescrever. Testado
+de ponta a ponta com XML sintético no formato provado (5 testes).

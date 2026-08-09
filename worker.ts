@@ -12,6 +12,7 @@ import { loadConfig } from "./src/config.ts";
 import type { Db } from "./src/db.ts";
 import { openDb } from "./src/db.ts";
 import { discover } from "./src/discover.ts";
+import { harvestAlepe } from "./src/harvest-alepe.ts";
 import { harvestPentaho } from "./src/harvest-pentaho.ts";
 
 const AUTOR_VALIDACAO = "SOCORRO PIMENTEL";
@@ -66,6 +67,18 @@ async function rodar(): Promise<void> {
         `[worker] coletar (${painel.alvo}) — ${resultados.length} chamada(s), ${totalLinhas} linha(s), ${totalInserted} nova(s), ${totalAutorNativo} com autor nativo`,
       );
       resultadosPorPainel.push({ alvo: painel.alvo, totalLinhas, comAutorNativo: totalAutorNativo, inserted: totalInserted });
+    }
+
+    // Autoria oficial da ALEPE — a API deles cai com frequência; cada
+    // disparo do cron tenta de novo até o dicionário estar completo.
+    try {
+      const alepe = await harvestAlepe(db, config);
+      const okPloas = alepe.ploas.filter((p) => p.status === "ok").length;
+      console.error(
+        `[worker] alepe — ${okPloas}/${alepe.ploas.length} PLOA(s), dicionário=${alepe.totalAutoriaOficial}, elevadas=${alepe.elevadas}, discordâncias=${alepe.discordancias}`,
+      );
+    } catch (err) {
+      console.error("[worker] alepe — erro inesperado (segue no próximo tick):", err);
     }
 
     const validacao = validarSucesso(db);

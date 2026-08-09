@@ -35,6 +35,22 @@ CREATE TABLE IF NOT EXISTS harvest_log (
   duracao_ms INTEGER, mensagem TEXT, quando TEXT NOT NULL
 );
 
+-- Dicionário oficial de autoria vindo da API da ALEPE (bloco <emendas> do
+-- detalhe de cada PLOA — ver NOTAS.md item 19). Tabela separada de "emenda"
+-- de propósito: "emenda" é o universo com execução orçamentária; isto aqui é
+-- o universo aprovado pela ALEPE. A aplicação (aplicarAutoriaOficial) só
+-- eleva registros existentes — não infla o denominador da cobertura.
+-- exercicio_apresentacao = ano em que a emenda foi apresentada ao PLOA (como
+-- a ALEPE numera: "650/2022"); exercicio_loa = exercício orçado pela LOA
+-- resultante ("650/2023" nos empenhos). Os textos de empenho citam ora um,
+-- ora outro — a aplicação tenta os dois.
+CREATE TABLE IF NOT EXISTS autoria_oficial (
+  numero_emenda TEXT NOT NULL, exercicio_apresentacao INTEGER NOT NULL, exercicio_loa INTEGER NOT NULL,
+  autor_nome TEXT NOT NULL, autor_normalizado TEXT NOT NULL, autor_tipo TEXT NOT NULL,
+  ploa TEXT NOT NULL, coletado_em TEXT NOT NULL,
+  PRIMARY KEY (numero_emenda, exercicio_apresentacao)
+);
+
 CREATE INDEX IF NOT EXISTS idx_emp_subacao ON empenho(cd_nm_subacao);
 CREATE INDEX IF NOT EXISTS idx_emp_exercicio ON empenho(exercicio);
 CREATE INDEX IF NOT EXISTS idx_emenda_subacao ON emenda(subacao_codigo);
@@ -50,6 +66,23 @@ export type OrfaoRow = {
   total: number;
 };
 
+export type NewAutoriaOficial = {
+  numero_emenda: string;
+  exercicio_apresentacao: number;
+  exercicio_loa: number;
+  autor_nome: string;
+  autor_normalizado: string;
+  autor_tipo: AutorTipo;
+  ploa: string;
+};
+
+export type DiscordanciaAutoria = {
+  numero_emenda: string;
+  exercicio_emenda: number;
+  autor_texto: string;
+  autor_oficial: string;
+};
+
 export type Db = {
   readonly raw: Database;
   insertEmpenho(row: NewEmpenho): { inserted: boolean; hash: string };
@@ -63,6 +96,10 @@ export type Db = {
   empenhosPorExercicio(exercicio: number): EmpenhoRow[];
   orfaos(): OrfaoRow[];
   harvestLogTail(limit?: number): HarvestLogRow[];
+  upsertAutoriaOficial(row: NewAutoriaOficial): void;
+  countAutoriaOficial(): number;
+  /** Eleva emendas não-alta usando o dicionário oficial da ALEPE; retorna quantas subiram e as discordâncias com autoria já alta. */
+  aplicarAutoriaOficial(): { elevadas: number; discordancias: DiscordanciaAutoria[] };
   close(): void;
 };
 
@@ -226,6 +263,66 @@ export function openDb(path = "data/emendas.sqlite"): Db {
 
     harvestLogTail(limit = 50) {
       return stmts.harvestLogTail.all({ limit: limit }) as HarvestLogRow[];
+    },
+
+    upsertAutoriaOficial(row) {
+      raw
+        .query(`
+          INSERT INTO autoria_oficial
+            (numero_emenda, exercicio_apresentacao, exercicio_loa, autor_nome, autor_normalizado, autor_tipo, ploa, coletado_em)
+          VALUES ($numero_emenda, $exercicio_apresentacao, $exercicio_loa, $autor_nome, $autor_normalizado, $autor_tipo, $ploa, $coletado_em)
+          ON CONFLICT (numero_emenda, exercicio_apresentacao) DO UPDATE SET
+            exercicio_loa = excluded.exercicio_loa,
+            autor_nome = excluded.autor_nome,
+            autor_normalizado = excluded.autor_normalizado,
+            autor_tipo = excluded.autor_tipo,
+            ploa = excluded.ploa,
+            coletado_em = excluded.coletado_em
+        `)
+        .run({ ...row, coletado_em: new Date().toISOString() });
+    },
+
+    countAutoriaOficial() {
+      const r = raw.query("SELECT COUNT(*) as c FROM autoria_oficial").get() as { c: number } | null;
+      return r?.c ?? 0;
+    },
+
+    aplicarAutoriaOficial() {
+      // Auditoria ANTES de aplicar: onde o texto do empenho já deu autor
+      // (alta) e a ALEPE discorda — sinal de bug de extração ou de numeração
+      // ambígua; nunca sobrescrevemos silenciosamente.
+      const discordancias = raw
+        .query(`
+          SELECT e.numero_emenda, e.exercicio_emenda, e.autor_normalizado as autor_texto, a.autor_normalizado as autor_oficial
+          FROM emenda e
+          JOIN autoria_oficial a ON a.numero_emenda = e.numero_emenda
+            AND (a.exercicio_loa = e.exercicio_emenda OR a.exercicio_apresentacao = e.exercicio_emenda)
+          WHERE e.confianca = 'alta' AND e.autor_normalizado IS NOT NULL
+            AND e.autor_normalizado != a.autor_normalizado
+        `)
+        .all() as DiscordanciaAutoria[];
+
+      // Dois passes determinísticos: primeiro casa pelo exercício da LOA
+      // (como os empenhos costumam citar), depois pelo ano de apresentação
+      // (como a ALEPE numera) para o que sobrou.
+      let elevadas = 0;
+      for (const campo of ["exercicio_loa", "exercicio_apresentacao"] as const) {
+        const r = raw
+          .query(`
+            UPDATE emenda SET
+              autor_bruto = a.autor_nome,
+              autor_normalizado = a.autor_normalizado,
+              autor_tipo = a.autor_tipo,
+              confianca = 'alta'
+            FROM autoria_oficial a
+            WHERE a.numero_emenda = emenda.numero_emenda
+              AND a.${campo} = emenda.exercicio_emenda
+              AND emenda.confianca != 'alta'
+          `)
+          .run();
+        elevadas += r.changes;
+      }
+      return { elevadas, discordancias };
     },
 
     close() {

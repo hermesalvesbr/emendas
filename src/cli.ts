@@ -6,6 +6,7 @@ import type { Db } from "./db.ts";
 import { openDb } from "./db.ts";
 import { discover } from "./discover.ts";
 import { harvestCkan } from "./harvest-ckan.ts";
+import { harvestAlepe } from "./harvest-alepe.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { serve } from "./serve.ts";
@@ -16,6 +17,7 @@ const COMMANDS = [
   "vigiar",
   "coletar",
   "coletar:ckan",
+  "coletar:alepe",
   "normalizar",
   "relatorio",
   "servir",
@@ -52,6 +54,9 @@ async function main(): Promise<void> {
       break;
     case "coletar:ckan":
       await cmdColetarCkan();
+      break;
+    case "coletar:alepe":
+      await cmdColetarAlepe();
       break;
     case "normalizar":
       await cmdNormalizar();
@@ -178,6 +183,27 @@ async function cmdColetarCkan(): Promise<void> {
   const db = openDb();
   try {
     await runCkan(db, config);
+  } finally {
+    db.close();
+  }
+}
+
+async function cmdColetarAlepe(): Promise<void> {
+  const config = await loadConfig();
+  const db = openDb();
+  try {
+    console.log("coletando autoria oficial na API da ALEPE (PLOAs de todas as legislaturas)...");
+    const report = await harvestAlepe(db, config);
+    const ok = report.ploas.filter((p) => p.status === "ok");
+    console.log(`alepe: ${ok.length}/${report.ploas.length} PLOA(s) coletado(s), dicionário com ${report.totalAutoriaOficial} autoria(s)`);
+    console.log(`  emendas elevadas para confiança alta: ${report.elevadas}`);
+    if (report.discordancias > 0) {
+      console.log(`  ATENÇÃO: ${report.discordancias} discordância(s) entre texto e ALEPE — ver tabela autoria_oficial vs emenda`);
+    }
+    if (ok.length === 0) {
+      console.log("  (a API da ALEPE costuma ficar fora do ar — o cron de 6h reexecuta sozinho até conseguir)");
+      process.exitCode = 1;
+    }
   } finally {
     db.close();
   }
