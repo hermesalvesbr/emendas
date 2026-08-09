@@ -7,8 +7,10 @@ import type { AutorTipo, Confianca, EmendaExtraida, EmpenhoBruto, EmpenhoRow } f
 // órfãos: variações reais incluem "EMENDA 675/2019" (sem N nenhum), "EMENDA
 // N° 864/2019" (sem a palavra PARLAMENTAR) e "EMENDA PAR. <nome> N 477/2020"
 // (abreviado). Ver NOTAS.md.
-const NUMERO_EMENDA_RE = /EMENDA\s+(?:PARLAMENTAR\s+)?(?:PAR\.\s+)?(?:N\s*(?:[º°]|O\.?)?\s*)?(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4}))?/i;
-const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4}))?/i;
+// O \b após o ano evita capturar 4 dígitos de um código maior — achado real:
+// "EMENDA PARLAMENTAR N° 311/2386100" gerava exercicio_emenda=2386.
+const NUMERO_EMENDA_RE = /EMENDA\s+(?:PARLAMENTAR\s+)?(?:PAR\.\s+)?(?:N\s*(?:[º°]|O\.?)?\s*)?(\d+)(?:\s*\/\s*(?:LOA\s*)?(\d{4})\b)?/i;
+const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4})\b)?/i;
 
 // Parada comum a quase todos os rótulos: espaço duplo, " - " (dash isolado),
 // vírgula, parêntese ou fim da string.
@@ -38,11 +40,11 @@ const COLETIVA_MARKERS = ["JUNTAS", "BANCADA", "CONJUNTA", "TODOS OS DEPUTADOS"]
  * carregavam a descrição inteira grudada no nome).
  */
 const STOP_MARKERS =
-  /\b(N[ºO°]|CONF(ORME)?\b|CI\b|POA\b|SEI\b|SEPLAG|FEM\b|REFERENTE|DESTINAD[AO]|DESTINA-SE|RECURSOS|OBS[;:]|QUANTIDADE|PARA\b|OBJETO|CUSTEIO|P\/|TER\.|ADESAO|DECRETO|PROJETO|REPROGRAMACAO|MUNIC[IÍ]P[IÍ]O|ESTADUAL|PERFURA|CONSTRU|AQUISI|REFORM|AMPLIA|IMPLANTA|MANUTEN|A?VIMENTA|RECUPERA|CAPACITA)/i;
+  /\b(N[ºO°]|CONF(ORME)?\b|CI\b|POA\b|SEI\b|SEPLAG|FEM\b|REFERENTE|DESTINAD[AO]|DESTINA-SE|RECURSOS|OBS[;:]|QUANTIDADE|PARA\b|OBJETO|CUSTEIO|P\/|TER\.|ADESAO|DECRETO|PROJETO|REPROGRAMACAO|MUNIC[IÍ]P[IÍ]O|ESTADUAL|PERFURA|CONSTRU|AQUISI|REFORM|AMPLIA|IMPLANTA|MANUTEN|A?VIMENTA|RECUPERA|CAPACITA|E\s+PROGRAMA[CÇ][AÃ]O|COM\s+[AO]\b)/i;
 
 /** Palavras que, no início do trecho capturado, indicam que não é um nome. */
 const LEADING_NON_NAME =
-  /^(DESTINAD[AO]|DESTINA-SE|PARA|OBJETO|REFERENTE|RECURSOS|CONVENIO|OFERECER|AQUISI[CÇ][AÃ]O|CONSTRU[CÇ][AÃ]O|REFORMA|AMPLIA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|A?VIMENTA[CÇ][AÃ]O|PERFURA[CÇ][AÃ]O|IMPLANTA[CÇ][AÃ]O|RECUPERA[CÇ][AÃ]O|ESTADUAL|MUNICIPAL|CAPACITA[CÇ][AÃ]O|EQUIPAMENTOS?|MATERIA(IS|L)|SERVI[CÇ]OS?|PRESTA[CÇ][AÃ]O|DERIVAD[AO]|EMENDA)\b/i;
+  /^(DESTINAD[AO]|DESTINA-SE|PARA|OBJETO|REFERENTE|RECURSOS|CONVENIO|OFERECER|AQUISI[CÇ][AÃ]O|CONSTRU[CÇ][AÃ]O|REFORMA|AMPLIA[CÇ][AÃ]O|MANUTEN[CÇ][AÃ]O|A?VIMENTA[CÇ][AÃ]O|PERFURA[CÇ][AÃ]O|IMPLANTA[CÇ][AÃ]O|RECUPERA[CÇ][AÃ]O|ESTADUAL|MUNICIPAL|CAPACITA[CÇ][AÃ]O|EQUIPAMENTOS?|MATERIA(IS|L)|SERVI[CÇ]OS?|PRESTA[CÇ][AÃ]O|DERIVAD[AO]|EMENDA|ATA)\b/i;
 
 /**
  * Só o número/exercício da emenda a partir de `obs`, sem tentar extrair
