@@ -368,3 +368,13 @@ Também a pedido do usuário: cron OS-level mudou de 6h para 4h
 e o worker agora escreve `data/cron.log`, append-only, uma linha por
 disparo: `<timestamp> | OK/PARCIAL/FALHOU | principal: ... | historico: ...
 | alepe: ... | validação: ...` — legível com `tail data/cron.log`.
+
+## 21. Escopo final: 20ª legislatura (2023-2026), os últimos 4 anos
+
+Definição do usuário em 09/08/2026: o objetivo é a legislatura atual da
+ALEPE. `startYear: 2023`; empenhos de 2022 removidos da base operacional
+(raw preservado); 291 emendas nulas que só tinham vínculo com 2022 foram
+descartadas. Medido que os órfãos do escopo (empenhos 2023+) citam emendas
+de 2019-2025 — por isso o dicionário da ALEPE cobre as legislaturas 19ª e
+20ª (PLOAs de 2019-2025), e nada anterior: emendas de legislaturas mais
+antigas não aparecem em nenhuma citação do escopo.

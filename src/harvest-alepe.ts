@@ -16,8 +16,11 @@ import type { Config } from "./types.ts";
 
 const API_PROJETOS = "https://dadosabertos.alepe.pe.gov.br/api/v1/proposicoes/projetos/";
 const TIPO_PLOA = "PROJETO DE LEI ORÇAMENTÁRIA ANUAL";
-// 17ª: 2011-2014 · 18ª: 2015-2018 · 19ª: 2019-2022 · 20ª: 2023-2026
-const LEGISLATURAS = [17, 18, 19, 20] as const;
+// 19ª: 2019-2022 · 20ª: 2023-2026. Os órfãos do escopo (empenhos 2023+)
+// citam emendas de 2019-2025 — medido em 09/08/2026; legislaturas anteriores
+// não aparecem em nenhuma citação, então não gastamos chamadas com elas
+// (a API da ALEPE é frágil).
+const LEGISLATURAS = [19, 20] as const;
 
 export type PloaRef = { docid: string; numero: string; ano: number };
 

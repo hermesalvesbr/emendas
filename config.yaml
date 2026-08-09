@@ -1,5 +1,7 @@
 # emendas-pe — configuração
-startYear: 2022
+# Escopo do projeto: a legislatura atual da ALEPE (20ª, 2023-2026) — os
+# últimos 4 anos. Definido pelo usuário em 09/08/2026.
+startYear: 2023
 
 pentaho:
   panelUrl: "https://api.pentaho.transparencia.pe.gov.br/pentaho/api/repos/%3Apublic%3AOpenReports%3APortal_Producao%3APainel_Emendas_Parlamentares%3APainel_Emendas_Parlamentares.wcdf/generatedContent"
