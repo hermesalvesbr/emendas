@@ -17,7 +17,7 @@ const NUMERO_EP_RE = /\bEP\s+(\d+)(?:\s*\/\s*(\d{4})\b)?/i;
 const STOP = "(?=\\s{2,}|\\s-\\s|,|\\)|$)";
 
 const AUTOR_PATTERNS: RegExp[] = [
-  new RegExp(`AUTORA?:\\s*([^,)]+?)${STOP}`, "i"),
+  new RegExp(`AUTORA?\\s*:\\s*([^,)]+?)${STOP}`, "i"),
   // "DO (A) PARLAMENTAR <nome> PARA O MUNICÍPIO..." — rótulo comum nos empenhos
   // de repasse (achado empírico: ~29% dos registros órfãos usam esse formato).
   /\bPARLAMENTAR\s+([^,)(]+?)(?=\s+PARA\b|\s{2,}|\s-\s|,|\)|\(|$)/i,
@@ -40,7 +40,7 @@ const COLETIVA_MARKERS = ["JUNTAS", "BANCADA", "CONJUNTA", "TODOS OS DEPUTADOS"]
  * carregavam a descrição inteira grudada no nome).
  */
 const STOP_MARKERS =
-  /\b(N[ºO°]|CONF(ORME)?\b|CI\b|POA\b|SEI\b|SEPLAG|FEM\b|REFERENTE|DESTINAD[AO]|DESTINA-SE|RECURSOS|OBS[;:]|QUANTIDADE|PARA\b|OBJETO|CUSTEIO|P\/|TER\.|ADESAO|DECRETO|PROJETO|REPROGRAMACAO|MUNIC[IÍ]P[IÍ]O|ESTADUAL|PERFURA|CONSTRU|AQUISI|REFORM|AMPLIA|IMPLANTA|MANUTEN|A?VIMENTA|RECUPERA|CAPACITA|E\s+PROGRAMA[CÇ][AÃ]O|COM\s+[AO]\b)/i;
+  /\b(N[ºO°]|CONF(ORME)?\b|CI\b|POA\b|SEI\b|SEPLAG|FEM\b|REFERENTE|DESTINAD[AO]|DESTINA-SE|RECURSOS|OBS[;:]|QUANTIDADE|PARA\b|OBJETO|CUSTEIO|P\/|TER\.|ADESAO|DECRETO|PROJETO|REPROGRAMACAO|MUNIC[IÍ]P[IÍ]O|ESTADUAL|PERFURA|CONSTRU|AQUISI|REFORM|AMPLIA|IMPLANTA|MANUTEN|A?VIMENTA|RECUPERA|CAPACITA|E\s+PROGRAMA[CÇ][AÃ]O|COM\s+[AO]\b|A\s+SER\b|ATRAV[EÉ]S)/i;
 
 /** Palavras que, no início do trecho capturado, indicam que não é um nome. */
 const LEADING_NON_NAME =

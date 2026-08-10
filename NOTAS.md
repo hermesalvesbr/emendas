@@ -447,3 +447,20 @@ texto que a regex rejeita), seis linhas de investigação priorizadas
 imprensa → LAI), ground truths de validação e formato de saída. Anexo
 `data/orfas.csv` com as 252 (numero, exercício, subação, UG, credor, valor,
 obs completo).
+
+## 25. Releitura por IA dos obs resolveu 14 órfãs; LAI minutado para as 238 restantes
+
+O usuário executou a Linha 1 do PESQUISA-ZERAR-ORFAS.md (releitura dos 252
+obs por IA) e trouxe 15 candidatas. Verificação contra a fonte primária (o
+próprio obs no banco): 14/14 confirmadas com evidência literal (a 726/2021
+foi corretamente descartada pelo próprio relatório — o texto cita outra
+emenda). Os padrões revelados viraram fix genérico de regex ("AUTOR :" com
+espaço, "A SER"/"ATRAVÉS" como marcadores de parada), que sozinho resolveu
+7; as outras 7 foram aplicadas por atribuição direta verificada, com
+proveniência em harvest_log (alvo "releitura-ia:N/ano"). 252 → 238 órfãs;
+cobertura 86,1% (62,8% alta + 23,3% média). Zero garbled.
+
+Criados LAI-PEDIDO.md (texto pronto para o e-SIC: pedido principal à SCGE +
+espelho opcional à SES, fundamentação na Lei 12.527/2011 e na Res. TC
+302/2025) e data/orfas-ses-processos.csv (96 casos da SES com número de
+processo SEI — o maior bloco único). orfas.csv regenerado com as 238.
