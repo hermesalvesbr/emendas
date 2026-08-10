@@ -9,6 +9,13 @@
 // empenhos, o ano corrente avançando), então vale manter sincronizado.
 
 import { appendFileSync } from "node:fs";
+
+// O cron do sistema executa com cwd=$HOME — sem isto, TODOS os caminhos
+// relativos (config.yaml, data/...) quebram e a rodada morre no primeiro
+// passo. Bug real: o disparo de 09/08/2026 20:00 falhou exatamente assim,
+// deixando ~/data/PENTAHO_STATUS.md como rastro (ver NOTAS.md item 22).
+process.chdir(import.meta.dir);
+
 import { loadConfig } from "./src/config.ts";
 import type { Db } from "./src/db.ts";
 import { openDb } from "./src/db.ts";

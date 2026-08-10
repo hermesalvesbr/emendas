@@ -378,3 +378,21 @@ descartadas. Medido que os órfãos do escopo (empenhos 2023+) citam emendas
 de 2019-2025 — por isso o dicionário da ALEPE cobre as legislaturas 19ª e
 20ª (PLOAs de 2019-2025), e nada anterior: emendas de legislaturas mais
 antigas não aparecem em nenhuma citação do escopo.
+
+## 22. Bug real do cron: cwd=$HOME quebrava todos os caminhos relativos
+
+O primeiro disparo real do cron OS-level (09/08/2026 20:00, provado no
+syslog) morreu com "config.yaml não encontrado": o cron do sistema executa
+com cwd=$HOME, e worker.ts usava caminhos relativos para tudo (config.yaml,
+data/emendas.sqlite, data/cron.log...). Pior: a linha de falha do
+data/cron.log também se perdeu, porque appendFileSync não cria diretório
+pai (~/data ainda não existia no momento do logRodada; o Bun.write do
+escreverStatus criou ~/data logo depois, deixando um PENTAHO_STATUS.md
+órfão em ~/data como único rastro). Reproduzido rodando o comando exato da
+crontab a partir de $HOME.
+
+Fix: `process.chdir(import.meta.dir)` no topo do worker.ts — ancora o
+processo no diretório do projeto independente de onde o cron o invoque
+(imports de módulo ES são içados, mas nenhum módulo importado depende de
+cwd em tempo de import; o chdir roda antes de scheduled()). Verificado
+reexecutando a invocação idêntica à da crontab a partir de $HOME.
