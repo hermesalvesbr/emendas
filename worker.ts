@@ -21,6 +21,7 @@ import type { Db } from "./src/db.ts";
 import { openDb } from "./src/db.ts";
 import { discover } from "./src/discover.ts";
 import { harvestAlepe } from "./src/harvest-alepe.ts";
+import { harvestCkan } from "./src/harvest-ckan.ts";
 import { harvestPentaho } from "./src/harvest-pentaho.ts";
 
 const AUTOR_VALIDACAO = "SOCORRO PIMENTEL";
@@ -81,6 +82,20 @@ async function rodar(): Promise<void> {
       resultadosPorPainel.push({ alvo: painel.alvo, totalLinhas, comAutorNativo: totalAutorNativo, inserted: totalInserted });
     }
 
+    // CKAN — fonte histórica estável; principal utilidade no cron: detectar
+    // quando o arquivo de 2026 (hoje publicado com 0 bytes) ganhar conteúdo.
+    let ckanStatus: string;
+    try {
+      const ckan = await harvestCkan(db, config);
+      const okAnos = ckan.filter((r) => r.status === "ok").length;
+      const novas = ckan.reduce((s, r) => s + r.inserted, 0);
+      ckanStatus = `ckan: OK ${okAnos}/${ckan.length} exercício(s), ${novas} nova(s)`;
+      console.error(`[worker] ${ckanStatus}`);
+    } catch (err) {
+      ckanStatus = `ckan: FALHOU (${errorMessage(err)})`;
+      console.error("[worker] ckan — erro inesperado (segue no próximo tick):", err);
+    }
+
     // Autoria oficial da ALEPE — a API deles cai com frequência; cada
     // disparo do cron tenta de novo até o dicionário estar completo.
     let alepeStatus: string | null = null;
@@ -107,8 +122,9 @@ async function rodar(): Promise<void> {
       .map((r) => `${r.alvo}: ${r.totalLinhas > 0 ? `OK ${r.totalLinhas} linha(s), ${r.inserted} nova(s)` : "FALHOU"}`)
       .join(" | ");
     const alepeResumo = alepeStatus ?? "alepe: não rodou";
-    const tudoOk = resultadosPorPainel.every((r) => r.totalLinhas > 0) && (alepeStatus?.includes("OK") ?? false);
-    logRodada(`${tudoOk ? "OK" : "PARCIAL"} | ${paineisResumo} | ${alepeResumo} | validação: ${validacao.sucesso ? "ok" : "pendente"}`);
+    const tudoOk =
+      resultadosPorPainel.every((r) => r.totalLinhas > 0) && ckanStatus.includes("OK") && (alepeStatus?.includes("OK") ?? false);
+    logRodada(`${tudoOk ? "OK" : "PARCIAL"} | ${paineisResumo} | ${ckanStatus} | ${alepeResumo} | validação: ${validacao.sucesso ? "ok" : "pendente"}`);
   } finally {
     db.close();
   }
