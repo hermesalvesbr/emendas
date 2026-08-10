@@ -196,7 +196,7 @@ async function cmdColetarAlepe(): Promise<void> {
     const report = await harvestAlepe(db, config);
     const ok = report.ploas.filter((p) => p.status === "ok");
     console.log(`alepe: ${ok.length}/${report.ploas.length} PLOA(s) coletado(s), dicionário com ${report.totalAutoriaOficial} autoria(s)`);
-    console.log(`  emendas elevadas para confiança alta: ${report.elevadas}`);
+    console.log(`  órfãs elevadas para confiança média (dicionário oficial, ciclo PARLAMENTAR, ano-LOA): ${report.elevadas}`);
     if (report.discordancias > 0) {
       console.log(`  ATENÇÃO: ${report.discordancias} discordância(s) entre texto e ALEPE — ver tabela autoria_oficial vs emenda`);
     }

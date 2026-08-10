@@ -72,8 +72,26 @@ describe("harvestAlepe — fluxo completo com fetch mockado", () => {
     db.close();
   });
 
-  test("grava autoria oficial e eleva emendas órfãs pelos dois anos (LOA e apresentação)", async () => {
-    // órfã citada pelo ano da LOA (650/2024 = PLOA 1297/2023 orça 2024)
+  function insereEmpenhoCiclo(subacao: string): void {
+    db.insertEmpenho({
+      exercicio: 2024,
+      numero_empenho: `2024NE${Math.floor(Math.random() * 90000) + 10000}`,
+      unidade_gestora: null,
+      credor: null,
+      obs: `EMPENHO DE TESTE ${subacao}`,
+      cd_nm_subacao: subacao,
+      cd_nm_funcao: null,
+      vlrempenhado: 1,
+      vlrliquidado: null,
+      vlrtotalpago: null,
+      fonte: "ckan",
+    });
+  }
+
+  test("eleva órfã para MEDIA só pelo ano da LOA e só no ciclo PARLAMENTAR", async () => {
+    // órfã citada pelo ano da LOA (650/2024 = PLOA 1297/2023 orça 2024),
+    // vinculada a empenho cujo rótulo declara o ciclo PARLAMENTAR
+    insereEmpenhoCiclo("EKZF - EMENDA PARLAMENTAR NO.650/2024");
     db.upsertEmenda({
       numero_emenda: "650",
       exercicio_emenda: 2024,
@@ -86,11 +104,26 @@ describe("harvestAlepe — fluxo completo com fetch mockado", () => {
       beneficiario_nome: null,
       confianca: "nula",
     });
-    // órfã citada pelo ano de apresentação (382/2023)
+    // citada pelo ano de APRESENTAÇÃO (382/2023) — não deve mais elevar
+    insereEmpenhoCiclo("EKCP - EMENDA PARLAMENTAR NO.382/2023");
     db.upsertEmenda({
       numero_emenda: "382",
       exercicio_emenda: 2023,
       subacao_codigo: "EKCP",
+      autor_bruto: null,
+      autor_normalizado: null,
+      autor_tipo: "desconhecido",
+      municipio: null,
+      beneficiario_cnpj: null,
+      beneficiario_nome: null,
+      confianca: "nula",
+    });
+    // ciclo DERIVADA — não deve elevar mesmo casando por LOA
+    insereEmpenhoCiclo("EM4A - EMENDA DERIVADA 800/2024");
+    db.upsertEmenda({
+      numero_emenda: "800",
+      exercicio_emenda: 2024,
+      subacao_codigo: "EM4A",
       autor_bruto: null,
       autor_normalizado: null,
       autor_tipo: "desconhecido",
@@ -104,22 +137,24 @@ describe("harvestAlepe — fluxo completo com fetch mockado", () => {
     const report = await harvestAlepe(db, config);
 
     expect(report.totalAutoriaOficial).toBe(3); // 650, 382 e 800 (a 77 não tem autor)
-    expect(report.elevadas).toBe(2);
+    expect(report.elevadas).toBe(1); // só a 650/2024 (LOA + ciclo PARLAMENTAR)
     expect(report.discordancias).toBe(0);
 
     const e650 = db.emendasPorAutor("SOCORRO PIMENTEL");
-    expect(e650.some((e) => e.numero_emenda === "650" && e.exercicio_emenda === 2024 && e.confianca === "alta")).toBe(true);
-    const e382 = db.emendasPorAutor("TERESA LEITAO");
-    expect(e382.some((e) => e.numero_emenda === "382" && e.exercicio_emenda === 2023 && e.confianca === "alta")).toBe(true);
+    expect(e650.some((e) => e.numero_emenda === "650" && e.exercicio_emenda === 2024 && e.confianca === "media")).toBe(true);
     // subação preexistente não pode ser apagada pela aplicação
     expect(e650[0]?.subacao_codigo).toBe("EKZF");
+    // apresentação e derivada seguem órfãs
+    expect(db.raw.query("SELECT confianca FROM emenda WHERE numero_emenda='382'").get()).toEqual({ confianca: "nula" });
+    expect(db.raw.query("SELECT confianca FROM emenda WHERE numero_emenda='800'").get()).toEqual({ confianca: "nula" });
   });
 
-  test("emenda com múltiplos autores vira coletiva", async () => {
+  test("emenda com múltiplos autores vira coletiva no dicionário e eleva como media", async () => {
+    insereEmpenhoCiclo("EZZ8 - EMENDA PARLAMENTAR NO.800/2024");
     db.upsertEmenda({
       numero_emenda: "800",
       exercicio_emenda: 2024,
-      subacao_codigo: null,
+      subacao_codigo: "EZZ8",
       autor_bruto: null,
       autor_normalizado: null,
       autor_tipo: "desconhecido",
@@ -130,12 +165,14 @@ describe("harvestAlepe — fluxo completo com fetch mockado", () => {
     });
     const config = await loadConfig();
     await harvestAlepe(db, config);
-    const r = db.raw.query("SELECT autor_tipo, autor_normalizado FROM emenda WHERE numero_emenda='800'").get() as {
+    const r = db.raw.query("SELECT autor_tipo, autor_normalizado, confianca FROM emenda WHERE numero_emenda='800'").get() as {
       autor_tipo: string;
       autor_normalizado: string;
+      confianca: string;
     };
     expect(r.autor_tipo).toBe("coletiva");
     expect(r.autor_normalizado).toBe("JUNTAS E OUTRA DEP");
+    expect(r.confianca).toBe("media");
   });
 
   test("autoria já alta divergente vira discordância, não sobrescrita", async () => {

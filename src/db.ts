@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS harvest_log (
 -- eleva registros existentes — não infla o denominador da cobertura.
 -- exercicio_apresentacao = ano em que a emenda foi apresentada ao PLOA (como
 -- a ALEPE numera: "650/2022"); exercicio_loa = exercício orçado pela LOA
--- resultante ("650/2023" nos empenhos). Os textos de empenho citam ora um,
--- ora outro — a aplicação tenta os dois.
+-- resultante ("650/2023" nos empenhos). Medido em 10/08/2026: a semântica
+-- dominante das citações é o ano da LOA — a aplicação casa SÓ por ele.
 CREATE TABLE IF NOT EXISTS autoria_oficial (
   numero_emenda TEXT NOT NULL, exercicio_apresentacao INTEGER NOT NULL, exercicio_loa INTEGER NOT NULL,
   autor_nome TEXT NOT NULL, autor_normalizado TEXT NOT NULL, autor_tipo TEXT NOT NULL,
@@ -288,41 +288,44 @@ export function openDb(path = "data/emendas.sqlite"): Db {
     },
 
     aplicarAutoriaOficial() {
-      // Auditoria ANTES de aplicar: onde o texto do empenho já deu autor
-      // (alta) e a ALEPE discorda — sinal de bug de extração ou de numeração
-      // ambígua; nunca sobrescrevemos silenciosamente.
+      // Guardas medidas empiricamente em 10/08/2026 (ver NOTAS.md item 23):
+      // (numero, ano) NÃO identifica emenda unicamente — há ciclos paralelos
+      // de numeração (PLOA, LDO, derivadas/impositivas). O dicionário do PLOA
+      // só concorda com o autor extraído de texto em 81% dentro do ciclo
+      // "EMENDA PARLAMENTAR" (21% fora dele). Portanto: casar SÓ pelo ano da
+      // LOA (semântica dominante das citações), elevar SÓ órfãs (nula), SÓ
+      // quando a subação declara o ciclo PARLAMENTAR, e com confiança
+      // "media" — nunca "alta", nunca sobrescrevendo texto.
       const discordancias = raw
         .query(`
           SELECT e.numero_emenda, e.exercicio_emenda, e.autor_normalizado as autor_texto, a.autor_normalizado as autor_oficial
           FROM emenda e
           JOIN autoria_oficial a ON a.numero_emenda = e.numero_emenda
-            AND (a.exercicio_loa = e.exercicio_emenda OR a.exercicio_apresentacao = e.exercicio_emenda)
+            AND a.exercicio_loa = e.exercicio_emenda
           WHERE e.confianca = 'alta' AND e.autor_normalizado IS NOT NULL
             AND e.autor_normalizado != a.autor_normalizado
         `)
         .all() as DiscordanciaAutoria[];
 
-      // Dois passes determinísticos: primeiro casa pelo exercício da LOA
-      // (como os empenhos costumam citar), depois pelo ano de apresentação
-      // (como a ALEPE numera) para o que sobrou.
-      let elevadas = 0;
-      for (const campo of ["exercicio_loa", "exercicio_apresentacao"] as const) {
-        const r = raw
-          .query(`
-            UPDATE emenda SET
-              autor_bruto = a.autor_nome,
-              autor_normalizado = a.autor_normalizado,
-              autor_tipo = a.autor_tipo,
-              confianca = 'alta'
-            FROM autoria_oficial a
-            WHERE a.numero_emenda = emenda.numero_emenda
-              AND a.${campo} = emenda.exercicio_emenda
-              AND emenda.confianca != 'alta'
-          `)
-          .run();
-        elevadas += r.changes;
-      }
-      return { elevadas, discordancias };
+      const r = raw
+        .query(`
+          UPDATE emenda SET
+            autor_bruto = a.autor_nome,
+            autor_normalizado = a.autor_normalizado,
+            autor_tipo = a.autor_tipo,
+            confianca = 'media'
+          FROM autoria_oficial a
+          WHERE a.numero_emenda = emenda.numero_emenda
+            AND a.exercicio_loa = emenda.exercicio_emenda
+            AND emenda.confianca = 'nula'
+            AND EXISTS (
+              SELECT 1 FROM empenho em
+              WHERE substr(em.cd_nm_subacao, 1, 4) = emenda.subacao_codigo
+                AND UPPER(em.cd_nm_subacao) LIKE '%EMENDA PARLAMENTAR%'
+            )
+        `)
+        .run();
+      return { elevadas: r.changes, discordancias };
     },
 
     close() {

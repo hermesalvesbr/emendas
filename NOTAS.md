@@ -396,3 +396,35 @@ processo no diretório do projeto independente de onde o cron o invoque
 (imports de módulo ES são içados, mas nenhum módulo importado depende de
 cwd em tempo de import; o chdir roda antes de scheduled()). Verificado
 reexecutando a invocação idêntica à da crontab a partir de $HOME.
+
+## 23. (numero, ano) NÃO identifica emenda unicamente — aplicação da ALEPE ganhou guardas medidas
+
+O banco da ALEPE voltou em 10/08/2026 e os 7 PLOAs (LOA 2020→2026) foram
+coletados: dicionário com 7.289 autorias oficiais. A primeira aplicação
+elevou 563 órfãs para "alta" — e gerou 1.340 discordâncias com o autor já
+extraído de texto. Auditoria em massa revelou dois fatos:
+
+1. **O número de emenda repete todo ano** (650 existe nos 7 PLOAs, com
+   autor diferente em cada um). O casamento pelo ano de APRESENTAÇÃO estava
+   errado na maioria: comparando com os autores extraídos de texto, a
+   interpretação "ano citado = exercício da LOA" concorda 52,7% vs 8,1% da
+   interpretação por apresentação.
+2. **Há ciclos paralelos de numeração** (PLOA, LDO/PPA, emendas
+   derivadas/impositivas): 45,7% dos casos verificáveis não batiam com
+   NENHUMA interpretação. O rótulo do ciclo na subação discrimina: dentro de
+   "EMENDA PARLAMENTAR NO." a concordância LOA sobe para 81,1%; fora dele
+   despenca para 21,3%.
+
+Correção aplicada (com reversão completa das 563 elevações via reset +
+reconstrução determinística das três fontes): `aplicarAutoriaOficial` agora
+casa SÓ pelo ano da LOA, eleva SÓ órfãs (nula), SÓ quando a subação declara
+o ciclo "EMENDA PARLAMENTAR", e grava com confiança **media** — 81% de
+acerto estimado não é "alta", e o rótulo de confiança existe para dizer a
+verdade. O autor extraído do texto do próprio empenho nunca é sobrescrito;
+as 223 discordâncias texto×oficial remanescentes ficam como auditoria
+consultável (JOIN emenda × autoria_oficial), não como sobrescrita.
+
+Resultado honesto no escopo (20ª legislatura): 85,3% das emendas executadas
+com autor (61,9% alta + 23,4% média), 252 órfãs (14,7%) — na maioria
+emendas "derivadas" cuja numeração não existe no PLOA e citações de ciclos
+que o dicionário legislativo não cobre.
