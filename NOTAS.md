@@ -428,3 +428,22 @@ Resultado honesto no escopo (20ª legislatura): 85,3% das emendas executadas
 com autor (61,9% alta + 23,4% média), 252 órfãs (14,7%) — na maioria
 emendas "derivadas" cuja numeração não existe no PLOA e citações de ciclos
 que o dicionário legislativo não cobre.
+
+## 24. Cron desligado (período eleitoral) e prompt de pesquisa para as 252 órfãs
+
+Em 10/08/2026 o usuário determinou o desligamento do cron: 2026 é ano
+eleitoral e a execução de novas emendas está vedada no período (art. 73 da
+Lei 9.504/97) — não há dado novo a esperar das fontes. `cron:remove`
+executado (crontab limpa) e o monitor de log encerrado. Para reativar
+quando a execução voltar: `bun run cron:install`.
+
+Criado `PESQUISA-ZERAR-ORFAS.md`: prompt autocontido de pesquisa profunda
+para descobrir a autoria das 252 emendas restantes, com o que já foi
+esgotado (para não repetir), ganchos minerados dos textos (98 casos vêm de
+processos SEI da raiz 2300000029 = Secretaria de Saúde; 236/252 têm número
+< 2000 sugerindo faixas por secretaria; caso-prova 421/2022 com autor no
+texto que a regex rejeita), seis linhas de investigação priorizadas
+(releitura por IA dos obs → decretos DOE-PE → portais dos órgãos → SEI →
+imprensa → LAI), ground truths de validação e formato de saída. Anexo
+`data/orfas.csv` com as 252 (numero, exercício, subação, UG, credor, valor,
+obs completo).
