@@ -488,3 +488,29 @@ elo textual — quando não há código, a linha liga à emenda pelo numero/ano
 extraído do texto. Invariante de integridade no export: a soma do site tem
 de bater com SUM(vlrempenhado) do banco (R$ 601,7 mi — que INCLUI R$ 177 mi
 reais do painel histórico que o arquivo CKAN parcial de 2025 não tinha).
+
+## 27. Município: validação IBGE e a semântica "beneficiário ≠ destino"
+
+Pergunta do usuário (leitura crítica do BI): "Socorro delegou milhões para
+Recife e só 150 mil para Araripina?" A investigação linha a linha mostrou
+dois problemas distintos:
+
+1. **Heurística estreita demais**: os textos dizem "NO MUNICÍPIO DE BODOCÓ"
+   (sem sufixo -PE) e o credor vem como "MUNICIPIO DE ARARIPINA" (sem
+   "PREFEITURA"/"MUNICIPAL") — nada disso casava. Correção: padrões amplos
+   ("MUNICÍPIO DE X", "X-PE", "EM X") com TODO candidato validado contra a
+   lista oficial do IBGE (src/municipios-pe.ts, 185 municípios, gerada da API
+   de localidades em 11/08/2026) — amplitude sem falso positivo. No caso
+   concreto: Ouricuri saltou de R$ 135 mil para R$ 635 mil, Araripina de
+   R$ 150 mil para R$ 531 mil, e os 8 municípios dos poços artesianos
+   (Bodocó, Exu, Parnamirim...) passaram a aparecer (com R$ 0 empenhado —
+   orçado e não executado, como está na fonte).
+
+2. **Semântica que nenhuma heurística resolve**: o campo município (nativo
+   do painel ou extraído) reflete por vezes a SEDE do beneficiário, não o
+   destino do gasto. O maior "RECIFE" dela (R$ 1,77 mi, emenda 3/2025) é
+   compra centralizada da Secretaria de Saúde numa concessionária de
+   veículos (NOCARVEL) — o destino final dos veículos não consta nos dados.
+   Instituições estaduais sediadas em Recife (UPE, IMIP, HEMOPE, Casa do
+   Estudante) também concentram valor "em Recife" servindo o estado todo.
+   Documentado no rodapé do site como limitação de leitura.

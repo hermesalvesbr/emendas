@@ -1,5 +1,6 @@
 // O valor real do projeto: extrai autoria de `obs` (§5.5).
 
+import { MUNICIPIOS_PE } from "./municipios-pe.ts";
 import type { AutorTipo, Confianca, EmendaExtraida, EmpenhoBruto, EmpenhoRow } from "./types.ts";
 
 // "PARLAMENTAR"/"PAR." e o "Nº"/"N°"/"N º"/"NO."/"N" são todos opcionais —
@@ -198,18 +199,49 @@ export function extrairBeneficiario(credor: string | null): { cnpj: string | nul
   return { cnpj: credor.slice(0, idx).trim(), nome: credor.slice(idx + 3).trim() };
 }
 
-const MUNICIPIO_OBS_RE = /\b([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,40}?)-PE\b/;
-const MUNICIPIO_CREDOR_RE = /\b(?:MUNICIPAL|PREFEITURA)\s+(?:DE\s+SAUDE\s+)?DE\s+([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,40})$/;
+// Padrões de DESTINO no texto do empenho, em ordem de confiabilidade. Todo
+// candidato é validado contra a lista oficial do IBGE (MUNICIPIOS_PE) antes
+// de ser aceito — o que permite padrões mais amplos ("NO MUNICÍPIO DE X",
+// "EM X") sem falso positivo. Ver NOTAS.md item 27: sem isso, "PERFURAÇÃO DE
+// POÇOS NO MUNICÍPIO DE BODOCÓ" ficava sem município e o ranking municipal
+// subcontava o interior.
+const MUNICIPIO_PATTERNS: RegExp[] = [
+  // "NO/PARA O/AO/DO MUNICÍPIO DE X"
+  /\bMUNIC[IÍ]PIO\s+DE\s+([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,30})/gi,
+  // "CIDADE-PE"
+  /\b([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,30}?)\s*[-\/]\s*PE\b/g,
+  // "EM X" — amplo, só é seguro por causa da validação IBGE
+  /\bEM\s+([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,30})/gi,
+];
+const MUNICIPIO_CREDOR_RE = /\b(?:MUNICIPAL|PREFEITURA|MUNIC[IÍ]PIO)\s+(?:DE\s+SA[UÚ]DE\s+)?DE\s+([A-ZÀ-Ü][A-ZÀ-Ü\s]{1,40})$/i;
 
-/** Heurística sobre `credor` + `obs` (§5.5) — best effort, nunca decisivo sozinho. */
+
+/** Valida um trecho candidato contra a lista IBGE, testando prefixos decrescentes. */
+function validarMunicipio(candidato: string): string | null {
+  const palavras = normalizarAutor(candidato).split(" ");
+  // municípios de PE têm até 4 palavras (ex. SANTA CRUZ DA BAIXA VERDE = 5)
+  for (let n = Math.min(5, palavras.length); n >= 1; n--) {
+    const tentativa = palavras.slice(0, n).join(" ");
+    if (MUNICIPIOS_PE.has(tentativa)) return tentativa;
+  }
+  return null;
+}
+
+/** Heurística sobre `credor` + `obs` (§5.5), validada contra a lista IBGE. */
 export function extrairMunicipio(credor: string | null, obs: string | null): string | null {
   if (obs) {
-    const m = MUNICIPIO_OBS_RE.exec(obs);
-    if (m?.[1]) return normalizarAutor(m[1]);
+    for (const re of MUNICIPIO_PATTERNS) {
+      re.lastIndex = 0;
+      for (const m of obs.matchAll(re)) {
+        const valido = m[1] ? validarMunicipio(m[1]) : null;
+        if (valido) return valido;
+      }
+    }
   }
   if (credor) {
     const m = MUNICIPIO_CREDOR_RE.exec(credor.trim());
-    if (m?.[1]) return normalizarAutor(m[1]);
+    const valido = m?.[1] ? validarMunicipio(m[1]) : null;
+    if (valido) return valido;
   }
   return null;
 }
