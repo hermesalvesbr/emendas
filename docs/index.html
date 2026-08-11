@@ -76,6 +76,29 @@
   footer { margin-top: 18px; color: var(--ink-muted); font-size: .75rem; }
   a { color: var(--s1); }
   @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) {
+    .filters label { flex: 1 1 46%; }
+    .filters input, .filters select { min-width: 0; width: 100%; }
+    .tablewrap { overflow-x: visible; max-height: none; }
+    #tbl thead { display: none; }
+    #tbl, #tbl tbody, #tbl tr, #tbl td { display: block; }
+    #tbl tr {
+      border: 1px solid var(--border); border-radius: 10px; background: var(--page);
+      margin-bottom: 8px; padding: 8px 12px;
+    }
+    #tbl td {
+      border: none; padding: 2px 0; white-space: normal;
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    }
+    #tbl td::before {
+      content: attr(data-label);
+      color: var(--ink-muted); font-size: .72rem; flex: 0 0 auto;
+    }
+    #tbl td.num { text-align: right; }
+    #tbl td[data-label="Empenhado"] { font-weight: 650; font-size: .95rem; }
+    #tbl td:not([data-label]) { display: none; }
+    tr:hover td { background: transparent; }
+  }
 </style>
 </head>
 <body>
@@ -310,19 +333,27 @@
     tb.textContent = "";
     const rows = [...fl].sort((a, b) => {
       const x = a[ordem.k], y = b[ordem.k];
-      return (x == null) - (y == null) || (x > y ? 1 : x < y ? -1 : 0) * ordem.dir * -1;
+      return (x == null) - (y == null) || (x > y ? 1 : x < y ? -1 : 0) * ordem.dir;
     }).slice(0, 400);
     for (const l of rows) {
       const tr = document.createElement("tr");
-      const td = (txt, cls) => { const d = document.createElement("td"); d.textContent = txt ?? "—"; if (cls) d.className = cls; tr.append(d); };
-      td(l.em ?? "(sem nº)"); td(l.autor ?? "—"); td(l.mun ?? "—");
-      td(l.benef ?? "—"); td(l.ug ?? "—");
-      td(String(l.ex), "num"); td(brl.format(l.vemp), "num"); td(brl.format(l.vpago), "num");
+      const td = (txt, cls, label) => {
+        const d = document.createElement("td");
+        d.textContent = txt ?? "—";
+        if (cls) d.className = cls;
+        if (label) d.dataset.label = label;
+        tr.append(d);
+      };
+      td(l.em ?? "(sem nº)", null, "Emenda"); td(l.autor ?? "—", null, "Parlamentar"); td(l.mun ?? "—", null, "Município");
+      td(l.benef ?? "—", null, "Beneficiário"); td(l.ug ?? "—", null, "Unidade gestora");
+      td(String(l.ex), "num", "Exercício"); td(brl.format(l.vemp), "num", "Empenhado"); td(brl.format(l.vpago), "num", "Pago");
       const d = document.createElement("td");
+      d.dataset.label = "Autoria";
       const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
       const dot = document.createElement("span"); dot.className = "dot";
       sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp); tr.append(d);
       const df = document.createElement("td");
+      df.dataset.label = "Conferir";
       const ls = linksFonte(l);
       if (ls.length === 0) df.textContent = "—";
       for (const [nome, url] of ls) {
