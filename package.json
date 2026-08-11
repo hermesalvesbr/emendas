@@ -11,6 +11,7 @@
     "coletar:alepe": "bun run src/cli.ts coletar:alepe",
     "normalizar": "bun run src/cli.ts normalizar",
     "relatorio": "bun run src/cli.ts relatorio",
+    "site": "bun run src/cli.ts site",
     "servir": "bun run src/cli.ts servir",
     "compilar": "bun run src/cli.ts compilar",
     "cron:install": "bun run src/cli.ts cron:install",

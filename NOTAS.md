@@ -464,3 +464,27 @@ Criados LAI-PEDIDO.md (texto pronto para o e-SIC: pedido principal à SCGE +
 espelho opcional à SES, fundamentação na Lei 12.527/2011 e na Res. TC
 302/2025) e data/orfas-ses-processos.csv (96 casos da SES com número de
 processo SEI — o maior bloco único). orfas.csv regenerado com as 238.
+
+## 26. Site de consulta (docs/, GitHub Pages) — e o BI expôs a pseudo-subação "EMEN"
+
+Pedido do usuário: site estático de BI (ECharts) para consulta por
+parlamentar/município, hospedável no GitHub Pages. Implementado em `docs/`
+(index.html + echarts.min.js vendorizado + dados.json gerado por
+`bun run site`). Paleta e regras do guia de dataviz (slots categóricos
+validados pelo validador nos dois modos; barras top-N em uma cor; stack de
+qualidade da autoria com 3 séries; tabela drill-down como table-view de
+acessibilidade; dark mode nativo).
+
+O primeiro render do BI expôs um bug grave de dados: R$ 183 mi atribuídos a
+uma única parlamentar. Causa: o `nm_subacao` do painel histórico vem SEM o
+prefixo de código ("EMENDA PARLAMENTAR NO.6/2024"), e o corte cego
+`substr(...,1,4)` fazia todas as 1.017 linhas dele colidirem na
+pseudo-subação "EMEN" — um agregador falso que somava R$ 177 mi e os
+atribuía à primeira emenda "alta" com esse código fantasma. Correção:
+`extrairCodigoSubacao()` (código só quando o formato "XXXX - " existe;
+null caso contrário) aplicado em normalize/harvest-pentaho; 194 emendas
+com subacao_codigo='EMEN' corrigidas para null; e o export do site ganhou
+elo textual — quando não há código, a linha liga à emenda pelo numero/ano
+extraído do texto. Invariante de integridade no export: a soma do site tem
+de bater com SUM(vlrempenhado) do banco (R$ 601,7 mi — que INCLUI R$ 177 mi
+reais do painel histórico que o arquivo CKAN parcial de 2025 não tinha).

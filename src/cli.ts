@@ -9,6 +9,7 @@ import { harvestCkan } from "./harvest-ckan.ts";
 import { harvestAlepe } from "./harvest-alepe.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
+import { exportarSite } from "./export-site.ts";
 import { serve } from "./serve.ts";
 import { vigiar } from "./watch.ts";
 
@@ -20,6 +21,7 @@ const COMMANDS = [
   "coletar:alepe",
   "normalizar",
   "relatorio",
+  "site",
   "servir",
   "compilar",
   "cron:install",
@@ -63,6 +65,9 @@ async function main(): Promise<void> {
       break;
     case "relatorio":
       await cmdRelatorio();
+      break;
+    case "site":
+      await cmdSite();
       break;
     case "servir":
       await cmdServir();
@@ -283,6 +288,17 @@ async function cmdRelatorio(): Promise<void> {
 
     await Bun.write("data/cobertura.md", markdown);
     console.log(`relatório gravado em data/cobertura.md (${totalEmendas} emenda(s) identificada(s), ${autores.length} autor(es) distinto(s))`);
+  } finally {
+    db.close();
+  }
+}
+
+async function cmdSite(): Promise<void> {
+  const db = openDb();
+  try {
+    const dados = exportarSite(db);
+    await Bun.write("docs/dados.json", JSON.stringify(dados));
+    console.log(`docs/dados.json gerado: ${dados.linhas.length} linha(s) (subação × exercício)`);
   } finally {
     db.close();
   }

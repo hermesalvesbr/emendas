@@ -69,12 +69,25 @@ export function extrairNumeroEmenda(
   return { numeroEmenda, exercicioEmenda, tail };
 }
 
+/**
+ * O código de 4 caracteres só existe quando a subação vem no formato
+ * "XXXX - descrição" (CKAN e painel principal). O painel histórico entrega o
+ * texto SEM prefixo ("EMENDA PARLAMENTAR NO.6/2024") — cortar 4 chars cegos
+ * criava a pseudo-subação "EMEN", um agregador falso que já atribuiu R$ 177
+ * milhões à emenda errada (ver NOTAS.md item 26). Sem prefixo válido: null.
+ */
+export function extrairCodigoSubacao(cdNmSubacao: string | null | undefined): string | null {
+  if (!cdNmSubacao) return null;
+  const m = /^([A-Z0-9]{4})\s+-\s/.exec(cdNmSubacao.trim().toUpperCase());
+  return m?.[1] ?? null;
+}
+
 /** Extrai o que dá para extrair de uma única linha de `obs` (primeiro passe). */
 export function extrairEmenda(
   row: { obs: EmpenhoBruto["obs"]; cd_nm_subacao: EmpenhoBruto["cd_nm_subacao"] | null },
   exercicioArquivo: number,
 ): EmendaExtraida {
-  const subacaoCodigo = row.cd_nm_subacao ? row.cd_nm_subacao.trim().slice(0, 4).toUpperCase() : null;
+  const subacaoCodigo = extrairCodigoSubacao(row.cd_nm_subacao);
 
   const obs = row.obs?.trim() ?? "";
   if (obs.length === 0) {

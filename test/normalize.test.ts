@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   consolidarEmenda,
+  extrairCodigoSubacao,
   consolidarLote,
   extrairEmenda,
   extrairBeneficiario,
@@ -237,6 +238,19 @@ describe("consolidarLote", () => {
   test("descarta empenhos sem número de emenda reconhecível", () => {
     const resultado = consolidarLote([{ obs: "SEM RELAÇÃO COM EMENDAS", cd_nm_subacao: "ZZZZ", credor: null, exercicio: 2024 }]);
     expect(resultado).toHaveLength(0);
+  });
+});
+
+describe("extrairCodigoSubacao", () => {
+  test("com prefixo XXXX - retorna o código", () => {
+    expect(extrairCodigoSubacao("EKZF - EMENDA PARLAMENTAR NO.650/2023")).toBe("EKZF");
+  });
+  test("sem prefixo (painel histórico) retorna null — nunca o corte cego 'EMEN'", () => {
+    expect(extrairCodigoSubacao("EMENDA PARLAMENTAR NO.6/2024")).toBeNull();
+  });
+  test("nulo/vazio retorna null", () => {
+    expect(extrairCodigoSubacao(null)).toBeNull();
+    expect(extrairCodigoSubacao("")).toBeNull();
   });
 });
 

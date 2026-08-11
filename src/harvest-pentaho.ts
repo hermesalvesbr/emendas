@@ -2,7 +2,7 @@
 // ordem de grandeza mais rápido e não precisa de Chrome.
 
 import type { Db, NewEmpenho } from "./db.ts";
-import { classificarAutorTipo, extrairBeneficiario, extrairMunicipio, extrairNumeroEmenda, normalizarAutor } from "./normalize.ts";
+import { classificarAutorTipo, extrairBeneficiario, extrairCodigoSubacao, extrairMunicipio, extrairNumeroEmenda, normalizarAutor } from "./normalize.ts";
 import { HarvestError, insist } from "./retry.ts";
 import type { Config, DiscoveredCall, EndpointsFile } from "./types.ts";
 import { runWithConcurrency, yearsUpToCurrent } from "./util.ts";
@@ -173,7 +173,7 @@ function upsertEmendaComAutorNativo(
   const numero = extrairNumeroEmenda(empenho.obs ?? "", exercicioArquivo) ?? extrairNumeroEmenda(empenho.cd_nm_subacao ?? "", exercicioArquivo);
   if (!numero) return false;
 
-  const subacaoCodigo = empenho.cd_nm_subacao ? empenho.cd_nm_subacao.trim().slice(0, 4).toUpperCase() : null;
+  const subacaoCodigo = extrairCodigoSubacao(empenho.cd_nm_subacao);
   const autorLimpo = autorNativo.trim();
   const { cnpj, nome } = extrairBeneficiario(empenho.credor);
   const municipio = municipioNativo?.trim() ? normalizarAutor(municipioNativo) : extrairMunicipio(empenho.credor, empenho.obs);

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Emendas Parlamentares Estaduais — PE</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb;
+    --ink-1: #0b0b0b; --ink-2: #52514e; --ink-muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19;
+      --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19;
+    --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink-1);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.45;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+  header h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  header p { margin: 0 0 16px; color: var(--ink-2); font-size: .85rem; }
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; margin-bottom: 14px;
+  }
+  .filters label { color: var(--ink-2); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
+  .filters input, .filters select {
+    font: inherit; color: var(--ink-1); background: var(--page);
+    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 8px; min-width: 150px;
+  }
+  .filters button {
+    font: inherit; color: var(--ink-2); background: transparent;
+    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 12px; cursor: pointer;
+  }
+  .filters button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
+  .tile .l { color: var(--ink-2); font-size: .78rem; margin-top: 1px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 4px; }
+  .card.full { grid-column: 1 / -1; }
+  .card h2 { font-size: .92rem; margin: 2px 4px 0; font-weight: 600; }
+  .card .sub { color: var(--ink-muted); font-size: .75rem; margin: 0 4px 4px; }
+  .chart { width: 100%; height: 380px; }
+  #chEvolucao { height: 300px; }
+  .tablecard { margin-top: 12px; }
+  .tablewrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: color-mix(in srgb, var(--s1) 7%, transparent); }
+  .conf { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .conf-alta .dot { background: var(--s1); } .conf-media .dot { background: var(--s2); } .conf-nula .dot { background: var(--s3); }
+  footer { margin-top: 18px; color: var(--ink-muted); font-size: .75rem; }
+  a { color: var(--s1); }
+  @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Emendas Parlamentares Estaduais — Pernambuco</h1>
+    <p>20ª Legislatura (execução 2023–2026) · consulta por parlamentar e município · <span id="metaFonte"></span></p>
+  </header>
+
+  <div class="filters" role="search">
+    <label>Parlamentar
+      <input id="fAutor" list="dlAutores" placeholder="todos" autocomplete="off">
+      <datalist id="dlAutores"></datalist>
+    </label>
+    <label>Município
+      <input id="fMun" list="dlMunicipios" placeholder="todos" autocomplete="off">
+      <datalist id="dlMunicipios"></datalist>
+    </label>
+    <label>Exercício
+      <select id="fAno"><option value="">todos</option></select>
+    </label>
+    <label>Autoria
+      <select id="fConf">
+        <option value="">todas</option>
+        <option value="alta">confirmada (alta)</option>
+        <option value="media">inferida (média)</option>
+        <option value="nula">sem autor</option>
+      </select>
+    </label>
+    <button id="fLimpar" type="button">Limpar</button>
+  </div>
+
+  <div class="kpis">
+    <div class="tile"><div class="v" id="kValor">–</div><div class="l">valor empenhado</div></div>
+    <div class="tile"><div class="v" id="kEmendas">–</div><div class="l">emendas (subações)</div></div>
+    <div class="tile"><div class="v" id="kAutores">–</div><div class="l">parlamentares</div></div>
+    <div class="tile"><div class="v" id="kMun">–</div><div class="l">municípios</div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h2>Top parlamentares por valor empenhado</h2>
+      <p class="sub">clique numa barra para filtrar</p>
+      <div id="chAutores" class="chart"></div>
+    </div>
+    <div class="card">
+      <h2>Top municípios por valor empenhado</h2>
+      <p class="sub">clique numa barra para filtrar</p>
+      <div id="chMunicipios" class="chart"></div>
+    </div>
+    <div class="card full">
+      <h2>Evolução por exercício e qualidade da autoria</h2>
+      <p class="sub">confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI</p>
+      <div id="chEvolucao" class="chart"></div>
+    </div>
+    <div class="card full tablecard">
+      <h2>Emendas do filtro atual</h2>
+      <p class="sub" id="tblInfo"></p>
+      <div class="tablewrap">
+        <table id="tbl">
+          <thead><tr>
+            <th data-k="em">Emenda</th><th data-k="autor">Parlamentar</th><th data-k="mun">Município</th>
+            <th data-k="benef">Beneficiário</th><th data-k="ug">Unidade gestora</th>
+            <th class="num" data-k="ex">Exercício</th><th class="num" data-k="vemp">Empenhado</th>
+            <th class="num" data-k="vpago">Pago</th><th data-k="conf">Autoria</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Dados: <span id="metaFonte2"></span>. Gerado em <span id="metaData"></span>.
+    Autoria "inferida" tem ~81% de acerto estimado; "sem autor" está documentada para pedido de LAI.
+    Projeto de dados abertos — código e metodologia no repositório.
+  </footer>
+</div>
+
+<script src="echarts.min.js"></script>
+<script>
+(async function () {
+  const resp = await fetch("dados.json");
+  const dados = await resp.json();
+  const linhas = dados.linhas;
+
+  document.getElementById("metaFonte").textContent = "fonte: dados oficiais do Estado";
+  document.getElementById("metaFonte2").textContent = dados.fonte;
+  document.getElementById("metaData").textContent = new Date(dados.geradoEm).toLocaleString("pt-BR");
+
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  const brlCompact = (v) => {
+    if (Math.abs(v) >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
+    if (Math.abs(v) >= 1e3) return "R$ " + (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " mil";
+    return brl.format(v);
+  };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // filtros
+  const fAutor = document.getElementById("fAutor");
+  const fMun = document.getElementById("fMun");
+  const fAno = document.getElementById("fAno");
+  const fConf = document.getElementById("fConf");
+
+  const autores = [...new Set(linhas.map((l) => l.autor).filter(Boolean))].sort();
+  const municipios = [...new Set(linhas.map((l) => l.mun).filter(Boolean))].sort();
+  const anos = [...new Set(linhas.map((l) => l.ex))].sort();
+  for (const a of autores) { const o = document.createElement("option"); o.value = a; document.getElementById("dlAutores").append(o); }
+  for (const m of municipios) { const o = document.createElement("option"); o.value = m; document.getElementById("dlMunicipios").append(o); }
+  for (const a of anos) { const o = document.createElement("option"); o.value = a; o.textContent = a; fAno.append(o); }
+
+  function filtrar() {
+    const va = fAutor.value.trim().toUpperCase(), vm = fMun.value.trim().toUpperCase();
+    const vy = fAno.value ? Number(fAno.value) : null, vc = fConf.value || null;
+    return linhas.filter((l) =>
+      (!va || (l.autor ?? "").includes(va)) &&
+      (!vm || (l.mun ?? "").includes(vm)) &&
+      (vy === null || l.ex === vy) &&
+      (!vc || l.conf === vc));
+  }
+
+  // ECharts base — grid recessivo, ink nos textos, sem decoração
+  const CONF_LABEL = { alta: "confirmada", media: "inferida", nula: "sem autor" };
+  let charts = {};
+  function baseOption() {
+    return {
+      animationDuration: 300,
+      textStyle: { fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif" },
+      tooltip: {
+        backgroundColor: css("--surface"), borderColor: css("--grid"),
+        textStyle: { color: css("--ink-1"), fontSize: 12 },
+        confine: true,
+      },
+    };
+  }
+
+  function renderAutores(fl) {
+    const por = new Map();
+    for (const l of fl) if (l.autor) por.set(l.autor, (por.get(l.autor) ?? 0) + l.vemp);
+    const top = [...por.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
+    charts.autores.setOption({
+      ...baseOption(),
+      grid: { left: 8, right: 70, top: 6, bottom: 6, containLabel: true },
+      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+      yAxis: { type: "category", data: top.map(([a]) => a), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
+      tooltip: { ...baseOption().tooltip, formatter: (p) => `<b>${brlCompact(p.value)}</b><br>${esc(p.name)}` },
+      series: [{
+        type: "bar", data: top.map(([, v]) => Math.round(v)),
+        itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] },
+        barMaxWidth: 16, emphasis: { itemStyle: { color: css("--s1"), opacity: 0.85 } },
+        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) },
+      }],
+    }, true);
+    charts.autores.off("click");
+    charts.autores.on("click", (p) => { fAutor.value = p.name; render(); });
+  }
+
+  function renderMunicipios(fl) {
+    const por = new Map();
+    for (const l of fl) if (l.mun) por.set(l.mun, (por.get(l.mun) ?? 0) + l.vemp);
+    const top = [...por.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
+    charts.municipios.setOption({
+      ...baseOption(),
+      grid: { left: 8, right: 70, top: 6, bottom: 6, containLabel: true },
+      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+      yAxis: { type: "category", data: top.map(([m]) => m), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
+      tooltip: { ...baseOption().tooltip, formatter: (p) => `<b>${brlCompact(p.value)}</b><br>${esc(p.name)}` },
+      series: [{
+        type: "bar", data: top.map(([, v]) => Math.round(v)),
+        itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] },
+        barMaxWidth: 16, emphasis: { itemStyle: { opacity: 0.85 } },
+        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) },
+      }],
+    }, true);
+    charts.municipios.off("click");
+    charts.municipios.on("click", (p) => { fMun.value = p.name; render(); });
+  }
+
+  function renderEvolucao(fl) {
+    const anosF = [...new Set(fl.map((l) => l.ex))].sort();
+    const serie = (conf, cor) => ({
+      name: CONF_LABEL[conf], type: "bar", stack: "v",
+      data: anosF.map((a) => Math.round(fl.filter((l) => l.ex === a && l.conf === conf).reduce((s, l) => s + l.vemp, 0))),
+      itemStyle: { color: cor, borderColor: css("--surface"), borderWidth: 2 },
+      barMaxWidth: 56,
+    });
+    charts.evolucao.setOption({
+      ...baseOption(),
+      legend: { top: 0, textStyle: { color: css("--ink-2") }, itemWidth: 14, itemHeight: 10 },
+      grid: { left: 8, right: 16, top: 34, bottom: 6, containLabel: true },
+      xAxis: { type: "category", data: anosF, axisLabel: { color: css("--ink-2") }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
+      yAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+      tooltip: {
+        ...baseOption().tooltip, trigger: "axis", axisPointer: { type: "shadow" },
+        formatter: (ps) => ps[0].name + ps.map((p) => `<br><span style="color:${p.color}">▬</span> <b>${brlCompact(p.value)}</b> ${esc(p.seriesName)}`).join(""),
+      },
+      series: [serie("alta", css("--s1")), serie("media", css("--s2")), serie("nula", css("--s3"))],
+    }, true);
+  }
+
+  // tabela (drill-down; também é a "table view" de acessibilidade)
+  let ordem = { k: "vemp", dir: -1 };
+  function renderTabela(fl) {
+    const tb = document.querySelector("#tbl tbody");
+    tb.textContent = "";
+    const rows = [...fl].sort((a, b) => {
+      const x = a[ordem.k], y = b[ordem.k];
+      return (x == null) - (y == null) || (x > y ? 1 : x < y ? -1 : 0) * ordem.dir * -1;
+    }).slice(0, 400);
+    for (const l of rows) {
+      const tr = document.createElement("tr");
+      const td = (txt, cls) => { const d = document.createElement("td"); d.textContent = txt ?? "—"; if (cls) d.className = cls; tr.append(d); };
+      td(l.em ?? "(sem nº)"); td(l.autor ?? "—"); td(l.mun ?? "—");
+      td(l.benef ?? "—"); td(l.ug ?? "—");
+      td(String(l.ex), "num"); td(brl.format(l.vemp), "num"); td(brl.format(l.vpago), "num");
+      const d = document.createElement("td");
+      const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
+      const dot = document.createElement("span"); dot.className = "dot";
+      sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp); tr.append(d);
+      tb.append(tr);
+    }
+    document.getElementById("tblInfo").textContent =
+      fl.length + " registro(s)" + (fl.length > 400 ? " — mostrando os 400 maiores; refine o filtro" : "") +
+      " · ordenado por " + ordem.k + (ordem.dir < 0 ? " ↓" : " ↑");
+  }
+  document.querySelectorAll("#tbl th").forEach((th) => th.addEventListener("click", () => {
+    const k = th.dataset.k;
+    ordem = { k, dir: ordem.k === k ? -ordem.dir : -1 };
+    renderTabela(filtrar());
+  }));
+
+  function render() {
+    const fl = filtrar();
+    document.getElementById("kValor").textContent = brlCompact(fl.reduce((s, l) => s + l.vemp, 0));
+    document.getElementById("kEmendas").textContent = new Set(fl.map((l) => l.s)).size.toLocaleString("pt-BR");
+    document.getElementById("kAutores").textContent = new Set(fl.map((l) => l.autor).filter(Boolean)).size.toLocaleString("pt-BR");
+    document.getElementById("kMun").textContent = new Set(fl.map((l) => l.mun).filter(Boolean)).size.toLocaleString("pt-BR");
+    renderAutores(fl); renderMunicipios(fl); renderEvolucao(fl); renderTabela(fl);
+  }
+
+  function initCharts() {
+    for (const c of Object.values(charts)) c?.dispose?.();
+    charts = {
+      autores: echarts.init(document.getElementById("chAutores")),
+      municipios: echarts.init(document.getElementById("chMunicipios")),
+      evolucao: echarts.init(document.getElementById("chEvolucao")),
+    };
+  }
+
+  initCharts(); render();
+
+  for (const el of [fAutor, fMun, fAno, fConf]) el.addEventListener("input", render);
+  document.getElementById("fLimpar").addEventListener("click", () => {
+    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; render();
+  });
+  window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });
+})();
+</script>
+</body>
+</html>
