@@ -140,7 +140,7 @@
             <th data-k="em">Emenda</th><th data-k="autor">Parlamentar</th><th data-k="mun">Município</th>
             <th data-k="benef">Beneficiário</th><th data-k="ug">Unidade gestora</th>
             <th class="num" data-k="ex">Exercício</th><th class="num" data-k="vemp">Empenhado</th>
-            <th class="num" data-k="vpago">Pago</th><th data-k="conf">Autoria</th>
+            <th class="num" data-k="vpago">Pago</th><th data-k="conf">Autoria</th><th>Conferir na fonte</th>
           </tr></thead>
           <tbody></tbody>
         </table>
@@ -149,7 +149,13 @@
   </div>
 
   <footer>
-    Dados: <span id="metaFonte2"></span>. Gerado em <span id="metaData"></span>.
+    Fontes oficiais:
+    <a href="https://dados.pe.gov.br/dataset/emendasparlamentaresestaduais" target="_blank" rel="noopener">dataset CKAN (SCGE)</a> ·
+    <a href="https://transparencia.pe.gov.br/gestao-estadual/emendas-parlamentares/emendas-parlamentares-estaduais/painel-emendas-parlamentares-estaduais/" target="_blank" rel="noopener">painel de emendas (exercício atual)</a> ·
+    <a href="https://transparencia.pe.gov.br/painel-historico-de-emendas-parlamentares-estaduais/" target="_blank" rel="noopener">painel histórico 2023–2025</a> ·
+    <a href="https://proposicoes.alepe.pe.gov.br/" target="_blank" rel="noopener">proposições ALEPE (emendas aos PLOAs)</a> ·
+    <a href="https://dadosabertos.alepe.pe.gov.br/api/v1/proposicoes/" target="_blank" rel="noopener">API dados abertos ALEPE</a>.
+    <br>Gerado em <span id="metaData"></span>. <span id="metaFonte2" hidden></span>
     Autoria "inferida" tem ~81% de acerto estimado; "sem autor" está documentada para pedido de LAI.
     Projeto de dados abertos — código e metodologia no repositório.
   </footer>
@@ -277,6 +283,23 @@
     }, true);
   }
 
+  // links de conferência na fonte oficial, por linha
+  const FONTES_URL = {
+    ckan: "https://dados.pe.gov.br/dataset/emendasparlamentaresestaduais",
+    painelAtual: "https://transparencia.pe.gov.br/gestao-estadual/emendas-parlamentares/emendas-parlamentares-estaduais/painel-emendas-parlamentares-estaduais/",
+    painelHistorico: "https://transparencia.pe.gov.br/painel-historico-de-emendas-parlamentares-estaduais/",
+  };
+  function linksFonte(l) {
+    const links = [];
+    if ((l.f ?? []).includes("ckan")) links.push(["CKAN", FONTES_URL.ckan]);
+    if ((l.f ?? []).includes("pentaho")) links.push(["Painel", l.ex >= 2026 ? FONTES_URL.painelAtual : FONTES_URL.painelHistorico]);
+    if (l.ploa) {
+      const [pn, pa] = l.ploa.split("/");
+      links.push(["PLOA " + l.ploa, "https://proposicoes.alepe.pe.gov.br/proposicoes/detalhes?tipo=projeto&numero=" + encodeURIComponent(pn) + "&ano=" + encodeURIComponent(pa)]);
+    }
+    return links;
+  }
+
   // tabela (drill-down; também é a "table view" de acessibilidade)
   let ordem = { k: "vemp", dir: -1 };
   function renderTabela(fl) {
@@ -296,6 +319,16 @@
       const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
       const dot = document.createElement("span"); dot.className = "dot";
       sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp); tr.append(d);
+      const df = document.createElement("td");
+      const ls = linksFonte(l);
+      if (ls.length === 0) df.textContent = "—";
+      for (const [nome, url] of ls) {
+        if (df.childNodes.length) df.append(document.createTextNode(" · "));
+        const a = document.createElement("a");
+        a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = nome;
+        df.append(a);
+      }
+      tr.append(df);
       tb.append(tr);
     }
     document.getElementById("tblInfo").textContent =

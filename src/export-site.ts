@@ -29,6 +29,10 @@ type LinhaSite = {
   vemp: number;
   vpago: number;
   n: number;
+  /** fontes dos empenhos desta linha ("ckan" e/ou "pentaho") */
+  f: string[];
+  /** PLOA onde a emenda consta na ALEPE ("1297/2023"), para o link de conferência */
+  ploa: string | null;
 };
 
 export type SiteData = {
@@ -44,6 +48,15 @@ export function exportarSite(db: Db): SiteData {
   const empenhos = db.listEmpenhos();
   const emendas = db.raw.query("SELECT * FROM emenda").all() as EmendaRow[];
 
+  // (numero, ano) -> PLOA da ALEPE onde a emenda consta, para o link "conferir
+  // na fonte" (primeiro pelo ano-LOA, semântica dominante; depois apresentação)
+  const ploaPorEmenda = new Map<string, string>();
+  const oficiais = db.raw
+    .query("SELECT numero_emenda, exercicio_apresentacao, exercicio_loa, ploa FROM autoria_oficial")
+    .all() as Array<{ numero_emenda: string; exercicio_apresentacao: number; exercicio_loa: number; ploa: string }>;
+  for (const o of oficiais) ploaPorEmenda.set(`${o.numero_emenda}/${o.exercicio_apresentacao}`, o.ploa);
+  for (const o of oficiais) ploaPorEmenda.set(`${o.numero_emenda}/${o.exercicio_loa}`, o.ploa);
+
   // melhor emenda por código de subação e índice por (numero/ano)
   const porSubacao = new Map<string, EmendaRow>();
   const porNumeroAno = new Map<string, EmendaRow>();
@@ -55,7 +68,7 @@ export function exportarSite(db: Db): SiteData {
     porNumeroAno.set(`${e.numero_emenda}/${e.exercicio_emenda}`, e);
   }
 
-  type Acc = { ex: number; emenda: EmendaRow | null; ug: string | null; vemp: number; vpago: number; n: number };
+  type Acc = { ex: number; emenda: EmendaRow | null; ug: string | null; vemp: number; vpago: number; n: number; fontes: Set<string> };
   const acc = new Map<string, Acc>();
 
   for (const em of empenhos) {
@@ -79,7 +92,8 @@ export function exportarSite(db: Db): SiteData {
     }
 
     const k = `${chave}|${em.exercicio}`;
-    const a = acc.get(k) ?? { ex: em.exercicio, emenda, ug: em.unidade_gestora, vemp: 0, vpago: 0, n: 0 };
+    const a = acc.get(k) ?? { ex: em.exercicio, emenda, ug: em.unidade_gestora, vemp: 0, vpago: 0, n: 0, fontes: new Set<string>() };
+    a.fontes.add(em.fonte);
     a.vemp += em.vlrempenhado ?? 0;
     a.vpago += em.vlrtotalpago ?? 0;
     a.n += 1;
@@ -103,6 +117,8 @@ export function exportarSite(db: Db): SiteData {
       vemp: Math.round(a.vemp * 100) / 100,
       vpago: Math.round(a.vpago * 100) / 100,
       n: a.n,
+      f: [...a.fontes].sort(),
+      ploa: e ? (ploaPorEmenda.get(`${e.numero_emenda}/${e.exercicio_emenda}`) ?? null) : null,
     };
   });
   linhas.sort((x, y) => x.ex - y.ex || x.s.localeCompare(y.s));
