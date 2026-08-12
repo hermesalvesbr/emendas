@@ -37,6 +37,15 @@
   .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
   header h1 { font-size: 1.35rem; margin: 0 0 2px; }
   header p { margin: 0 0 16px; color: var(--ink-2); font-size: .85rem; }
+  .modos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .modos button {
+    font: inherit; font-size: .82rem; color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+  }
+  .modos button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
+  .modos button[aria-pressed="true"] {
+    background: var(--s1); border-color: var(--s1); color: #fff; font-weight: 600;
+  }
   .filters {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
     padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
@@ -104,9 +113,16 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Emendas Parlamentares Estaduais — Pernambuco</h1>
-    <p>20ª Legislatura (execução 2023–2026) · consulta por parlamentar e município · <span id="metaFonte"></span></p>
+    <h1 id="tituloPagina">Emendas Parlamentares — Pernambuco</h1>
+    <p id="subtituloPagina">20ª Legislatura (execução 2023–2026) · consulta por parlamentar e município</p>
   </header>
+
+  <div class="modos" role="group" aria-label="Esfera das emendas">
+    <button type="button" data-modo="estadual" aria-pressed="true">Estaduais (ALEPE)</button>
+    <button type="button" data-modo="deputado" aria-pressed="false">Dep. Federais de PE</button>
+    <button type="button" data-modo="senador" aria-pressed="false">Senadores de PE</button>
+    <button type="button" data-modo="bancada" aria-pressed="false">Bancada de PE</button>
+  </div>
 
   <div class="filters" role="search">
     <label>Parlamentar
@@ -120,7 +136,10 @@
     <label>Exercício
       <select id="fAno"><option value="">todos</option></select>
     </label>
-    <label>Autoria
+    <label id="lblPartido" hidden>Partido
+      <select id="fPartido"><option value="">todos</option></select>
+    </label>
+    <label id="lblConf">Autoria
       <select id="fConf">
         <option value="">todas</option>
         <option value="alta">confirmada (alta)</option>
@@ -133,7 +152,7 @@
 
   <div class="kpis">
     <div class="tile"><div class="v" id="kValor">–</div><div class="l">valor empenhado</div></div>
-    <div class="tile"><div class="v" id="kEmendas">–</div><div class="l">emendas (subações)</div></div>
+    <div class="tile"><div class="v" id="kEmendas">–</div><div class="l" id="kEmendasLabel">emendas (subações)</div></div>
     <div class="tile"><div class="v" id="kAutores">–</div><div class="l">parlamentares</div></div>
     <div class="tile"><div class="v" id="kMun">–</div><div class="l">municípios</div></div>
   </div>
@@ -145,13 +164,13 @@
       <div id="chAutores" class="chart"></div>
     </div>
     <div class="card">
-      <h2>Top municípios por valor empenhado</h2>
-      <p class="sub">clique numa barra para filtrar</p>
+      <h2 id="h2Segundo">Top municípios por valor empenhado</h2>
+      <p class="sub" id="subSegundo">clique numa barra para filtrar</p>
       <div id="chMunicipios" class="chart"></div>
     </div>
     <div class="card full">
-      <h2>Evolução por exercício e qualidade da autoria</h2>
-      <p class="sub">confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI</p>
+      <h2 id="h2Evolucao">Evolução por exercício e qualidade da autoria</h2>
+      <p class="sub" id="subEvolucao">confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI</p>
       <div id="chEvolucao" class="chart"></div>
     </div>
     <div class="card full tablecard">
@@ -178,11 +197,12 @@
     <a href="https://transparencia.pe.gov.br/painel-historico-de-emendas-parlamentares-estaduais/" target="_blank" rel="noopener">painel histórico 2023–2025</a> ·
     <a href="https://proposicoes.alepe.pe.gov.br/" target="_blank" rel="noopener">proposições ALEPE (emendas aos PLOAs)</a> ·
     <a href="https://dadosabertos.alepe.pe.gov.br/api/v1/proposicoes/" target="_blank" rel="noopener">API dados abertos ALEPE</a>.
+    <br>Fontes federais:
+    <a href="https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO" target="_blank" rel="noopener">emendas parlamentares (CGU)</a> ·
+    <a href="https://dadosabertos.camara.leg.br/swagger/api.html" target="_blank" rel="noopener">API da Câmara</a> ·
+    <a href="https://legis.senado.leg.br/dadosabertos/" target="_blank" rel="noopener">API do Senado</a>.
     <br>Gerado em <span id="metaData"></span>. <span id="metaFonte2" hidden></span>
-    Autoria "inferida" tem ~81% de acerto estimado; "sem autor" está documentada para pedido de LAI.
-    <br><b>Leitura do campo município:</b> reflete o texto do empenho ou o cadastro do painel — em compras centralizadas
-    (ex.: secretarias comprando de fornecedores da capital) e em instituições estaduais sediadas no Recife, o valor
-    aparece na sede do beneficiário, que pode não ser o destino final do gasto.
+    <span id="notaModo"></span>
     Projeto de dados abertos — código e metodologia no repositório.
   </footer>
 </div>
@@ -192,9 +212,31 @@
 (async function () {
   const resp = await fetch("dados.json");
   const dados = await resp.json();
-  const linhas = dados.linhas;
+  const linhasEstaduais = dados.linhas;
 
-  document.getElementById("metaFonte").textContent = "fonte: dados oficiais do Estado";
+  // Modo atual: "estadual" ou uma categoria federal (deputado/senador/bancada).
+  // O JSON federal só é buscado no primeiro clique — a home continua leve.
+  let modo = "estadual";
+  let dadosFederal = null;
+
+  async function carregarFederal() {
+    if (dadosFederal) return dadosFederal;
+    const r = await fetch("dados-federal.json");
+    const d = await r.json();
+    // normaliza para os mesmos nomes de campo do painel estadual, para que
+    // KPIs, gráficos e tabela funcionem sem ramificação em cada função
+    dadosFederal = d.linhas.map((l) => ({
+      s: l.cod, ex: l.ano, em: l.num ? l.num + "/" + l.ano : l.cod,
+      autor: l.autor, mun: l.mun, vemp: l.vemp, vpago: l.vpago,
+      cat: l.cat, partido: l.partido, tipo: l.tipo, func: l.func, loc: l.loc,
+      conf: "alta", benef: null, ug: null, f: ["cgu"], ploa: null, n: 1,
+    }));
+    return dadosFederal;
+  }
+
+  const eFederal = () => modo !== "estadual";
+  const baseAtual = () => (eFederal() ? (dadosFederal ?? []).filter((l) => l.cat === modo) : linhasEstaduais);
+
   document.getElementById("metaFonte2").textContent = dados.fonte;
   document.getElementById("metaData").textContent = new Date(dados.geradoEm).toLocaleString("pt-BR");
 
@@ -213,21 +255,40 @@
   const fAno = document.getElementById("fAno");
   const fConf = document.getElementById("fConf");
 
-  const autores = [...new Set(linhas.map((l) => l.autor).filter(Boolean))].sort();
-  const municipios = [...new Set(linhas.map((l) => l.mun).filter(Boolean))].sort();
-  const anos = [...new Set(linhas.map((l) => l.ex))].sort();
-  for (const a of autores) { const o = document.createElement("option"); o.value = a; document.getElementById("dlAutores").append(o); }
-  for (const m of municipios) { const o = document.createElement("option"); o.value = m; document.getElementById("dlMunicipios").append(o); }
-  for (const a of anos) { const o = document.createElement("option"); o.value = a; o.textContent = a; fAno.append(o); }
+  const fPartido = document.getElementById("fPartido");
+
+  function preencherOpcoes() {
+    const base = baseAtual();
+    const encher = (el, valores, comTexto) => {
+      const atual = el.value;
+      el.textContent = "";
+      if (el.tagName === "SELECT") {
+        const o = document.createElement("option"); o.value = ""; o.textContent = "todos"; el.append(o);
+      }
+      for (const v of valores) {
+        const o = document.createElement("option");
+        o.value = v; if (comTexto) o.textContent = v;
+        el.append(o);
+      }
+      if (valores.includes(atual)) el.value = atual;
+    };
+    encher(document.getElementById("dlAutores"), [...new Set(base.map((l) => l.autor).filter(Boolean))].sort(), false);
+    encher(document.getElementById("dlMunicipios"), [...new Set(base.map((l) => l.mun).filter(Boolean))].sort(), false);
+    encher(fAno, [...new Set(base.map((l) => l.ex))].sort(), true);
+    encher(fPartido, [...new Set(base.map((l) => l.partido).filter(Boolean))].sort(), true);
+  }
 
   function filtrar() {
     const va = fAutor.value.trim().toUpperCase(), vm = fMun.value.trim().toUpperCase();
-    const vy = fAno.value ? Number(fAno.value) : null, vc = fConf.value || null;
-    return linhas.filter((l) =>
+    const vy = fAno.value ? Number(fAno.value) : null;
+    const vc = eFederal() ? null : (fConf.value || null);
+    const vp = eFederal() ? (fPartido.value || null) : null;
+    return baseAtual().filter((l) =>
       (!va || (l.autor ?? "").includes(va)) &&
       (!vm || (l.mun ?? "").includes(vm)) &&
       (vy === null || l.ex === vy) &&
-      (!vc || l.conf === vc));
+      (!vc || l.conf === vc) &&
+      (!vp || l.partido === vp));
   }
 
   // ECharts base — grid recessivo, ink nos textos, sem decoração
@@ -267,8 +328,12 @@
   }
 
   function renderMunicipios(fl) {
+    // No federal a maioria das emendas é estadual ("PERNAMBUCO (UF)") ou
+    // multi-município: ranquear por FUNÇÃO (Saúde, Educação…) informa muito
+    // mais do que por município, que só existe em ~11% das linhas.
+    const campo = eFederal() ? "func" : "mun";
     const por = new Map();
-    for (const l of fl) if (l.mun) por.set(l.mun, (por.get(l.mun) ?? 0) + l.vemp);
+    for (const l of fl) if (l[campo]) por.set(l[campo], (por.get(l[campo]) ?? 0) + l.vemp);
     const top = [...por.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
     charts.municipios.setOption({
       ...baseOption(),
@@ -284,17 +349,28 @@
       }],
     }, true);
     charts.municipios.off("click");
-    charts.municipios.on("click", (p) => { fMun.value = p.name; render(); });
+    charts.municipios.on("click", (p) => { if (!eFederal()) { fMun.value = p.name; render(); } });
   }
 
   function renderEvolucao(fl) {
     const anosF = [...new Set(fl.map((l) => l.ex))].sort();
-    const serie = (conf, cor) => ({
-      name: CONF_LABEL[conf], type: "bar", stack: "v",
-      data: anosF.map((a) => Math.round(fl.filter((l) => l.ex === a && l.conf === conf).reduce((s, l) => s + l.vemp, 0))),
+    const serie = (nome, filtro, cor) => ({
+      name: nome, type: "bar", stack: "v",
+      data: anosF.map((a) => Math.round(fl.filter((l) => l.ex === a && filtro(l)).reduce((s, l) => s + l.vemp, 0))),
       itemStyle: { color: cor, borderColor: css("--surface"), borderWidth: 2 },
       barMaxWidth: 56,
     });
+    // Federal: empilha por TIPO de emenda (individual/especial/bancada) — a
+    // autoria aqui é nativa, então "qualidade da autoria" não se aplica.
+    const tiposFed = eFederal() ? [...new Set(fl.map((l) => l.tipo).filter(Boolean))].sort() : [];
+    const curtoTipo = (t) => t.replace(/^Emenda\s*/i, "").replace(/Transferências\s*/i, "Transf. ");
+    const series = eFederal()
+      ? tiposFed.slice(0, 3).map((t, i) => serie(curtoTipo(t), (l) => l.tipo === t, css(["--s1", "--s2", "--s3"][i])))
+      : [
+          serie(CONF_LABEL.alta, (l) => l.conf === "alta", css("--s1")),
+          serie(CONF_LABEL.media, (l) => l.conf === "media", css("--s2")),
+          serie(CONF_LABEL.nula, (l) => l.conf === "nula", css("--s3")),
+        ];
     charts.evolucao.setOption({
       ...baseOption(),
       legend: { top: 0, textStyle: { color: css("--ink-2") }, itemWidth: 14, itemHeight: 10 },
@@ -305,7 +381,7 @@
         ...baseOption().tooltip, trigger: "axis", axisPointer: { type: "shadow" },
         formatter: (ps) => ps[0].name + ps.map((p) => `<br><span style="color:${p.color}">▬</span> <b>${brlCompact(p.value)}</b> ${esc(p.seriesName)}`).join(""),
       },
-      series: [serie("alta", css("--s1")), serie("media", css("--s2")), serie("nula", css("--s3"))],
+      series,
     }, true);
   }
 
@@ -317,6 +393,10 @@
   };
   function linksFonte(l) {
     const links = [];
+    if (eFederal()) {
+      if (l.s) links.push(["Portal da Transparência", "https://portaldatransparencia.gov.br/emendas/detalhe?codigoEmenda=" + encodeURIComponent(l.s)]);
+      return links;
+    }
     if ((l.f ?? []).includes("ckan")) links.push(["CKAN", FONTES_URL.ckan]);
     if ((l.f ?? []).includes("pentaho")) links.push(["Painel", l.ex >= 2026 ? FONTES_URL.painelAtual : FONTES_URL.painelHistorico]);
     if (l.ploa) {
@@ -344,14 +424,22 @@
         if (label) d.dataset.label = label;
         tr.append(d);
       };
-      td(l.em ?? "(sem nº)", null, "Emenda"); td(l.autor ?? "—", null, "Parlamentar"); td(l.mun ?? "—", null, "Município");
-      td(l.benef ?? "—", null, "Beneficiário"); td(l.ug ?? "—", null, "Unidade gestora");
+      td(l.em ?? "(sem nº)", null, "Emenda"); td(l.autor ?? "—", null, "Parlamentar");
+      td(eFederal() ? (l.loc ?? "—") : (l.mun ?? "—"), null, eFederal() ? "Localidade" : "Município");
+      td(eFederal() ? (l.func ?? "—") : (l.benef ?? "—"), null, eFederal() ? "Função" : "Beneficiário");
+      td(eFederal() ? (l.tipo ?? "—") : (l.ug ?? "—"), null, eFederal() ? "Tipo" : "Unidade gestora");
       td(String(l.ex), "num", "Exercício"); td(brl.format(l.vemp), "num", "Empenhado"); td(brl.format(l.vpago), "num", "Pago");
       const d = document.createElement("td");
-      d.dataset.label = "Autoria";
-      const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
-      const dot = document.createElement("span"); dot.className = "dot";
-      sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp); tr.append(d);
+      if (eFederal()) {
+        d.dataset.label = "Partido";
+        d.textContent = l.partido ?? "—";
+      } else {
+        d.dataset.label = "Autoria";
+        const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
+        const dot = document.createElement("span"); dot.className = "dot";
+        sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp);
+      }
+      tr.append(d);
       const df = document.createElement("td");
       df.dataset.label = "Conferir";
       const ls = linksFonte(l);
@@ -375,6 +463,48 @@
     renderTabela(filtrar());
   }));
 
+  const NOTA_ESTADUAL = 'Autoria "inferida" tem ~81% de acerto estimado; "sem autor" está documentada para pedido de LAI. ' +
+    'Leitura do campo município: reflete o texto do empenho ou o cadastro do painel — em compras centralizadas e em ' +
+    'instituições estaduais sediadas no Recife, o valor aparece na sede do beneficiário, que pode não ser o destino final do gasto.';
+  const NOTA_FEDERAL = 'Autoria vem nominal da própria fonte (CGU) — sem inferência. A classificação por casa (deputado/senador) usa as ' +
+    'APIs da Câmara (56ª e 57ª legislaturas) e do Senado. "Localidade" é como a União registra o destino: a maioria das emendas é ' +
+    'estadual ("PERNAMBUCO (UF)") ou multi-município, então o ranking por município cobre só parte do valor — por isso o painel ranqueia por função.';
+
+  const TITULOS = {
+    estadual: { seg: "Top municípios por valor empenhado", segSub: "clique numa barra para filtrar",
+      evo: "Evolução por exercício e qualidade da autoria",
+      evoSub: "confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI",
+      titulo: "Emendas Parlamentares Estaduais — Pernambuco",
+      sub: "20ª Legislatura da ALEPE (execução 2023–2026) · consulta por parlamentar e município",
+      nota: NOTA_ESTADUAL,
+      kEmendas: "emendas (subações)", cols: ["Emenda","Parlamentar","Município","Beneficiário","Unidade gestora","Exercício","Empenhado","Pago","Autoria","Conferir na fonte"] },
+    federal: { seg: "Top funções por valor empenhado", segSub: "onde o recurso foi aplicado (Saúde, Educação…)",
+      evo: "Evolução por exercício e tipo de emenda",
+      evoSub: "autoria federal é nativa da fonte (CGU) — o empilhamento mostra o tipo: individual, transferência especial ou de bancada",
+      titulo: "Emendas Parlamentares Federais — foco Pernambuco",
+      sub: "Orçamento da União (execução 2023–2026) · recursos ligados a PE",
+      nota: NOTA_FEDERAL,
+      kEmendas: "emendas (registros)", cols: ["Emenda","Parlamentar","Localidade","Função","Tipo","Exercício","Empenhado","Pago","Partido","Conferir na fonte"] },
+  };
+
+  const ROTULO_MODO = { deputado: "Deputados Federais de PE", senador: "Senadores de PE", bancada: "Bancada de PE" };
+
+  function aplicarTitulos() {
+    const t = eFederal() ? TITULOS.federal : TITULOS.estadual;
+    document.getElementById("tituloPagina").textContent = t.titulo;
+    document.getElementById("subtituloPagina").textContent = eFederal() ? `${t.sub} · ${ROTULO_MODO[modo]}` : t.sub;
+    document.getElementById("notaModo").textContent = t.nota;
+    document.getElementById("h2Segundo").textContent = t.seg;
+    document.getElementById("subSegundo").textContent = t.segSub;
+    document.getElementById("h2Evolucao").textContent = t.evo;
+    document.getElementById("subEvolucao").textContent = t.evoSub;
+    document.getElementById("kEmendasLabel").textContent = t.kEmendas;
+    document.getElementById("lblConf").hidden = eFederal();
+    document.getElementById("lblPartido").hidden = !eFederal();
+    const ths = document.querySelectorAll("#tbl thead th");
+    t.cols.forEach((c, i) => { if (ths[i]) ths[i].textContent = c; });
+  }
+
   function render() {
     const fl = filtrar();
     document.getElementById("kValor").textContent = brlCompact(fl.reduce((s, l) => s + l.vemp, 0));
@@ -393,12 +523,30 @@
     };
   }
 
-  initCharts(); render();
+  function limparFiltros() {
+    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; fPartido.value = "";
+  }
 
-  for (const el of [fAutor, fMun, fAno, fConf]) el.addEventListener("input", render);
-  document.getElementById("fLimpar").addEventListener("click", () => {
-    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; render();
-  });
+  async function trocarModo(novo) {
+    if (novo === modo) return;
+    modo = novo;
+    for (const b of document.querySelectorAll(".modos button")) {
+      b.setAttribute("aria-pressed", String(b.dataset.modo === modo));
+    }
+    if (eFederal()) await carregarFederal();
+    limparFiltros();
+    aplicarTitulos();
+    preencherOpcoes();
+    render();
+  }
+
+  aplicarTitulos(); preencherOpcoes(); initCharts(); render();
+
+  for (const b of document.querySelectorAll(".modos button")) {
+    b.addEventListener("click", () => { trocarModo(b.dataset.modo); });
+  }
+  for (const el of [fAutor, fMun, fAno, fConf, fPartido]) el.addEventListener("input", render);
+  document.getElementById("fLimpar").addEventListener("click", () => { limparFiltros(); render(); });
   window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });
 })();

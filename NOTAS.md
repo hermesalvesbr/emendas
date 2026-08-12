@@ -514,3 +514,49 @@ dois problemas distintos:
    Instituições estaduais sediadas em Recife (UPE, IMIP, HEMOPE, Casa do
    Estudante) também concentram valor "em Recife" servindo o estado todo.
    Documentado no rodapé do site como limitação de leitura.
+
+## 28. Camada FEDERAL: emendas da União com foco em PE (fonte melhor, recorte é o desafio)
+
+Pedido do usuário: botões separados para Deputados Federais e Senadores de PE,
+com BI próprio, em dois JSONs. Fonte escolhida: **arquivo único de emendas da
+CGU/Portal da Transparência** (`/download-de-dados/emendas-parlamentares/UNICO`
+→ `EmendasParlamentares.zip`, 32MB, 94.304 linhas, atualizado semanalmente).
+
+Diferença fundamental em relação ao estadual: **a autoria já vem nominal na
+fonte** (coluna "Nome do Autor da Emenda"), junto com UF/município do gasto,
+tipo de emenda, função e valores. Zero mineração de texto — todo o esforço
+aqui é o *recorte de PE*, não a autoria.
+
+**Formato real conferido antes de codificar (regra 1.2):** CSV com `;`,
+**codificado em ISO-8859-1** (decodificar como UTF-8 corrompe todo acento),
+valores no formato brasileiro ("1500000,50"). O tipo de `TextDecoder` no
+@types/bun não lista rótulos legados, mas o runtime aceita "iso-8859-1"
+(verificado) — daí o cast pontual em `extrairCsv`.
+
+**Classificação (`cat`), auditável por linha:** `deputado`/`senador` (autor
+casa com a bancada federal de PE), `bancada` (emenda coletiva "Bancada de
+Pernambuco") e `gasto-pe` (autor de fora, recurso aplicado em PE).
+
+**Duas descobertas que a auditoria de matching forçou** (o coletor lista os
+autores com gasto em PE que não casaram — nunca silencia):
+1. `deputados?siglaUf=PE` devolve só os **25 em exercício**; com
+   `idLegislatura=57` vêm **36** (inclui quem saiu e suplentes). Sem isso,
+   Ossésio Silva — deputado federal de PE — caía em "gasto-pe".
+2. Emendas executadas em 2023 vêm da LOA aprovada em **2022**, pela
+   legislatura anterior: foi preciso incluir também a **56ª**. Isso levou os
+   não-casados de 14 para 2.
+3. Os 2 restantes eram **ex-senadores de PE** (Fernando Bezerra Coelho e
+   Jarbas Vasconcelos, mandato até jan/2023). A API do Senado só expõe quem
+   está em exercício — `lista/atual`, `lista/legislatura/56` (com ou sem
+   `?exercicio=S`) devolvem 2 nomes de PE e `lista/legislatura/56/PE` dá 404.
+   Resolvido com uma lista explícita de 2 nomes em `harvest-federal.ts`,
+   documentada com a limitação da API: rotulá-los "gasto-pe" seria
+   factualmente errado. **Resultado: 0 autores não classificados.**
+
+Recorte final (2023–2026): **1.167 linhas, R$ 5,6 bilhões** — deputados 949
+(R$ 3,51 bi), senadores 172 (R$ 731 mi), bancada 46 (R$ 1,36 bi), gasto-pe 0.
+
+**Nota de leitura no painel:** só 130 das 1.167 linhas têm município (11%) —
+não é bug: a maioria das emendas federais tem localidade "PERNAMBUCO (UF)"
+(497) ou "MÚLTIPLO" (466). Por isso o segundo gráfico no modo federal ranqueia
+por **função** (sempre preenchida), não por município.

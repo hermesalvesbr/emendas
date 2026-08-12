@@ -51,6 +51,47 @@ CREATE TABLE IF NOT EXISTS autoria_oficial (
   PRIMARY KEY (numero_emenda, exercicio_apresentacao)
 );
 
+-- === Camada FEDERAL (emendas ao orçamento da União com foco em PE) ===
+-- Fonte: arquivo único de emendas da CGU/Portal da Transparência, que já traz
+-- autor nominal, UF/município do gasto e valores — sem mineração de texto.
+-- Independente do pipeline estadual: outra esfera, outra chave, outro painel.
+CREATE TABLE IF NOT EXISTS parlamentar_federal (
+  nome_normalizado TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  nome_civil TEXT,
+  tipo TEXT NOT NULL CHECK (tipo IN ('deputado','senador')),
+  partido TEXT,
+  coletado_em TEXT NOT NULL
+);
+
+-- cat: como a linha entrou no recorte de PE (auditável, nunca inferido depois)
+--   deputado / senador = autor é da bancada federal de PE
+--   bancada            = emenda coletiva "Bancada de Pernambuco"
+--   gasto-pe           = autor de fora, mas recurso aplicado em PE
+CREATE TABLE IF NOT EXISTS emenda_federal (
+  id INTEGER PRIMARY KEY,
+  codigo_emenda TEXT NOT NULL,
+  ano INTEGER NOT NULL,
+  numero_emenda TEXT,
+  tipo_emenda TEXT,
+  autor TEXT NOT NULL,
+  autor_normalizado TEXT NOT NULL,
+  cat TEXT NOT NULL CHECK (cat IN ('deputado','senador','bancada','gasto-pe')),
+  partido TEXT,
+  localidade TEXT,
+  municipio TEXT,
+  uf TEXT,
+  funcao TEXT,
+  subfuncao TEXT,
+  vlrempenhado REAL, vlrliquidado REAL, vlrpago REAL,
+  hash TEXT NOT NULL UNIQUE,
+  coletado_em TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_fed_autor ON emenda_federal(autor_normalizado);
+CREATE INDEX IF NOT EXISTS idx_fed_ano ON emenda_federal(ano);
+CREATE INDEX IF NOT EXISTS idx_fed_cat ON emenda_federal(cat);
+
 CREATE INDEX IF NOT EXISTS idx_emp_subacao ON empenho(cd_nm_subacao);
 CREATE INDEX IF NOT EXISTS idx_emp_exercicio ON empenho(exercicio);
 CREATE INDEX IF NOT EXISTS idx_emenda_subacao ON emenda(subacao_codigo);
@@ -83,6 +124,37 @@ export type DiscordanciaAutoria = {
   autor_oficial: string;
 };
 
+export type NewParlamentarFederal = {
+  nome: string;
+  nome_civil: string | null;
+  tipo: "deputado" | "senador";
+  partido: string | null;
+  nome_normalizado: string;
+};
+
+export type CategoriaFederal = "deputado" | "senador" | "bancada" | "gasto-pe";
+
+export type NewEmendaFederal = {
+  codigo_emenda: string;
+  ano: number;
+  numero_emenda: string | null;
+  tipo_emenda: string | null;
+  autor: string;
+  autor_normalizado: string;
+  cat: CategoriaFederal;
+  partido: string | null;
+  localidade: string | null;
+  municipio: string | null;
+  uf: string | null;
+  funcao: string | null;
+  subfuncao: string | null;
+  vlrempenhado: number | null;
+  vlrliquidado: number | null;
+  vlrpago: number | null;
+};
+
+export type EmendaFederalRow = NewEmendaFederal & { id: number; hash: string; coletado_em: string };
+
 export type Db = {
   readonly raw: Database;
   insertEmpenho(row: NewEmpenho): { inserted: boolean; hash: string };
@@ -100,6 +172,12 @@ export type Db = {
   countAutoriaOficial(): number;
   /** Eleva emendas não-alta usando o dicionário oficial da ALEPE; retorna quantas subiram e as discordâncias com autoria já alta. */
   aplicarAutoriaOficial(): { elevadas: number; discordancias: DiscordanciaAutoria[] };
+  upsertParlamentarFederal(row: NewParlamentarFederal): void;
+  listParlamentaresFederais(): Array<NewParlamentarFederal & { coletado_em: string }>;
+  insertEmendaFederal(row: NewEmendaFederal): { inserted: boolean };
+  listEmendasFederais(): EmendaFederalRow[];
+  countEmendasFederais(): number;
+  limparEmendasFederais(): number;
   close(): void;
 };
 
@@ -326,6 +404,55 @@ export function openDb(path = "data/emendas.sqlite"): Db {
         `)
         .run();
       return { elevadas: r.changes, discordancias };
+    },
+
+    upsertParlamentarFederal(row) {
+      raw
+        .query(`
+          INSERT INTO parlamentar_federal (nome_normalizado, nome, nome_civil, tipo, partido, coletado_em)
+          VALUES ($nome_normalizado, $nome, $nome_civil, $tipo, $partido, $coletado_em)
+          ON CONFLICT (nome_normalizado) DO UPDATE SET
+            nome = excluded.nome, nome_civil = excluded.nome_civil,
+            tipo = excluded.tipo, partido = excluded.partido, coletado_em = excluded.coletado_em
+        `)
+        .run({ ...row, coletado_em: new Date().toISOString() });
+    },
+
+    listParlamentaresFederais() {
+      return raw.query("SELECT nome, nome_civil, tipo, partido, nome_normalizado, coletado_em FROM parlamentar_federal ORDER BY tipo, nome").all() as Array<
+        NewParlamentarFederal & { coletado_em: string }
+      >;
+    },
+
+    insertEmendaFederal(row) {
+      // Uma emenda pode ter várias linhas (uma por localidade/função) — o hash
+      // cobre a granularidade real da fonte para manter a idempotência.
+      const hash = Bun.hash(
+        [row.codigo_emenda, row.ano, row.autor, row.localidade ?? "", row.funcao ?? "", row.vlrempenhado ?? ""].join("|"),
+      ).toString(16);
+      const r = raw
+        .query(`
+          INSERT OR IGNORE INTO emenda_federal
+            (codigo_emenda, ano, numero_emenda, tipo_emenda, autor, autor_normalizado, cat, partido,
+             localidade, municipio, uf, funcao, subfuncao, vlrempenhado, vlrliquidado, vlrpago, hash, coletado_em)
+          VALUES ($codigo_emenda, $ano, $numero_emenda, $tipo_emenda, $autor, $autor_normalizado, $cat, $partido,
+                  $localidade, $municipio, $uf, $funcao, $subfuncao, $vlrempenhado, $vlrliquidado, $vlrpago, $hash, $coletado_em)
+        `)
+        .run({ ...row, hash, coletado_em: new Date().toISOString() });
+      return { inserted: r.changes > 0 };
+    },
+
+    listEmendasFederais() {
+      return raw.query("SELECT * FROM emenda_federal ORDER BY ano, autor_normalizado").all() as EmendaFederalRow[];
+    },
+
+    countEmendasFederais() {
+      const r = raw.query("SELECT COUNT(*) as c FROM emenda_federal").get() as { c: number } | null;
+      return r?.c ?? 0;
+    },
+
+    limparEmendasFederais() {
+      return raw.query("DELETE FROM emenda_federal").run().changes;
     },
 
     close() {

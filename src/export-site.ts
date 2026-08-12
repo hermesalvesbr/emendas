@@ -10,6 +10,7 @@
 // ver NOTAS.md item 26). Somas por chave, sem dupla contagem.
 
 import type { Db } from "./db.ts";
+import type { EmendaFederalRow } from "./db.ts";
 import type { EmpenhoRow, EmendaRow } from "./types.ts";
 import { extrairCodigoSubacao, extrairNumeroEmenda } from "./normalize.ts";
 
@@ -133,6 +134,68 @@ export function exportarSite(db: Db): SiteData {
   return {
     geradoEm: new Date().toISOString(),
     fonte: "Portal da Transparência PE (painéis Pentaho), CKAN dados.pe.gov.br e API de dados abertos da ALEPE",
+    totalEmpenhadoBanco,
+    linhas,
+  };
+}
+
+
+// === Camada FEDERAL ===
+// Uma linha por registro do arquivo da CGU (a granularidade da fonte é
+// emenda × localidade × função). `cat` diz por que a linha está no recorte de
+// PE — os botões do painel filtram por ela.
+
+type LinhaFederal = {
+  cod: string;
+  ano: number;
+  num: string | null;
+  tipo: string | null;
+  autor: string;
+  cat: string;
+  partido: string | null;
+  loc: string | null;
+  mun: string | null;
+  func: string | null;
+  vemp: number;
+  vliq: number;
+  vpago: number;
+};
+
+export type SiteDataFederal = {
+  geradoEm: string;
+  fonte: string;
+  totalEmpenhadoBanco: number;
+  linhas: LinhaFederal[];
+};
+
+export function exportarSiteFederal(db: Db): SiteDataFederal {
+  const rows = db.listEmendasFederais() as EmendaFederalRow[];
+
+  const linhas: LinhaFederal[] = rows.map((r) => ({
+    cod: r.codigo_emenda,
+    ano: r.ano,
+    num: r.numero_emenda,
+    tipo: r.tipo_emenda,
+    autor: r.autor_normalizado,
+    cat: r.cat,
+    partido: r.partido,
+    loc: r.localidade,
+    mun: r.municipio,
+    func: r.funcao,
+    vemp: Math.round((r.vlrempenhado ?? 0) * 100) / 100,
+    vliq: Math.round((r.vlrliquidado ?? 0) * 100) / 100,
+    vpago: Math.round((r.vlrpago ?? 0) * 100) / 100,
+  }));
+
+  const totalEmpenhadoBanco = Math.round(rows.reduce((s, r) => s + (r.vlrempenhado ?? 0), 0) * 100) / 100;
+  const totalSite = Math.round(linhas.reduce((s, l) => s + l.vemp, 0) * 100) / 100;
+  if (Math.abs(totalSite - totalEmpenhadoBanco) > 1) {
+    throw new Error(`export federal inconsistente: site R$ ${totalSite} != banco R$ ${totalEmpenhadoBanco}`);
+  }
+
+  return {
+    geradoEm: new Date().toISOString(),
+    fonte: "Emendas parlamentares federais — CGU/Portal da Transparência; bancada de PE via APIs da Câmara e do Senado",
     totalEmpenhadoBanco,
     linhas,
   };

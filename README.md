@@ -1,13 +1,15 @@
 # emendas-pe
 
-Coletor resiliente e painel de consulta das **emendas parlamentares estaduais de
-Pernambuco** (20ª Legislatura da ALEPE, execução 2023–2026). Dados públicos,
-metodologia aberta, proveniência rastreável.
+Coletor resiliente e painel de consulta das **emendas parlamentares ligadas a
+Pernambuco** — estaduais (ALEPE) e federais (Câmara e Senado) — execução
+2023–2026. Dados públicos, metodologia aberta, proveniência rastreável.
 
-**Painel de consulta:** https://hermesalvesbr.github.io/emendas/ — filtre por
-parlamentar ou município; cada linha tem links de conferência na fonte oficial.
+**Painel de consulta:** https://hermesalvesbr.github.io/emendas/ — quatro
+modos (Estaduais · Dep. Federais de PE · Senadores de PE · Bancada de PE),
+filtros por parlamentar/município/exercício e links de conferência na fonte
+oficial em cada linha.
 
-## Fontes
+## Fontes — estaduais
 
 | Fonte | O que fornece |
 |---|---|
@@ -22,6 +24,20 @@ empenho (regex validada contra dados reais) > dicionário oficial da ALEPE
 carrega o rótulo de confiança (`alta`/`media`/`nula`); nada é sobrescrito
 silenciosamente e as divergências ficam auditáveis. Detalhes, medições e
 post-mortems de cada decisão: [`NOTAS.md`](NOTAS.md).
+
+## Fontes — federais (foco PE)
+
+| Fonte | O que fornece |
+|---|---|
+| [Emendas parlamentares (CGU/Portal da Transparência)](https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO) | Arquivo único com autor nominal, localidade, função e valores |
+| [API da Câmara](https://dadosabertos.camara.leg.br/swagger/api.html) | Bancada federal de PE (56ª e 57ª legislaturas) |
+| [API do Senado](https://legis.senado.leg.br/dadosabertos/) | Senadores de PE em exercício |
+
+No federal a autoria **já vem nominal da fonte** — o trabalho é o recorte de
+PE, classificado por linha em `deputado`, `senador`, `bancada` ou `gasto-pe`
+(autor de fora com recurso aplicado em PE). O casamento com a bancada é
+auditado: autores com gasto em PE que não casam são listados, nunca
+silenciados. Ver [`NOTAS.md`](NOTAS.md) item 28.
 
 ## Stack
 
@@ -39,9 +55,10 @@ bun run check          # typecheck + testes
 bun run descobrir      # descobre endpoints dos painéis Pentaho (precisa de Chrome)
 bun run coletar        # painéis Pentaho + CKAN
 bun run coletar:alepe  # dicionário oficial de autoria (PLOAs da ALEPE)
+bun run coletar:federal # emendas federais com foco em PE (CGU + Câmara + Senado)
 bun run normalizar     # extrai autoria/município dos textos
 bun run relatorio      # data/cobertura.md (órfãs prontas para pedido de LAI)
-bun run site           # regenera docs/dados.json para o painel
+bun run site           # regenera docs/dados.json e docs/dados-federal.json
 bun run servir         # API local de consulta
 bun run cron:install   # sincronização automática a cada 4h (crontab)
 ```

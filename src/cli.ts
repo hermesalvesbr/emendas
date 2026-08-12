@@ -7,9 +7,10 @@ import { openDb } from "./db.ts";
 import { discover } from "./discover.ts";
 import { harvestCkan } from "./harvest-ckan.ts";
 import { harvestAlepe } from "./harvest-alepe.ts";
+import { harvestFederal } from "./harvest-federal.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
-import { exportarSite } from "./export-site.ts";
+import { exportarSite, exportarSiteFederal } from "./export-site.ts";
 import { serve } from "./serve.ts";
 import { vigiar } from "./watch.ts";
 
@@ -19,6 +20,7 @@ const COMMANDS = [
   "coletar",
   "coletar:ckan",
   "coletar:alepe",
+  "coletar:federal",
   "normalizar",
   "relatorio",
   "site",
@@ -59,6 +61,9 @@ async function main(): Promise<void> {
       break;
     case "coletar:alepe":
       await cmdColetarAlepe();
+      break;
+    case "coletar:federal":
+      await cmdColetarFederal();
       break;
     case "normalizar":
       await cmdNormalizar();
@@ -214,6 +219,24 @@ async function cmdColetarAlepe(): Promise<void> {
   }
 }
 
+async function cmdColetarFederal(): Promise<void> {
+  const config = await loadConfig();
+  const db = openDb();
+  try {
+    console.log("coletando emendas FEDERAIS com foco em PE (CGU/Portal da Transparência + bancada Câmara/Senado)...");
+    const r = await harvestFederal(db, config);
+    console.log(`bancada PE: ${r.parlamentares.deputados} deputado(s), ${r.parlamentares.senadores} senador(es)`);
+    console.log(`arquivo: ${r.linhasArquivo} linha(s); recorte PE ${r.anos.join("-")}: ${r.inseridas} gravada(s)`);
+    console.log(`  por categoria: ${JSON.stringify(r.porCategoria)}`);
+    if (r.autoresNaoCasados.length > 0) {
+      console.log(`  ATENÇÃO — ${r.autoresNaoCasados.length} autor(es) com gasto em PE não casaram com a bancada (classificados como "gasto-pe"):`);
+      console.log(`    ${r.autoresNaoCasados.slice(0, 15).join(" · ")}${r.autoresNaoCasados.length > 15 ? " …" : ""}`);
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function runCkan(db: Db, config: Awaited<ReturnType<typeof loadConfig>>): Promise<void> {
   console.log("coletando via CKAN...");
   const results = await harvestCkan(db, config);
@@ -299,6 +322,10 @@ async function cmdSite(): Promise<void> {
     const dados = exportarSite(db);
     await Bun.write("docs/dados.json", JSON.stringify(dados));
     console.log(`docs/dados.json gerado: ${dados.linhas.length} linha(s) (subação × exercício)`);
+
+    const federal = exportarSiteFederal(db);
+    await Bun.write("docs/dados-federal.json", JSON.stringify(federal));
+    console.log(`docs/dados-federal.json gerado: ${federal.linhas.length} linha(s) federais de PE`);
   } finally {
     db.close();
   }
