@@ -241,7 +241,10 @@ export async function diagnosticarApp(cred: Pick<Credenciais, "consumerKey" | "c
   // A sonda precisa ser um endpoint METRIFICADO. /2/openapi.json responde 200
   // para qualquer um (é rota pública) e daria falso positivo; /2/users/me
   // recusa app-only por natureza, o que também não diz nada sobre o plano.
-  const res = await fetch("https://api.x.com/2/tweets/search/recent?query=teste&max_results=10", {
+  // search/recent exige max_results>=10 e leitura é cobrada por item: US$ 0,05
+  // a checagem. Um lookup de usuário custa US$ 0,010 e distingue os mesmos dois
+  // estados (403 client-not-enrolled vs 200), medido em 13/08/2026.
+  const res = await fetch("https://api.x.com/2/users/by/username/hermes_alves", {
     headers: { Authorization: `Bearer ${bearer}` },
   });
   if (res.ok) return { chavesValidas: true, v2Liberado: true, detalhe: "app habilitado no v2" };
