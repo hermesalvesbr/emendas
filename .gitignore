@@ -10,3 +10,6 @@ data/cobertura.md
 data/PENTAHO_STATUS.md
 emendas-pe
 *.log
+.env
+.env.*
+data/x-thread.json

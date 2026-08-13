@@ -15,6 +15,7 @@
     "site": "bun run src/cli.ts site",
     "servir": "bun run src/cli.ts servir",
     "compilar": "bun run src/cli.ts compilar",
+    "postar:x": "bun run src/cli.ts postar:x",
     "cron:install": "bun run src/cli.ts cron:install",
     "cron:remove": "bun run src/cli.ts cron:remove",
     "check": "bunx tsc --noEmit && bun test"

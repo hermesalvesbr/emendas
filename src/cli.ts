@@ -11,6 +11,8 @@ import { harvestFederal } from "./harvest-federal.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { exportarSite, exportarSiteFederal } from "./export-site.ts";
+import type { EstadoThread } from "./post-x.ts";
+import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
 import { vigiar } from "./watch.ts";
 
@@ -26,6 +28,7 @@ const COMMANDS = [
   "site",
   "servir",
   "compilar",
+  "postar:x",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -37,7 +40,7 @@ function isCommand(value: string | undefined): value is Command {
 }
 
 async function main(): Promise<void> {
-  const { positionals } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true, strict: false });
+  const { positionals, values } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true, strict: false });
   const command = positionals[0];
 
   if (!isCommand(command)) {
@@ -79,6 +82,9 @@ async function main(): Promise<void> {
       break;
     case "compilar":
       await cmdCompilar();
+      break;
+    case "postar:x":
+      await cmdPostarX(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -346,6 +352,103 @@ async function cmdCompilar(): Promise<void> {
     return;
   }
   console.log("binário gerado: ./emendas-pe");
+}
+
+const POSTS_MD = "POSTS-X.md";
+const ESTADO_THREAD = "data/x-thread.json";
+
+/**
+ * Publica POSTS-X.md como thread no X. Ensaio por padrão: publicar é
+ * irreversível e público, então só sai do lugar com --confirmar explícito.
+ * O estado em data/x-thread.json permite retomar uma thread interrompida
+ * sem republicar o que já foi ao ar.
+ */
+async function cmdPostarX(values: Record<string, unknown>): Promise<void> {
+  // Checagem do app sozinha: só precisa da Consumer Key/Secret e responde se
+  // vale a pena sequer gerar o Access Token.
+  if (values.diagnostico === true) {
+    const key = Bun.env.X_API_KEY?.trim();
+    const secret = Bun.env.X_API_SECRET?.trim();
+    if (!key || !secret) {
+      console.error("faltam X_API_KEY / X_API_SECRET no .env");
+      process.exitCode = 1;
+      return;
+    }
+    const d = await diagnosticarApp({ consumerKey: key, consumerSecret: secret });
+    console.log(`consumer key/secret válidos: ${d.chavesValidas ? "sim" : "NÃO"}`);
+    console.log(`app habilitado na API v2:    ${d.v2Liberado ? "sim" : "NÃO"}`);
+    console.log(`detalhe: ${d.detalhe}`);
+    if (!d.v2Liberado) {
+      console.log(`\nSem o v2 liberado, publicar é impossível — e nenhum Access Token contorna isso.`);
+      console.log(`Resolva o plano do app no console.x.com (Pricing -> Pay Per Use + créditos) e rode este comando de novo.`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  const confirmar = values.confirmar === true;
+  const intervaloMs = Number(values.intervalo ?? 6000);
+
+  const posts = parsePostsMarkdown(await Bun.file(POSTS_MD).text());
+  const apenas = values.apenas === undefined ? null : Number(values.apenas);
+  const selecionados = apenas === null ? posts : posts.filter((p) => p.indice === apenas);
+  if (selecionados.length === 0) {
+    console.error(`nenhum post com índice ${apenas} em ${POSTS_MD}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  // O limite do X é 280 em "peso": url conta 23, emoji conta 2 (ver post-x.ts).
+  const excedidos = selecionados.filter((p) => pesoX(p.texto) > 280);
+  for (const p of selecionados) {
+    console.log(`  [${String(p.indice).padStart(2)}] ${p.titulo.padEnd(22)} peso ${pesoX(p.texto)}/280`);
+  }
+  if (excedidos.length > 0) {
+    console.error(`\n${excedidos.length} post(s) acima de 280 de peso — corrija ${POSTS_MD} antes de publicar.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const estadoArquivo = Bun.file(ESTADO_THREAD);
+  const estado: EstadoThread | null = (await estadoArquivo.exists()) ? ((await estadoArquivo.json()) as EstadoThread) : null;
+  if (estado) {
+    console.log(`\nthread já iniciada em ${estado.iniciada_em}: ${estado.publicados.length} post(s) no ar.`);
+    console.log(`  primeiro: ${estado.publicados[0]?.url ?? "—"}`);
+  }
+
+  const cred = lerCredenciais();
+  const usuario = await verificarCredenciais(cred);
+  console.log(`\ncredenciais ok — autenticado como @${usuario}`);
+
+  const jaNoAr = new Set(estado?.publicados.map((p) => p.indice) ?? []);
+  const pendentes = selecionados.filter((p) => !jaNoAr.has(p.indice));
+
+  if (pendentes.length === 0) {
+    console.log("nada pendente: todos os posts selecionados já estão publicados.");
+    return;
+  }
+
+  if (!confirmar) {
+    console.log(`\nENSAIO — nada foi publicado. ${pendentes.length} post(s) seriam publicados como thread em @${usuario}.`);
+    console.log(`Para publicar de verdade: bun run postar:x -- --confirmar`);
+    return;
+  }
+
+  console.log(`\npublicando ${pendentes.length} post(s) em @${usuario}, ${intervaloMs}ms entre cada...`);
+  const final = await publicarThread({
+    cred,
+    posts: selecionados,
+    usuario,
+    estado,
+    intervaloMs,
+    aoPublicar: (p, restantes) => console.log(`  [${String(p.indice).padStart(2)}] ${p.url}  (faltam ${restantes})`),
+    salvarEstado: async (e) => {
+      await Bun.write(ESTADO_THREAD, JSON.stringify(e, null, 2));
+    },
+  });
+
+  console.log(`\nthread no ar: ${final.publicados.length} post(s).`);
+  console.log(`  ${final.publicados[0]?.url ?? "—"}`);
 }
 
 async function cmdCronInstall(): Promise<void> {
