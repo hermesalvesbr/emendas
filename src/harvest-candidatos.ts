@@ -16,8 +16,9 @@
 // contra as respostas reais e contra a documentação não-oficial em
 // https://github.com/augusto-herrmann/divulgacandcontas-doc
 
-import type { Db } from "./db.ts";
+import type { DetalheCandidato, Db } from "./db.ts";
 import { normalizarAutor } from "./normalize.ts";
+import { regiaoDoMunicipio } from "./regioes-pe.ts";
 import { HarvestError, insist } from "./retry.ts";
 
 const BASE = "https://divulgacandcontas.tse.jus.br/divulga/rest/v1";
@@ -210,4 +211,150 @@ export async function harvestCandidatos(db: Db): Promise<RelatorioCandidatos> {
     porSituacao: conta((c) => c.situacao ?? "?"),
     coletadoEm,
   };
+}
+
+// ------------------------------------------------- fase 2: detalhe e bens
+
+/**
+ * Suplentes vêm dentro do detalhe do titular, no campo `vices`, e com nomes de
+ * campo em OUTRO padrão (sq_CANDIDATO, nm_URNA...) — resquício de outra
+ * geração da API. Só senadores têm suplente.
+ */
+type ViceCru = {
+  sq_CANDIDATO?: number | string | null;
+  nm_URNA?: string | null;
+  nm_CANDIDATO?: string | null;
+  nr_CANDIDATO?: number | null;
+  ds_CARGO?: string | null;
+  sg_PARTIDO?: string | null;
+  descricaoTotalizacao?: string | null;
+};
+
+export function parseSuplentes(json: unknown, idTitular: number): Array<Candidato & { id_titular: number }> {
+  const vices = (json as { vices?: ViceCru[] | null })?.vices;
+  if (!Array.isArray(vices)) return [];
+
+  const out: Array<Candidato & { id_titular: number }> = [];
+  for (const v of vices) {
+    const id = Number(v.sq_CANDIDATO);
+    if (!Number.isFinite(id) || id === 0 || !v.nm_URNA) continue;
+    const completo = v.nm_CANDIDATO?.trim() || null;
+    out.push({
+      id,
+      nome_urna: v.nm_URNA.trim(),
+      nome_completo: completo,
+      nome_urna_normalizado: normalizarAutor(v.nm_URNA),
+      nome_completo_normalizado: completo ? normalizarAutor(completo) : null,
+      numero: v.nr_CANDIDATO ?? null,
+      // Suplente de senador herda o código do cargo do titular; o rótulo
+      // ("1º Suplente") vem do próprio registro e é o que interessa exibir.
+      cargo_codigo: 5,
+      cargo: v.ds_CARGO?.trim() || "Suplente",
+      partido: v.sg_PARTIDO?.trim() || null,
+      situacao: v.descricaoTotalizacao?.trim() || null,
+      id_titular: idTitular,
+    });
+  }
+  return out;
+}
+
+type DetalheCru = {
+  totalDeBens?: number | null;
+  bens?: unknown[] | null;
+  nomeMunicipioNascimento?: string | null;
+  sgUfNascimento?: string | null;
+  ocupacao?: string | null;
+  grauInstrucao?: string | null;
+  descricaoSexo?: string | null;
+};
+
+/**
+ * A região sai da NATURALIDADE (município de nascimento) e só quando o
+ * nascimento foi em PE. Não existe, nesta eleição, campo de "região que o
+ * candidato representa": estadual, federal, senador e governador são eleitos
+ * em circunscrição única — o estado inteiro. Ver NOTAS.md item 30.
+ */
+export function parseDetalhe(json: unknown): DetalheCandidato {
+  const d = json as DetalheCru;
+  const uf = d.sgUfNascimento?.trim() || null;
+  const municipio = d.nomeMunicipioNascimento?.trim() || null;
+  return {
+    total_bens: typeof d.totalDeBens === "number" ? d.totalDeBens : null,
+    qtd_bens: Array.isArray(d.bens) ? d.bens.length : null,
+    municipio_nascimento: municipio,
+    uf_nascimento: uf,
+    regiao: uf === "PE" ? regiaoDoMunicipio(municipio) : null,
+    ocupacao: d.ocupacao?.trim() || null,
+    grau_instrucao: d.grauInstrucao?.trim() || null,
+    sexo: d.descricaoSexo?.trim() || null,
+  };
+}
+
+export type RelatorioDetalhe = {
+  detalhados: number;
+  suplentes: number;
+  comBens: number;
+  semRegiao: number;
+  falhas: number;
+};
+
+/**
+ * Um request por candidato (~830 no total). Vai devagar de propósito: a API
+ * não publica limite e a documentação não-oficial pede intervalo. Retomável —
+ * só busca quem ainda tem detalhado = 0.
+ */
+export async function detalharCandidatos(db: Db, opts?: { pausaMs?: number }): Promise<RelatorioDetalhe> {
+  const pausaMs = opts?.pausaMs ?? 350;
+  const rel: RelatorioDetalhe = { detalhados: 0, suplentes: 0, comBens: 0, semRegiao: 0, falhas: 0 };
+  const coletadoEm = new Date().toISOString();
+
+  // Duas passadas: a primeira descobre suplentes (que viram novas linhas), a
+  // segunda pega o detalhe deles. Sem isso os suplentes ficariam sem bens.
+  for (let passada = 1; passada <= 2; passada++) {
+    const pendentes = db.candidatosSemDetalhe();
+    if (pendentes.length === 0) break;
+    console.log(`  passada ${passada}: ${pendentes.length} candidato(s) a detalhar`);
+
+    for (const [i, c] of pendentes.entries()) {
+      const url = `${BASE}/candidatura/buscar/2026/PE/${ELEICAO_2026}/candidato/${c.id}`;
+      const r = await insist(
+        `tse:detalhe-${c.id}`,
+        async (signal) => {
+          const res = await fetch(url, { signal, headers: { "User-Agent": "Mozilla/5.0 (emendas-pe)" } });
+          if (!res.ok) throw new HarvestError("http", `TSE ${res.status} no detalhe ${c.id}`, { status: res.status });
+          return (await res.json()) as unknown;
+        },
+        { maxAttempts: 3, baseMs: 1200 },
+      );
+
+      if (!r.ok) {
+        rel.falhas++;
+        console.error(`    falhou: ${c.nome_urna} (${c.id})`);
+        continue;
+      }
+
+      const d = parseDetalhe(r.value);
+      db.gravarDetalheCandidato(c.id, d);
+      rel.detalhados++;
+      if ((d.total_bens ?? 0) > 0) rel.comBens++;
+      if (!d.regiao) rel.semRegiao++;
+
+      const sup = parseSuplentes(r.value, c.id);
+      if (sup.length > 0) rel.suplentes += db.inserirSuplentes(sup, coletadoEm);
+
+      if ((i + 1) % 100 === 0) console.log(`    ${i + 1}/${pendentes.length}...`);
+      await Bun.sleep(pausaMs);
+    }
+  }
+
+  db.logHarvest({
+    alvo: "tse:detalhe-candidatos",
+    exercicio: 2026,
+    status: rel.falhas === 0 ? "ok" : "http",
+    tentativas: 1,
+    http_status: 200,
+    duracao_ms: null,
+    mensagem: `${rel.detalhados} detalhado(s), ${rel.suplentes} suplente(s), ${rel.falhas} falha(s)`,
+  });
+  return rel;
 }

@@ -47,6 +47,24 @@ silenciados. Ver [`NOTAS.md`](NOTAS.md) item 28.
   Alimenta o marcador de candidatura no painel. Ver NOTAS.md item 29 —
   em especial: o painel **nunca** afirma que alguém não é candidato.
 
+### Bens declarados e regiões
+
+O modo **Bens dos candidatos 2026** ranqueia o patrimônio declarado no
+registro de candidatura, incluindo **suplentes de senador**. Agregados usam
+**mediana** (a média seria definida por um único caso).
+
+O filtro por região tem **dois significados diferentes**, e isso é
+deliberado:
+
+| Modo | O que "região" significa |
+|---|---|
+| Emendas (estadual/federal) | região do **município que recebeu** o recurso — dado sólido |
+| Bens dos candidatos | região de **nascimento** do candidato — proxy |
+
+Não existe "região que o candidato representa": deputado estadual, federal,
+senador e governador são eleitos em circunscrição única, o estado inteiro.
+Ver NOTAS.md item 30.
+
 ## Stack
 
 [Bun](https://bun.com) + TypeScript, **zero dependências de runtime**
@@ -65,6 +83,7 @@ bun run coletar        # painéis Pentaho + CKAN
 bun run coletar:alepe  # dicionário oficial de autoria (PLOAs da ALEPE)
 bun run coletar:federal # emendas federais com foco em PE (CGU + Câmara + Senado)
 bun run coletar:candidatos # candidaturas de PE em 2026 (TSE/DivulgaCandContas)
+bun run coletar:candidatos -- --so-detalhe # retoma só a fase de detalhe (bens/suplentes)
 bun run normalizar     # extrai autoria/município dos textos
 bun run relatorio      # data/cobertura.md (órfãs prontas para pedido de LAI)
 bun run site           # regenera docs/dados.json e docs/dados-federal.json

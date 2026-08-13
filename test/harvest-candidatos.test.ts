@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { casarCandidato, indexarPorNome, parseCandidatos } from "../src/harvest-candidatos.ts";
+import { casarCandidato, indexarPorNome, parseCandidatos, parseDetalhe, parseSuplentes } from "../src/harvest-candidatos.ts";
 import type { Candidato } from "../src/harvest-candidatos.ts";
 
 // Formato conferido contra a resposta real do TSE em 13/08/2026.
@@ -108,5 +108,78 @@ describe("indexarPorNome", () => {
     // achado pelos dois caminhos, mas é uma pessoa só
     const v = casarCandidato("JOSE DA SILVA SOBRINHO", "Deputado Estadual", idx);
     expect(v).toMatchObject({ situacao: "candidato", candidato_id: 9 });
+  });
+});
+
+describe("parseSuplentes — outro padrão de campo na mesma API", () => {
+  // Chaves em SCREAMING_SNAKE conferidas na resposta real de 13/08/2026.
+  const DETALHE = {
+    nomeUrna: "CARLOS SANT'ANNA",
+    vices: [
+      { sq_CANDIDATO: 170002530098, nm_URNA: "CARLA PINHEIRO", nm_CANDIDATO: "CARLA MARIA PINHEIRO", nr_CANDIDATO: 700, ds_CARGO: "1º Suplente", sg_PARTIDO: "NOVO", descricaoTotalizacao: "Concorrendo" },
+      { sq_CANDIDATO: 170002530099, nm_URNA: "HERMES ALVES", nm_CANDIDATO: null, ds_CARGO: "2º Suplente", sg_PARTIDO: "NOVO" },
+      { sq_CANDIDATO: null, nm_URNA: "SEM ID" },
+    ],
+  };
+
+  test("extrai suplentes e amarra ao titular", () => {
+    const r = parseSuplentes(DETALHE, 170002530097);
+    expect(r).toHaveLength(2); // o sem id fica de fora
+    expect(r[0]).toMatchObject({
+      id: 170002530098,
+      nome_urna: "CARLA PINHEIRO",
+      nome_completo_normalizado: "CARLA MARIA PINHEIRO",
+      cargo: "1º Suplente",
+      cargo_codigo: 5,
+      partido: "NOVO",
+      id_titular: 170002530097,
+    });
+    expect(r[1]?.nome_completo).toBeNull();
+  });
+
+  test("candidato sem vices devolve lista vazia em vez de quebrar", () => {
+    expect(parseSuplentes({ nomeUrna: "X" }, 1)).toEqual([]);
+    expect(parseSuplentes({ vices: null }, 1)).toEqual([]);
+  });
+});
+
+describe("parseDetalhe — bens e região", () => {
+  test("lê patrimônio, contagem de itens e deriva a região da naturalidade", () => {
+    const d = parseDetalhe({
+      totalDeBens: 889100,
+      bens: [{ valor: 125000 }, { valor: 7600 }],
+      nomeMunicipioNascimento: "ARARIPINA",
+      sgUfNascimento: "PE",
+      ocupacao: "Advogado",
+      grauInstrucao: "Superior completo",
+      descricaoSexo: "MASC.",
+    });
+    expect(d).toMatchObject({
+      total_bens: 889100,
+      qtd_bens: 2,
+      municipio_nascimento: "ARARIPINA",
+      regiao: "Sertão do Araripe",
+      ocupacao: "Advogado",
+    });
+  });
+
+  test("nascido fora de PE não recebe região — é candidato do estado, não da região", () => {
+    const d = parseDetalhe({ totalDeBens: 0, bens: [], nomeMunicipioNascimento: "SAO PAULO", sgUfNascimento: "SP" });
+    expect(d.regiao).toBeNull();
+    expect(d.uf_nascimento).toBe("SP");
+  });
+
+  test("sem bens declarados vira zero explícito, não null", () => {
+    const d = parseDetalhe({ totalDeBens: 0, bens: [] });
+    expect(d.total_bens).toBe(0);
+    expect(d.qtd_bens).toBe(0);
+  });
+
+  test("campos ausentes viram null em vez de undefined ou string vazia", () => {
+    const d = parseDetalhe({});
+    expect(d).toEqual({
+      total_bens: null, qtd_bens: null, municipio_nascimento: null, uf_nascimento: null,
+      regiao: null, ocupacao: null, grau_instrucao: null, sexo: null,
+    });
   });
 });

@@ -280,3 +280,82 @@ export function exportarSiteCandidatos(db: Db): SiteDataCandidatos {
     marcadores: marcadores.sort((x, y) => x.autor.localeCompare(y.autor)),
   };
 }
+
+// ------------------------------------------- ranking de bens dos candidatos
+
+type LinhaBens = {
+  /** id do TSE — permite conferir na fonte. */
+  id: number;
+  nome: string;
+  cargo: string;
+  partido: string | null;
+  /** Região do MUNICÍPIO DE NASCIMENTO, não da base eleitoral. Ver NOTAS.md 30. */
+  regiao: string | null;
+  nasc: string | null;
+  ocup: string | null;
+  /** Escolaridade declarada. */
+  esc: string | null;
+  /** Patrimônio declarado, em reais. */
+  bens: number;
+  /** Quantidade de itens declarados. */
+  qtd: number;
+  /** true = suplente de senador (não disputa voto direto). */
+  sup: boolean;
+};
+
+export type SiteDataBens = {
+  geradoEm: string;
+  fonte: string;
+  ressalva: string;
+  ressalvaRegiao: string;
+  totalCandidatos: number;
+  semDetalhe: number;
+  linhas: LinhaBens[];
+};
+
+/**
+ * Ranking de patrimônio declarado das candidaturas de PE em 2026.
+ *
+ * Inclui suplentes (marcados), porque o usuário precisa vê-los: suplente de
+ * senador chega ao mandato sem passar por voto nominal, e o patrimônio deles
+ * é dado público igual.
+ *
+ * "Sem bens declarados" (0) é informação, não ausência de dado: quem não
+ * declarou nada aparece com zero e entra na contagem. Já quem ainda não teve
+ * o detalhe coletado fica FORA da lista e é contado em `semDetalhe`, para não
+ * virar um zero falso no ranking.
+ */
+export function exportarSiteBens(db: Db): SiteDataBens {
+  const todos = db.listCandidatos();
+  const detalhados = todos.filter((c) => c.detalhado === 1);
+
+  const linhas: LinhaBens[] = detalhados.map((c) => ({
+    id: c.id,
+    nome: c.nome_urna,
+    cargo: c.cargo,
+    partido: c.partido,
+    regiao: c.regiao ?? null,
+    nasc: c.municipio_nascimento ? `${c.municipio_nascimento}${c.uf_nascimento ? "/" + c.uf_nascimento : ""}` : null,
+    ocup: c.ocupacao ?? null,
+    esc: c.grau_instrucao ?? null,
+    bens: Math.round((c.total_bens ?? 0) * 100) / 100,
+    qtd: c.qtd_bens ?? 0,
+    sup: c.id_titular !== null,
+  }));
+
+  linhas.sort((a, b) => b.bens - a.bens);
+
+  return {
+    geradoEm: new Date().toISOString(),
+    fonte: "Bens declarados — TSE/DivulgaCandContas, Eleições Gerais 2026 (PE)",
+    ressalva:
+      "Patrimônio declarado pelo próprio candidato no registro de candidatura, ainda sujeito a julgamento. " +
+      "Valor zero significa que nada foi declarado.",
+    ressalvaRegiao:
+      "A região vem do MUNICÍPIO DE NASCIMENTO. Deputado estadual, federal, senador e governador são eleitos " +
+      "em circunscrição única (o estado inteiro) — não existe, no dado do TSE, a região que o candidato representa.",
+    totalCandidatos: todos.length,
+    semDetalhe: todos.length - detalhados.length,
+    linhas,
+  };
+}

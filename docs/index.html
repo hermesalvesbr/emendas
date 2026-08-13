@@ -52,6 +52,10 @@
     border-radius: 10px; margin-bottom: 14px;
   }
   .filters label { color: var(--ink-2); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
+  /* `display: flex` acima vence o estilo de agente de usuário do atributo
+     [hidden], então os filtros escondidos por modo continuavam visíveis —
+     inclusive "Partido" no modo estadual, desde antes do modo de bens. */
+  .filters label[hidden] { display: none; }
   .filters input, .filters select {
     font: inherit; color: var(--ink-1); background: var(--page);
     border: 1px solid var(--axis); border-radius: 7px; padding: 5px 8px; min-width: 150px;
@@ -138,18 +142,19 @@
     <button type="button" data-modo="deputado" aria-pressed="false">Dep. Federais de PE</button>
     <button type="button" data-modo="senador" aria-pressed="false">Senadores de PE</button>
     <button type="button" data-modo="bancada" aria-pressed="false">Bancada de PE</button>
+    <button type="button" data-modo="bens" aria-pressed="false">Bens dos candidatos 2026</button>
   </div>
 
   <div class="filters" role="search">
-    <label>Parlamentar
+    <label id="lblAutor">Parlamentar
       <input id="fAutor" list="dlAutores" placeholder="todos" autocomplete="off">
       <datalist id="dlAutores"></datalist>
     </label>
-    <label>Município
+    <label id="lblMun">Município
       <input id="fMun" list="dlMunicipios" placeholder="todos" autocomplete="off">
       <datalist id="dlMunicipios"></datalist>
     </label>
-    <label>Exercício
+    <label id="lblAno">Exercício
       <select id="fAno"><option value="">todos</option></select>
     </label>
     <label id="lblPartido" hidden>Partido
@@ -163,21 +168,24 @@
         <option value="nula">sem autor</option>
       </select>
     </label>
+    <label id="lblRegiao">Região <select id="fRegiao"><option value="">todas</option></select></label>
+    <label id="lblCargo" hidden>Cargo <select id="fCargo"><option value="">todos</option></select></label>
     <label class="fcand"><input type="checkbox" id="fCandidato"> só candidatos em 2026</label>
+    <label class="fcand" id="lblSup" hidden><input type="checkbox" id="fSuplentes" checked> incluir suplentes</label>
     <button id="fLimpar" type="button">Limpar</button>
   </div>
 
   <div class="kpis">
-    <div class="tile"><div class="v" id="kValor">–</div><div class="l">valor empenhado</div></div>
+    <div class="tile"><div class="v" id="kValor">–</div><div class="l" id="kValorLabel">valor empenhado</div></div>
     <div class="tile"><div class="v" id="kEmendas">–</div><div class="l" id="kEmendasLabel">emendas (subações)</div></div>
-    <div class="tile"><div class="v" id="kAutores">–</div><div class="l">parlamentares</div></div>
-    <div class="tile"><div class="v" id="kMun">–</div><div class="l">municípios</div></div>
+    <div class="tile"><div class="v" id="kAutores">–</div><div class="l" id="kAutoresLabel">parlamentares</div></div>
+    <div class="tile"><div class="v" id="kMun">–</div><div class="l" id="kMunLabel">municípios</div></div>
   </div>
 
   <div class="cards">
     <div class="card">
-      <h2>Top parlamentares por valor empenhado</h2>
-      <p class="sub">clique numa barra para filtrar</p>
+      <h2 id="h2Autores">Top parlamentares por valor empenhado</h2>
+      <p class="sub" id="subAutores">clique numa barra para filtrar</p>
       <div id="chAutores" class="chart"></div>
     </div>
     <div class="card">
@@ -191,7 +199,7 @@
       <div id="chEvolucao" class="chart"></div>
     </div>
     <div class="card full tablecard">
-      <h2>Emendas do filtro atual</h2>
+      <h2 id="h2Tabela">Emendas do filtro atual</h2>
       <p class="sub" id="tblInfo"></p>
       <div class="tablewrap">
         <table id="tbl">
@@ -221,6 +229,7 @@
     <br>Gerado em <span id="metaData"></span>. <span id="metaFonte2" hidden></span>
     <span id="notaModo"></span>
     <br><span id="notaCandidatos"></span>
+    <br><span id="notaBens" hidden></span>
     Projeto de dados abertos — código e metodologia no repositório.
   </footer>
 </div>
@@ -228,15 +237,34 @@
 <script src="echarts.min.js"></script>
 <script>
 (async function () {
-  const [resp, respCand] = await Promise.all([fetch("dados.json"), fetch("dados-candidatos.json").catch(() => null)]);
+  const [resp, respCand, respReg] = await Promise.all([
+    fetch("dados.json"),
+    fetch("dados-candidatos.json").catch(() => null),
+    fetch("regioes.json").catch(() => null),
+  ]);
   const dados = await resp.json();
 
   // Marcadores de candidatura 2026. Só existe o positivo: ausência aqui NÃO
   // quer dizer "não é candidato" (o registro fecha em 15/08/2026), por isso
   // nada é renderizado quando o autor não está no mapa.
   const candData = respCand && respCand.ok ? await respCand.json() : null;
+  const regData = respReg && respReg.ok ? await respReg.json() : null;
   const CAND = new Map((candData?.marcadores ?? []).map((m) => [m.autor, m]));
   const ehCandidato = (autor) => (autor ? CAND.get(autor) ?? null : null);
+
+  // Mapa município -> região. Serve a dois filtros de significados diferentes:
+  // nos modos de emenda, é a região do município que RECEBEU o recurso (dado
+  // sólido); no modo de bens, é a região de NASCIMENTO do candidato (proxy).
+  let REGIOES = regData ?? { regioes: [], municipios: {} };
+  const regiaoDe = (mun) => (mun ? REGIOES.municipios[mun] ?? null : null);
+
+  let dadosBens = null;
+  async function carregarBens() {
+    if (dadosBens) return dadosBens;
+    const r = await fetch("dados-bens.json");
+    dadosBens = await r.json();
+    return dadosBens;
+  }
   const linhasEstaduais = dados.linhas;
 
   // Modo atual: "estadual" ou uma categoria federal (deputado/senador/bancada).
@@ -259,8 +287,10 @@
     return dadosFederal;
   }
 
-  const eFederal = () => modo !== "estadual";
-  const baseAtual = () => (eFederal() ? (dadosFederal ?? []).filter((l) => l.cat === modo) : linhasEstaduais);
+  const eBens = () => modo === "bens";
+  const eFederal = () => modo !== "estadual" && modo !== "bens";
+  const baseAtual = () =>
+    eBens() ? (dadosBens?.linhas ?? []) : eFederal() ? (dadosFederal ?? []).filter((l) => l.cat === modo) : linhasEstaduais;
 
   document.getElementById("metaFonte2").textContent = dados.fonte;
   document.getElementById("metaData").textContent = new Date(dados.geradoEm).toLocaleString("pt-BR");
@@ -277,6 +307,9 @@
   // filtros
   const fAutor = document.getElementById("fAutor");
   const fCandidato = document.getElementById("fCandidato");
+  const fRegiao = document.getElementById("fRegiao");
+  const fCargo = document.getElementById("fCargo");
+  const fSuplentes = document.getElementById("fSuplentes");
   const fMun = document.getElementById("fMun");
   const fAno = document.getElementById("fAno");
   const fConf = document.getElementById("fConf");
@@ -302,9 +335,29 @@
     encher(document.getElementById("dlMunicipios"), [...new Set(base.map((l) => l.mun).filter(Boolean))].sort(), false);
     encher(fAno, [...new Set(base.map((l) => l.ex))].sort(), true);
     encher(fPartido, [...new Set(base.map((l) => l.partido).filter(Boolean))].sort(), true);
+
+    // Região é a mesma lista nos dois contextos, mas com significados
+    // diferentes (destino da emenda x naturalidade do candidato) — o rótulo
+    // do filtro muda para não confundir.
+    encher(fRegiao, [...(REGIOES.regioes ?? [])].sort(), true);
+    document.getElementById("lblRegiao").firstChild.textContent = eBens() ? "Região de nascimento " : "Região ";
+    if (eBens()) encher(fCargo, [...new Set((dadosBens?.linhas ?? []).map((l) => l.cargo))].sort(), true);
+  }
+
+  // No modo de bens a unidade não é a emenda, é o candidato — filtro próprio.
+  function filtrarBens() {
+    const va = fAutor.value.trim().toUpperCase();
+    const vr = fRegiao.value || null, vc = fCargo.value || null, vp = fPartido.value || null;
+    return (dadosBens?.linhas ?? []).filter((l) =>
+      (!va || l.nome.toUpperCase().includes(va)) &&
+      (!vr || l.regiao === vr) &&
+      (!vc || l.cargo === vc) &&
+      (!vp || l.partido === vp) &&
+      (fSuplentes.checked || !l.sup));
   }
 
   function filtrar() {
+    if (eBens()) return filtrarBens();
     const va = fAutor.value.trim().toUpperCase(), vm = fMun.value.trim().toUpperCase();
     const vy = fAno.value ? Number(fAno.value) : null;
     const vc = eFederal() ? null : (fConf.value || null);
@@ -315,7 +368,8 @@
       (vy === null || l.ex === vy) &&
       (!vc || l.conf === vc) &&
       (!vp || l.partido === vp) &&
-      (!fCandidato.checked || ehCandidato(l.autor) !== null));
+      (!fCandidato.checked || ehCandidato(l.autor) !== null) &&
+      (!fRegiao.value || regiaoDe(l.mun) === fRegiao.value));
   }
 
   // ECharts base — grid recessivo, ink nos textos, sem decoração
@@ -526,27 +580,147 @@
       sub: "Orçamento da União (execução 2023–2026) · recursos ligados a PE",
       nota: NOTA_FEDERAL,
       kEmendas: "emendas (registros)", cols: ["Emenda","Parlamentar","Localidade","Função","Tipo","Exercício","Empenhado","Pago","Partido","Conferir na fonte"] },
+    bens: { seg: "Patrimônio declarado por região de nascimento", segSub: "mediana por candidato — a média seria dominada por um único caso",
+      evo: "Patrimônio declarado por cargo",
+      evoSub: "cada barra é a mediana do cargo; a faixa cinza mostra quantos declararam zero",
+      titulo: "Bens Declarados — Candidaturas 2026 em Pernambuco",
+      sub: "Patrimônio informado no registro de candidatura ao TSE · inclui suplentes de senador",
+      nota: "",
+      kEmendas: "candidatos", cols: ["Candidato","Cargo","Partido","Região (nascimento)","Naturalidade","Ocupação","Patrimônio","Itens","Escolaridade","Conferir na fonte"] },
   };
 
   const ROTULO_MODO = { deputado: "Deputados Federais de PE", senador: "Senadores de PE", bancada: "Bancada de PE" };
 
   function aplicarTitulos() {
-    const t = eFederal() ? TITULOS.federal : TITULOS.estadual;
+    const t = eBens() ? TITULOS.bens : eFederal() ? TITULOS.federal : TITULOS.estadual;
     document.getElementById("tituloPagina").textContent = t.titulo;
     document.getElementById("subtituloPagina").textContent = eFederal() ? `${t.sub} · ${ROTULO_MODO[modo]}` : t.sub;
+    document.getElementById("notaCandidatos").hidden = eBens();
+    document.getElementById("notaBens").hidden = !eBens();
     document.getElementById("notaModo").textContent = t.nota;
     document.getElementById("h2Segundo").textContent = t.seg;
     document.getElementById("subSegundo").textContent = t.segSub;
     document.getElementById("h2Evolucao").textContent = t.evo;
     document.getElementById("subEvolucao").textContent = t.evoSub;
     document.getElementById("kEmendasLabel").textContent = t.kEmendas;
-    document.getElementById("lblConf").hidden = eFederal();
-    document.getElementById("lblPartido").hidden = !eFederal();
+    document.getElementById("kValorLabel").textContent = eBens() ? "patrimônio declarado (soma)" : "valor empenhado";
+    document.getElementById("kAutoresLabel").textContent = eBens() ? "patrimônio mediano" : "parlamentares";
+    document.getElementById("kMunLabel").textContent = eBens() ? "declararam zero" : "municípios";
+    document.getElementById("lblConf").hidden = eFederal() || eBens();
+    document.getElementById("lblPartido").hidden = !eFederal() && !eBens();
+    document.getElementById("lblCargo").hidden = !eBens();
+    document.getElementById("lblSup").hidden = !eBens();
+    // no modo de bens não existe município nem exercício de execução
+    document.getElementById("lblMun").hidden = eBens();
+    document.getElementById("lblAno").hidden = eBens();
+    document.querySelector(".fcand").hidden = eBens();
+    document.getElementById("h2Autores").textContent = eBens() ? "Maiores patrimônios declarados" : "Top parlamentares por valor empenhado";
+    document.getElementById("subAutores").textContent = eBens() ? "clique numa barra para filtrar pelo candidato" : "clique numa barra para filtrar";
+    document.getElementById("lblAutor").firstChild.textContent = eBens() ? "Candidato " : "Parlamentar ";
     const ths = document.querySelectorAll("#tbl thead th");
-    t.cols.forEach((c, i) => { if (ths[i]) ths[i].textContent = c; });
+    // As colunas numéricas mudam de posição entre os modos; sem reatribuir,
+    // "Ocupação" herda o alinhamento à direita que era do "Exercício".
+    const numericas = eBens() ? new Set([6, 7]) : new Set([5, 6, 7]);
+    t.cols.forEach((c, i) => {
+      if (!ths[i]) return;
+      ths[i].textContent = c;
+      ths[i].classList.toggle("num", numericas.has(i));
+    });
+    document.getElementById("h2Tabela").textContent = eBens() ? "Candidatos do filtro atual" : "Emendas do filtro atual";
+  }
+
+  const mediana = (xs) => {
+    if (xs.length === 0) return 0;
+    const o = [...xs].sort((a, b) => a - b), i = Math.floor(o.length / 2);
+    return o.length % 2 ? o[i] : (o[i - 1] + o[i]) / 2;
+  };
+
+  // O ranking de bens usa MEDIANA nos agregados. A média por região seria
+  // definida por um único candidato milionário e diria mais sobre ele do que
+  // sobre a região.
+  function renderBens(fl) {
+    const vals = fl.map((l) => l.bens);
+    document.getElementById("kValor").textContent = brlCompact(vals.reduce((a, b) => a + b, 0));
+    document.getElementById("kEmendas").textContent = fl.length.toLocaleString("pt-BR");
+    document.getElementById("kAutores").textContent = brlCompact(mediana(vals));
+    document.getElementById("kMun").textContent = fl.filter((l) => l.bens === 0).length.toLocaleString("pt-BR");
+
+    const top = [...fl].sort((a, b) => b.bens - a.bens).slice(0, 15).reverse();
+    charts.autores.setOption({
+      ...baseOption(),
+      grid: { left: 8, right: 80, top: 6, bottom: 6, containLabel: true },
+      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+      yAxis: { type: "category", data: top.map((l) => l.nome), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
+      tooltip: { ...baseOption().tooltip, formatter: (p) => { const l = top[p.dataIndex]; return `<b>${brlCompact(l.bens)}</b><br>${esc(l.nome)}<br>${esc(l.cargo)}${l.partido ? " · " + esc(l.partido) : ""}<br>${l.qtd} item(ns) declarado(s)`; } },
+      series: [{ type: "bar", data: top.map((l) => l.bens), itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16,
+        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) } }],
+    }, true);
+    charts.autores.off("click");
+    charts.autores.on("click", (p) => { fAutor.value = top[p.dataIndex].nome; render(); });
+
+    const porRegiao = new Map();
+    for (const l of fl) { const r = l.regiao ?? "(nascido fora de PE)"; (porRegiao.get(r) ?? porRegiao.set(r, []).get(r)).push(l.bens); }
+    const reg = [...porRegiao.entries()].map(([r, v]) => [r, mediana(v), v.length]).sort((a, b) => b[1] - a[1]).reverse();
+    charts.municipios.setOption({
+      ...baseOption(),
+      grid: { left: 8, right: 80, top: 6, bottom: 6, containLabel: true },
+      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+      yAxis: { type: "category", data: reg.map((r) => r[0]), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 170, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
+      tooltip: { ...baseOption().tooltip, formatter: (p) => `mediana <b>${brlCompact(reg[p.dataIndex][1])}</b><br>${esc(reg[p.dataIndex][0])}<br>${reg[p.dataIndex][2]} candidato(s)` },
+      series: [{ type: "bar", data: reg.map((r) => r[1]), itemStyle: { color: css("--s2"), borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16,
+        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) } }],
+    }, true);
+    charts.municipios.off("click");
+    charts.municipios.on("click", (p) => { const r = reg[p.dataIndex][0]; fRegiao.value = REGIOES.regioes.includes(r) ? r : ""; render(); });
+
+    const porCargo = new Map();
+    for (const l of fl) { (porCargo.get(l.cargo) ?? porCargo.set(l.cargo, []).get(l.cargo)).push(l.bens); }
+    const cg = [...porCargo.entries()].sort((a, b) => mediana(b[1]) - mediana(a[1]));
+    charts.evolucao.setOption({
+      ...baseOption(),
+      legend: { data: ["mediana declarada", "declararam zero"], textStyle: { color: css("--ink-2") }, top: 0 },
+      grid: { left: 8, right: 16, top: 30, bottom: 6, containLabel: true },
+      xAxis: { type: "category", data: cg.map((c) => c[0]), axisLabel: { color: css("--ink-2"), fontSize: 11 }, axisLine: { lineStyle: { color: css("--axis") } } },
+      yAxis: [
+        { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
+        { type: "value", axisLabel: { color: css("--ink-muted") }, splitLine: { show: false } },
+      ],
+      tooltip: { ...baseOption().tooltip, trigger: "axis" },
+      series: [
+        { name: "mediana declarada", type: "bar", data: cg.map((c) => mediana(c[1])), itemStyle: { color: css("--s1"), borderRadius: [4, 4, 0, 0] }, barMaxWidth: 40 },
+        { name: "declararam zero", type: "line", yAxisIndex: 1, data: cg.map((c) => c[1].filter((v) => v === 0).length), itemStyle: { color: css("--ink-muted") }, lineStyle: { type: "dashed" } },
+      ],
+    }, true);
+
+    renderTabelaBens(fl);
+  }
+
+  function renderTabelaBens(fl) {
+    const tb = document.querySelector("#tbl tbody");
+    tb.textContent = "";
+    const rows = [...fl].sort((a, b) => b.bens - a.bens).slice(0, 400);
+    for (const l of rows) {
+      const tr = document.createElement("tr");
+      const td = (txt, cls, label) => { const d = document.createElement("td"); d.textContent = txt ?? "—"; if (cls) d.className = cls; if (label) d.dataset.label = label; tr.append(d); return d; };
+      const dNome = td(l.nome, null, "Candidato");
+      if (l.sup) { const b = document.createElement("span"); b.className = "cand cand-outro"; b.textContent = "suplente"; dNome.append(b); }
+      td(l.cargo, null, "Cargo"); td(l.partido, null, "Partido");
+      td(l.regiao, null, "Região (nascimento)"); td(l.nasc, null, "Naturalidade"); td(l.ocup, null, "Ocupação");
+      td(brl.format(l.bens), "num", "Patrimônio"); td(String(l.qtd), "num", "Itens");
+      td(l.esc, null, "Escolaridade");
+      const dl = document.createElement("td"); dl.dataset.label = "Conferir na fonte";
+      const a = document.createElement("a");
+      a.href = "https://divulgacandcontas.tse.jus.br/divulga/#/candidato/2026/20322002026/PE/" + l.id;
+      a.target = "_blank"; a.rel = "noopener"; a.textContent = "TSE";
+      dl.append(a); tr.append(dl);
+      tb.append(tr);
+    }
+    document.getElementById("tblInfo").textContent =
+      `${fl.length.toLocaleString("pt-BR")} candidato(s) no filtro · exibindo ${rows.length} por patrimônio declarado`;
   }
 
   function render() {
+    if (eBens()) { renderBens(filtrar()); return; }
     const fl = filtrar();
     document.getElementById("kValor").textContent = brlCompact(fl.reduce((s, l) => s + l.vemp, 0));
     document.getElementById("kEmendas").textContent = new Set(fl.map((l) => l.s)).size.toLocaleString("pt-BR");
@@ -566,6 +740,7 @@
 
   function limparFiltros() {
     fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; fPartido.value = ""; fCandidato.checked = false;
+    fRegiao.value = ""; fCargo.value = ""; fSuplentes.checked = true;
   }
 
   async function trocarModo(novo) {
@@ -575,6 +750,7 @@
       b.setAttribute("aria-pressed", String(b.dataset.modo === modo));
     }
     if (eFederal()) await carregarFederal();
+    if (eBens()) await carregarBens();
     limparFiltros();
     aplicarTitulos();
     preencherOpcoes();
@@ -593,13 +769,26 @@
     );
   }
 
+  // A ressalva sobre a região é o ponto mais fácil de ler errado no painel
+  // inteiro, então fica no rodapé e não só no tooltip.
+  {
+    const el = document.getElementById("notaBens");
+    const a = document.createElement("a");
+    a.href = "https://divulgacandcontas.tse.jus.br/"; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "TSE/DivulgaCandContas";
+    el.append(document.createTextNode("Bens declarados no registro de candidatura: "), a, document.createTextNode("."));
+    const aviso = document.createElement("strong");
+    aviso.textContent = " A região é a de NASCIMENTO do candidato, não a base eleitoral: todos os cargos em disputa são eleitos pelo estado inteiro.";
+    el.append(aviso);
+  }
+
   aplicarTitulos(); preencherOpcoes(); initCharts(); render();
 
   for (const b of document.querySelectorAll(".modos button")) {
     b.addEventListener("click", () => { trocarModo(b.dataset.modo); });
   }
   for (const el of [fAutor, fMun, fAno, fConf, fPartido]) el.addEventListener("input", render);
-  fCandidato.addEventListener("change", render);
+  for (const el of [fCandidato, fRegiao, fCargo, fSuplentes]) el.addEventListener("change", render);
   document.getElementById("fLimpar").addEventListener("click", () => { limparFiltros(); render(); });
   window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });

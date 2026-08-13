@@ -7,11 +7,12 @@ import { openDb } from "./db.ts";
 import { discover } from "./discover.ts";
 import { harvestCkan } from "./harvest-ckan.ts";
 import { harvestAlepe } from "./harvest-alepe.ts";
-import { harvestCandidatos } from "./harvest-candidatos.ts";
+import { detalharCandidatos, harvestCandidatos } from "./harvest-candidatos.ts";
 import { harvestFederal } from "./harvest-federal.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
-import { exportarSite, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
+import { exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
+import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
 import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
@@ -71,7 +72,7 @@ async function main(): Promise<void> {
       await cmdColetarFederal();
       break;
     case "coletar:candidatos":
-      await cmdColetarCandidatos();
+      await cmdColetarCandidatos(values);
       break;
     case "normalizar":
       await cmdNormalizar();
@@ -248,22 +249,31 @@ async function cmdColetarFederal(): Promise<void> {
   }
 }
 
-async function cmdColetarCandidatos(): Promise<void> {
+async function cmdColetarCandidatos(values: Record<string, unknown>): Promise<void> {
   const db = openDb();
   try {
-    console.log("coletando candidaturas de PE nas Eleições 2026 (TSE/DivulgaCandContas)...");
-    const r = await harvestCandidatos(db);
-    console.log(`${r.total} candidatura(s) gravada(s) em ${r.coletadoEm}`);
-    console.log(`  por cargo:    ${JSON.stringify(r.porCargo)}`);
-    console.log(`  por situação: ${JSON.stringify(r.porSituacao)}`);
-    const pendentes = r.porSituacao["Aguardando julgamento"] ?? 0;
-    if (pendentes > 0) {
-      console.log(`  ATENÇÃO: ${pendentes} aguardando julgamento — registro ainda pode ser indeferido.`);
+    // --so-detalhe retoma a fase 2 sem refazer o espelho (que zeraria o
+    // progresso de ~830 requests já feitos).
+    if (values["so-detalhe"] !== true) {
+      console.log("coletando candidaturas de PE nas Eleições 2026 (TSE/DivulgaCandContas)...");
+      const r = await harvestCandidatos(db);
+      console.log(`${r.total} candidatura(s) gravada(s) em ${r.coletadoEm}`);
+      console.log(`  por cargo:    ${JSON.stringify(r.porCargo)}`);
+      console.log(`  por situação: ${JSON.stringify(r.porSituacao)}`);
     }
+
+    console.log("buscando detalhe de cada candidatura (bens, naturalidade, suplentes)...");
+    const d = await detalharCandidatos(db);
+    console.log(`detalhe: ${d.detalhados} candidato(s), ${d.suplentes} suplente(s) descoberto(s)`);
+    console.log(`  com bens declarados: ${d.comBens}`);
+    console.log(`  sem região (nascidos fora de PE ou sem naturalidade): ${d.semRegiao}`);
+    if (d.falhas > 0) console.log(`  ATENÇÃO: ${d.falhas} falha(s) — rode com --so-detalhe para retomar`);
+    return;
   } finally {
     db.close();
   }
 }
+
 
 async function runCkan(db: Db, config: Awaited<ReturnType<typeof loadConfig>>): Promise<void> {
   console.log("coletando via CKAN...");
@@ -360,6 +370,20 @@ async function cmdSite(): Promise<void> {
     const reel = cand.marcadores.filter((m) => m.reeleicao).length;
     console.log(`docs/dados-candidatos.json gerado: ${cand.marcadores.length} autor(es) marcado(s) como candidato(s) em 2026`);
     console.log(`  ${reel} concorrendo ao mesmo cargo (reeleição), ${cand.marcadores.length - reel} a outro cargo`);
+    const bens = exportarSiteBens(db);
+    await Bun.write("docs/dados-bens.json", JSON.stringify(bens));
+    const comBens = bens.linhas.filter((l) => l.bens > 0).length;
+    console.log(`docs/dados-bens.json gerado: ${bens.linhas.length} candidato(s) detalhado(s), ${comBens} com patrimônio declarado`);
+    if (bens.semDetalhe > 0) console.log(`  ${bens.semDetalhe} sem detalhe coletado — ficam FORA do ranking (não viram zero falso)`);
+
+    // Mapa município -> região, usado pelo filtro regional do painel nos dois
+    // sentidos: destino da emenda (sólido) e naturalidade do candidato (proxy).
+    await Bun.write(
+      "docs/regioes.json",
+      JSON.stringify({ regioes: REGIOES_PE, municipios: Object.fromEntries(MUNICIPIO_REGIAO) }),
+    );
+    console.log(`docs/regioes.json gerado: ${MUNICIPIO_REGIAO.size} municípios em ${REGIOES_PE.length} regiões`);
+
     if (cand.ambiguos.length > 0) {
       console.log(`  ${cand.ambiguos.length} nome(s) ambíguo(s) sem marcador: ${cand.ambiguos.map((a) => a.autor).join(", ")}`);
     }

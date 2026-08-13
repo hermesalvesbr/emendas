@@ -611,3 +611,56 @@ rótulo público, em ano eleitoral.
 Resultado da coleta de 13/08: 68 autores marcados (60 ao mesmo cargo, 8 a
 outro), zero ambíguos. No modo estadual, o filtro "só candidatos em 2026"
 recorta R$ 198,1 mi de R$ 601,7 mi e 45 dos 119 parlamentares.
+
+---
+
+## 30. Bens declarados e o que "região" pode e não pode significar
+
+Fase 2 da coleta do TSE: o endpoint de detalhe
+`/candidatura/buscar/2026/PE/20322002026/candidato/{id}` traz o que a listagem
+não traz — `totalDeBens`, a lista `bens` item a item, naturalidade, ocupação,
+grau de instrução e os **suplentes** (campo `vices`). Um request por
+candidatura, ~830 no total, com pausa de 350 ms: a API não publica limite e a
+documentação não-oficial pede intervalo. Retomável por `--so-detalhe`, que
+pula quem já tem `detalhado = 1`.
+
+**Suplentes.** Só senadores têm, e eles vêm dentro do detalhe do titular com
+os campos em OUTRO padrão de nomenclatura (`sq_CANDIDATO`, `nm_URNA`,
+`ds_CARGO`) — resquício de outra geração da API. Por isso a coleta tem duas
+passadas: a primeira descobre os suplentes como linhas novas, a segunda busca
+o detalhe deles. Sem a segunda passada, suplente ficaria no ranking com
+patrimônio nulo. Eles entram no painel marcados como "suplente" porque um
+suplente de senador pode assumir o mandato sem nunca ter recebido voto
+nominal, e o patrimônio dele é dado público igual ao do titular.
+
+**O aviso mais importante do painel inteiro.** O filtro por região usa o
+**município de nascimento**. Deputado estadual, deputado federal, senador e
+governador são eleitos em **circunscrição única** — o estado inteiro. Não
+existe, no dado do TSE, "a região que o candidato representa"; não existe
+distrito eleitoral no Brasil. Alguém nascido no Recife pode ser a principal
+liderança política do Araripe, e vice-versa. Por isso:
+
+- a coluna e o filtro se chamam "Região (nascimento)" / "Região de nascimento",
+  nunca "região que representa";
+- quem nasceu fora de PE fica com região nula e aparece agrupado como
+  "(nascido fora de PE)", em vez de ser jogado numa região qualquer;
+- o rodapé do modo de bens traz a ressalva em negrito.
+
+Nos modos de emenda, o mesmo filtro tem outro significado, este sólido: a
+região do **município que recebeu** o recurso.
+
+**Agregação por mediana, não média.** Os gráficos por região e por cargo usam
+mediana. A média de qualquer recorte aqui é definida por um único candidato
+muito rico e diria mais sobre ele do que sobre o grupo.
+
+**Zero declarado é informação; sem coleta, não.** Quem declarou nada aparece
+com R$ 0 e é contado no KPI "declararam zero". Já quem ainda não teve o
+detalhe coletado fica **fora** do JSON e é contado em `semDetalhe`, para não
+virar um zero falso no ranking.
+
+**Mapa de regiões** (`src/regioes-pe.ts`, gerado da API de localidades do
+IBGE): as 19 microrregiões agrupadas nas 12 regiões de uso corrente no estado.
+Vitória de Santo Antão entra na RMR — não porque seja a RMR legal (que tem 15
+municípios), mas porque foi assim que os números publicados em `POSTS-X.md`
+foram calculados: lá a RMR aparece com 19 municípios, o que só fecha com essa
+microrregião dentro. Painel e thread pública precisam contar a mesma história.

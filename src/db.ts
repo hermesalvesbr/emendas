@@ -104,6 +104,19 @@ CREATE TABLE IF NOT EXISTS candidato_2026 (
   cargo TEXT NOT NULL,
   partido TEXT,
   situacao TEXT,
+  -- Fase 2 (detalhe, um request por candidato): bens declarados, naturalidade
+  -- e perfil. A coluna regiao é DERIVADA da naturalidade (município de
+  -- nascimento), que NÃO é o mesmo que a região representada — NOTAS.md 30.
+  total_bens REAL,
+  qtd_bens INTEGER,
+  municipio_nascimento TEXT,
+  uf_nascimento TEXT,
+  regiao TEXT,
+  ocupacao TEXT,
+  grau_instrucao TEXT,
+  sexo TEXT,
+  id_titular INTEGER,
+  detalhado INTEGER NOT NULL DEFAULT 0,
   coletado_em TEXT NOT NULL
 );
 
@@ -119,6 +132,24 @@ CREATE INDEX IF NOT EXISTS idx_emp_exercicio ON empenho(exercicio);
 CREATE INDEX IF NOT EXISTS idx_emenda_subacao ON emenda(subacao_codigo);
 `;
 
+/**
+ * Colunas acrescentadas a candidato_2026 depois da primeira versão da tabela.
+ * `CREATE TABLE IF NOT EXISTS` não altera tabela existente, então bancos já
+ * criados precisam do ALTER — silencioso quando a coluna já existe.
+ */
+const COLUNAS_CANDIDATO_FASE2: ReadonlyArray<readonly [string, string]> = [
+  ["total_bens", "REAL"],
+  ["qtd_bens", "INTEGER"],
+  ["municipio_nascimento", "TEXT"],
+  ["uf_nascimento", "TEXT"],
+  ["regiao", "TEXT"],
+  ["ocupacao", "TEXT"],
+  ["grau_instrucao", "TEXT"],
+  ["sexo", "TEXT"],
+  ["id_titular", "INTEGER"],
+  ["detalhado", "INTEGER NOT NULL DEFAULT 0"],
+];
+
 export type NewCandidato = {
   id: number;
   nome_urna: string;
@@ -132,7 +163,20 @@ export type NewCandidato = {
   situacao: string | null;
 };
 
-export type CandidatoRow = NewCandidato & { coletado_em: string };
+/** Campos que só existem depois da fase 2 (um request de detalhe por candidato). */
+export type DetalheCandidato = {
+  total_bens: number | null;
+  qtd_bens: number | null;
+  municipio_nascimento: string | null;
+  uf_nascimento: string | null;
+  regiao: string | null;
+  ocupacao: string | null;
+  grau_instrucao: string | null;
+  sexo: string | null;
+};
+
+export type CandidatoRow = NewCandidato &
+  Partial<DetalheCandidato> & { coletado_em: string; id_titular: number | null; detalhado: number };
 
 export type NewEmpenho = Omit<EmpenhoRow, "id" | "hash" | "coletado_em">;
 export type NewEmenda = EmendaRow;
@@ -217,6 +261,9 @@ export type Db = {
   limparEmendasFederais(): number;
   substituirCandidatos(candidatos: NewCandidato[], coletadoEm: string): void;
   listCandidatos(): CandidatoRow[];
+  inserirSuplentes(suplentes: Array<NewCandidato & { id_titular: number }>, coletadoEm: string): number;
+  candidatosSemDetalhe(): Array<{ id: number; nome_urna: string }>;
+  gravarDetalheCandidato(id: number, d: DetalheCandidato): void;
   close(): void;
 };
 
@@ -232,6 +279,14 @@ export function openDb(path = "data/emendas.sqlite"): Db {
   raw.run("PRAGMA journal_mode = WAL;");
   raw.run("PRAGMA foreign_keys = ON;");
   raw.exec(SCHEMA);
+
+  // Migração das colunas da fase 2 para bancos criados antes delas.
+  const colunasExistentes = new Set(
+    (raw.query("PRAGMA table_info(candidato_2026)").all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  for (const [nome, tipo] of COLUNAS_CANDIDATO_FASE2) {
+    if (!colunasExistentes.has(nome)) raw.exec(`ALTER TABLE candidato_2026 ADD COLUMN ${nome} ${tipo}`);
+  }
 
   const stmts = {
     insertEmpenho: raw.query(`
@@ -512,6 +567,44 @@ export function openDb(path = "data/emendas.sqlite"): Db {
 
     listCandidatos() {
       return raw.query("SELECT * FROM candidato_2026 ORDER BY cargo_codigo, nome_urna").all() as CandidatoRow[];
+    },
+
+    // Suplentes chegam dentro do detalhe do titular (campo `vices`), então
+    // entram depois do espelho inicial — daí ser INSERT OR IGNORE e não parte
+    // de substituirCandidatos().
+    inserirSuplentes(suplentes, coletadoEm) {
+      const st = raw.query(`
+        INSERT OR IGNORE INTO candidato_2026
+          (id, nome_urna, nome_completo, nome_urna_normalizado, nome_completo_normalizado,
+           numero, cargo_codigo, cargo, partido, situacao, id_titular, coletado_em)
+        VALUES ($id, $nome_urna, $nome_completo, $nome_urna_normalizado, $nome_completo_normalizado,
+                $numero, $cargo_codigo, $cargo, $partido, $situacao, $id_titular, $coletado_em)
+      `);
+      let n = 0;
+      raw.transaction(() => {
+        for (const s of suplentes) n += st.run({ ...s, coletado_em: coletadoEm }).changes;
+      })();
+      return n;
+    },
+
+    candidatosSemDetalhe() {
+      return raw.query("SELECT id, nome_urna FROM candidato_2026 WHERE detalhado = 0 ORDER BY id").all() as Array<{
+        id: number;
+        nome_urna: string;
+      }>;
+    },
+
+    gravarDetalheCandidato(id, d) {
+      raw
+        .query(`
+          UPDATE candidato_2026 SET
+            total_bens = $total_bens, qtd_bens = $qtd_bens,
+            municipio_nascimento = $municipio_nascimento, uf_nascimento = $uf_nascimento,
+            regiao = $regiao, ocupacao = $ocupacao, grau_instrucao = $grau_instrucao,
+            sexo = $sexo, detalhado = 1
+          WHERE id = $id
+        `)
+        .run({ ...d, id });
     },
 
     close() {
