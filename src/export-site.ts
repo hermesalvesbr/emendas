@@ -299,8 +299,10 @@ type LinhaBens = {
   bens: number;
   /** Quantidade de itens declarados. */
   qtd: number;
-  /** true = suplente de senador (não disputa voto direto). */
+  /** true = suplente/vice (não disputa voto direto). */
   sup: boolean;
+  /** Nome do titular da chapa, quando esta linha é de suplente/vice. */
+  titular: string | null;
 };
 
 export type SiteDataBens = {
@@ -328,6 +330,9 @@ export type SiteDataBens = {
 export function exportarSiteBens(db: Db): SiteDataBens {
   const todos = db.listCandidatos();
   const detalhados = todos.filter((c) => c.detalhado === 1);
+  // Sem o nome do titular a tag "suplente" não informa nada — a pergunta
+  // óbvia de quem lê é "suplente de quem?".
+  const porId = new Map(todos.map((c) => [c.id, c]));
 
   const linhas: LinhaBens[] = detalhados.map((c) => ({
     id: c.id,
@@ -341,6 +346,7 @@ export function exportarSiteBens(db: Db): SiteDataBens {
     bens: Math.round((c.total_bens ?? 0) * 100) / 100,
     qtd: c.qtd_bens ?? 0,
     sup: c.id_titular !== null,
+    titular: c.id_titular !== null ? (porId.get(c.id_titular)?.nome_urna ?? null) : null,
   }));
 
   linhas.sort((a, b) => b.bens - a.bens);

@@ -703,8 +703,15 @@
       const tr = document.createElement("tr");
       const td = (txt, cls, label) => { const d = document.createElement("td"); d.textContent = txt ?? "—"; if (cls) d.className = cls; if (label) d.dataset.label = label; tr.append(d); return d; };
       const dNome = td(l.nome, null, "Candidato");
-      if (l.sup) { const b = document.createElement("span"); b.className = "cand cand-outro"; b.textContent = "suplente"; dNome.append(b); }
-      td(l.cargo, null, "Cargo"); td(l.partido, null, "Partido");
+      if (l.sup) {
+        const b = document.createElement("span");
+        b.className = "cand cand-outro";
+        b.textContent = "suplente";
+        if (l.titular) b.title = "Suplente na chapa de " + l.titular;
+        dNome.append(b);
+      }
+      // "2º Suplente" sozinho não diz suplente de quem — a chapa é a informação.
+      td(l.sup && l.titular ? `${l.cargo} de ${l.titular}` : l.cargo, null, "Cargo"); td(l.partido, null, "Partido");
       td(l.regiao, null, "Região (nascimento)"); td(l.nasc, null, "Naturalidade"); td(l.ocup, null, "Ocupação");
       td(brl.format(l.bens), "num", "Patrimônio"); td(String(l.qtd), "num", "Itens");
       td(l.esc, null, "Escolaridade");
