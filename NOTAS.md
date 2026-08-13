@@ -560,3 +560,54 @@ Recorte final (2023–2026): **1.167 linhas, R$ 5,6 bilhões** — deputados 949
 não é bug: a maioria das emendas federais tem localidade "PERNAMBUCO (UF)"
 (497) ou "MÚLTIPLO" (466). Por isso o segundo gráfico no modo federal ranqueia
 por **função** (sempre preenchida), não por município.
+
+---
+
+## 29. Marcador de candidatura 2026 (TSE) — o que a fonte não entrega
+
+Fonte: **DivulgaCandContas** (`divulgacandcontas.tse.jus.br/divulga/rest/v1`),
+API não documentada oficialmente. Contrato conferido contra as respostas reais
+e contra a documentação não-oficial em `github.com/augusto-herrmann/divulgacandcontas-doc`.
+
+Chamada usada (uma por cargo):
+`/candidatura/listar/2026/PE/20322002026/{cargo}/candidatos`, onde
+`20322002026` é o id da "Eleição Geral Federal 2026" obtido de
+`/eleicao/ordinarias`. Cargos: 3 Governador, 5 Senador, 6 Dep. Federal,
+7 Dep. Estadual. Presidente (1) é nacional e retorna vazio para PE.
+
+Coleta de 13/08/2026: **811 candidaturas** — 7 Governador, 9 Senador,
+333 Dep. Federal, 462 Dep. Estadual.
+
+**Três achados que moldaram o desenho:**
+
+1. **`st_REELEICAO` vem `false` para os 811.** O campo existe e seria a
+   resposta pronta, mas só é preenchido depois do julgamento. A reeleição é
+   **derivada** aqui: cargo atual (nosso banco) × cargo de 2026 (TSE). Por
+   isso o painel distingue "reeleição 2026" de "Deputado Federal 2026" —
+   trocar de cargo é fato diferente de tentar o mesmo, e é o mais noticiável.
+
+2. **Todas estão "Aguardando julgamento"** e o prazo de registro só fechou em
+   15/08/2026. Logo, **ausência da lista não é negativa**: o painel só exibe
+   marcador positivo e nunca afirma que alguém não é candidato. Na coleta de
+   13/08, nomes como Priscila Krause, Teresa Leitão e André de Paula ainda não
+   apareciam. Reexecutar `bun run coletar:candidatos` após o julgamento
+   substitui a lista inteira (a tabela é espelho do dia, não acumulada).
+
+3. **Homônimo é risco real, e o partido nem sempre desempata.** "ANDRE
+   FERREIRA", deputado federal do PL, casa com um candidato a Deputado
+   **Estadual** também do PL. Parecia homônimo; o nome civil da API da Câmara
+   (`ANDRÉ FERREIRA RODRIGUES`) bate exatamente com o `nomeCompleto` do TSE —
+   **é a mesma pessoa**, um federal concorrendo a estadual. Os 8 casos de
+   troca de cargo foram conferidos um a um contra o nome civil; todos
+   confirmados (Maria Arraes só ganhou um sobrenome a mais no TSE). Ainda
+   assim `casarCandidato()` devolve `ambiguo` — sem marcador — quando há mais
+   de um candidato com o mesmo nome e o partido não resolve. Errar aqui é
+   afirmar publicamente que alguém está concorrendo quando não está.
+
+**Recorte do cruzamento:** estaduais só com `confianca = 'alta'`. Marcar como
+candidato alguém cuja autoria foi apenas inferida somaria duas incertezas num
+rótulo público, em ano eleitoral.
+
+Resultado da coleta de 13/08: 68 autores marcados (60 ao mesmo cargo, 8 a
+outro), zero ambíguos. No modo estadual, o filtro "só candidatos em 2026"
+recorta R$ 198,1 mi de R$ 601,7 mi e 45 dos 119 parlamentares.

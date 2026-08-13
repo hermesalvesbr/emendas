@@ -7,10 +7,11 @@ import { openDb } from "./db.ts";
 import { discover } from "./discover.ts";
 import { harvestCkan } from "./harvest-ckan.ts";
 import { harvestAlepe } from "./harvest-alepe.ts";
+import { harvestCandidatos } from "./harvest-candidatos.ts";
 import { harvestFederal } from "./harvest-federal.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
-import { exportarSite, exportarSiteFederal } from "./export-site.ts";
+import { exportarSite, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
 import type { EstadoThread } from "./post-x.ts";
 import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
@@ -23,6 +24,7 @@ const COMMANDS = [
   "coletar:ckan",
   "coletar:alepe",
   "coletar:federal",
+  "coletar:candidatos",
   "normalizar",
   "relatorio",
   "site",
@@ -67,6 +69,9 @@ async function main(): Promise<void> {
       break;
     case "coletar:federal":
       await cmdColetarFederal();
+      break;
+    case "coletar:candidatos":
+      await cmdColetarCandidatos();
       break;
     case "normalizar":
       await cmdNormalizar();
@@ -243,6 +248,23 @@ async function cmdColetarFederal(): Promise<void> {
   }
 }
 
+async function cmdColetarCandidatos(): Promise<void> {
+  const db = openDb();
+  try {
+    console.log("coletando candidaturas de PE nas Eleições 2026 (TSE/DivulgaCandContas)...");
+    const r = await harvestCandidatos(db);
+    console.log(`${r.total} candidatura(s) gravada(s) em ${r.coletadoEm}`);
+    console.log(`  por cargo:    ${JSON.stringify(r.porCargo)}`);
+    console.log(`  por situação: ${JSON.stringify(r.porSituacao)}`);
+    const pendentes = r.porSituacao["Aguardando julgamento"] ?? 0;
+    if (pendentes > 0) {
+      console.log(`  ATENÇÃO: ${pendentes} aguardando julgamento — registro ainda pode ser indeferido.`);
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function runCkan(db: Db, config: Awaited<ReturnType<typeof loadConfig>>): Promise<void> {
   console.log("coletando via CKAN...");
   const results = await harvestCkan(db, config);
@@ -332,6 +354,15 @@ async function cmdSite(): Promise<void> {
     const federal = exportarSiteFederal(db);
     await Bun.write("docs/dados-federal.json", JSON.stringify(federal));
     console.log(`docs/dados-federal.json gerado: ${federal.linhas.length} linha(s) federais de PE`);
+
+    const cand = exportarSiteCandidatos(db);
+    await Bun.write("docs/dados-candidatos.json", JSON.stringify(cand));
+    const reel = cand.marcadores.filter((m) => m.reeleicao).length;
+    console.log(`docs/dados-candidatos.json gerado: ${cand.marcadores.length} autor(es) marcado(s) como candidato(s) em 2026`);
+    console.log(`  ${reel} concorrendo ao mesmo cargo (reeleição), ${cand.marcadores.length - reel} a outro cargo`);
+    if (cand.ambiguos.length > 0) {
+      console.log(`  ${cand.ambiguos.length} nome(s) ambíguo(s) sem marcador: ${cand.ambiguos.map((a) => a.autor).join(", ")}`);
+    }
   } finally {
     db.close();
   }

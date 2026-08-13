@@ -39,6 +39,14 @@ PE, classificado por linha em `deputado`, `senador`, `bancada` ou `gasto-pe`
 auditado: autores com gasto em PE que não casam são listados, nunca
 silenciados. Ver [`NOTAS.md`](NOTAS.md) item 28.
 
+## Fontes — candidaturas 2026
+
+- **TSE/DivulgaCandContas** — `divulgacandcontas.tse.jus.br/divulga/rest/v1`
+  (API não documentada oficialmente). Candidaturas de PE a Governador,
+  Senador, Deputado Federal e Estadual nas Eleições Gerais 2026.
+  Alimenta o marcador de candidatura no painel. Ver NOTAS.md item 29 —
+  em especial: o painel **nunca** afirma que alguém não é candidato.
+
 ## Stack
 
 [Bun](https://bun.com) + TypeScript, **zero dependências de runtime**
@@ -56,6 +64,7 @@ bun run descobrir      # descobre endpoints dos painéis Pentaho (precisa de Chr
 bun run coletar        # painéis Pentaho + CKAN
 bun run coletar:alepe  # dicionário oficial de autoria (PLOAs da ALEPE)
 bun run coletar:federal # emendas federais com foco em PE (CGU + Câmara + Senado)
+bun run coletar:candidatos # candidaturas de PE em 2026 (TSE/DivulgaCandContas)
 bun run normalizar     # extrai autoria/município dos textos
 bun run relatorio      # data/cobertura.md (órfãs prontas para pedido de LAI)
 bun run site           # regenera docs/dados.json e docs/dados-federal.json
@@ -64,6 +73,11 @@ bun run cron:install   # sincronização automática a cada 4h (crontab)
 ```
 
 ## Limitações conhecidas
+
+- **Marcador de candidatura é positivo-only.** Ausência do selo não significa
+  que o parlamentar não concorre em 2026 — a lista do TSE é espelho do dia e
+  as candidaturas passam por julgamento. Reexecute `coletar:candidatos` para
+  atualizar.
 
 - ~14% das emendas executadas seguem **sem autor identificável** em fonte
   pública (maioria: "emendas derivadas" fora do PLOA) — a lista completa está

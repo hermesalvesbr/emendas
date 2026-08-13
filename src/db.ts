@@ -88,6 +88,28 @@ CREATE TABLE IF NOT EXISTS emenda_federal (
   coletado_em TEXT NOT NULL
 );
 
+-- Candidaturas de PE em 2026 (TSE/DivulgaCandContas). Espelho do dia: a lista
+-- é substituída inteira a cada coleta, porque candidatura é retirada,
+-- substituída e indeferida — acumular linhas antigas viraria fantasma. O
+-- marcador de reeleição NÃO vem daqui (st_REELEICAO vem vazio antes do
+-- julgamento); é derivado no cruzamento. Ver NOTAS.md item 29.
+CREATE TABLE IF NOT EXISTS candidato_2026 (
+  id INTEGER PRIMARY KEY,
+  nome_urna TEXT NOT NULL,
+  nome_completo TEXT,
+  nome_urna_normalizado TEXT NOT NULL,
+  nome_completo_normalizado TEXT,
+  numero INTEGER,
+  cargo_codigo INTEGER NOT NULL,
+  cargo TEXT NOT NULL,
+  partido TEXT,
+  situacao TEXT,
+  coletado_em TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cand_urna ON candidato_2026(nome_urna_normalizado);
+CREATE INDEX IF NOT EXISTS idx_cand_civil ON candidato_2026(nome_completo_normalizado);
+
 CREATE INDEX IF NOT EXISTS idx_fed_autor ON emenda_federal(autor_normalizado);
 CREATE INDEX IF NOT EXISTS idx_fed_ano ON emenda_federal(ano);
 CREATE INDEX IF NOT EXISTS idx_fed_cat ON emenda_federal(cat);
@@ -96,6 +118,21 @@ CREATE INDEX IF NOT EXISTS idx_emp_subacao ON empenho(cd_nm_subacao);
 CREATE INDEX IF NOT EXISTS idx_emp_exercicio ON empenho(exercicio);
 CREATE INDEX IF NOT EXISTS idx_emenda_subacao ON emenda(subacao_codigo);
 `;
+
+export type NewCandidato = {
+  id: number;
+  nome_urna: string;
+  nome_completo: string | null;
+  nome_urna_normalizado: string;
+  nome_completo_normalizado: string | null;
+  numero: number | null;
+  cargo_codigo: number;
+  cargo: string;
+  partido: string | null;
+  situacao: string | null;
+};
+
+export type CandidatoRow = NewCandidato & { coletado_em: string };
 
 export type NewEmpenho = Omit<EmpenhoRow, "id" | "hash" | "coletado_em">;
 export type NewEmenda = EmendaRow;
@@ -178,6 +215,8 @@ export type Db = {
   listEmendasFederais(): EmendaFederalRow[];
   countEmendasFederais(): number;
   limparEmendasFederais(): number;
+  substituirCandidatos(candidatos: NewCandidato[], coletadoEm: string): void;
+  listCandidatos(): CandidatoRow[];
   close(): void;
 };
 
@@ -453,6 +492,26 @@ export function openDb(path = "data/emendas.sqlite"): Db {
 
     limparEmendasFederais() {
       return raw.query("DELETE FROM emenda_federal").run().changes;
+    },
+
+    // Espelho do dia, em transação: se a coleta falhar no meio, o painel
+    // continua com a lista anterior inteira em vez de uma lista pela metade.
+    substituirCandidatos(candidatos, coletadoEm) {
+      const insert = raw.query(`
+        INSERT INTO candidato_2026
+          (id, nome_urna, nome_completo, nome_urna_normalizado, nome_completo_normalizado,
+           numero, cargo_codigo, cargo, partido, situacao, coletado_em)
+        VALUES ($id, $nome_urna, $nome_completo, $nome_urna_normalizado, $nome_completo_normalizado,
+                $numero, $cargo_codigo, $cargo, $partido, $situacao, $coletado_em)
+      `);
+      raw.transaction(() => {
+        raw.query("DELETE FROM candidato_2026").run();
+        for (const c of candidatos) insert.run({ ...c, coletado_em: coletadoEm });
+      })();
+    },
+
+    listCandidatos() {
+      return raw.query("SELECT * FROM candidato_2026 ORDER BY cargo_codigo, nome_urna").all() as CandidatoRow[];
     },
 
     close() {

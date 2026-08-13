@@ -10,6 +10,7 @@
     "coletar:ckan": "bun run src/cli.ts coletar:ckan",
     "coletar:alepe": "bun run src/cli.ts coletar:alepe",
     "coletar:federal": "bun run src/cli.ts coletar:federal",
+    "coletar:candidatos": "bun run src/cli.ts coletar:candidatos",
     "normalizar": "bun run src/cli.ts normalizar",
     "relatorio": "bun run src/cli.ts relatorio",
     "site": "bun run src/cli.ts site",

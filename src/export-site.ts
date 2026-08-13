@@ -10,6 +10,8 @@
 // ver NOTAS.md item 26). Somas por chave, sem dupla contagem.
 
 import type { Db } from "./db.ts";
+import type { CargoAtual } from "./harvest-candidatos.ts";
+import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
 import type { EmendaFederalRow } from "./db.ts";
 import type { EmpenhoRow, EmendaRow } from "./types.ts";
 import { extrairCodigoSubacao, extrairNumeroEmenda } from "./normalize.ts";
@@ -198,5 +200,83 @@ export function exportarSiteFederal(db: Db): SiteDataFederal {
     fonte: "Emendas parlamentares federais — CGU/Portal da Transparência; bancada de PE via APIs da Câmara e do Senado",
     totalEmpenhadoBanco,
     linhas,
+  };
+}
+
+// ---------------------------------------------------------- candidatos 2026
+
+type MarcadorCandidato = {
+  /** Chave: autor_normalizado, como aparece nos outros dois JSONs. */
+  autor: string;
+  cargo_2026: string;
+  partido: string | null;
+  /** Concorre ao MESMO cargo que ocupa hoje. Derivado — o TSE não informa. */
+  reeleicao: boolean;
+};
+
+export type SiteDataCandidatos = {
+  geradoEm: string;
+  fonte: string;
+  /** Texto exibido no rodapé do painel. A ressalva é parte do dado, não enfeite. */
+  ressalva: string;
+  totalCandidatosPE: number;
+  porCargo: Record<string, number>;
+  /** Nomes que casaram com mais de um candidato e por isso NÃO recebem marcador. */
+  ambiguos: Array<{ autor: string; motivo: string }>;
+  marcadores: MarcadorCandidato[];
+};
+
+/**
+ * Cruza os autores de emendas com as candidaturas de 2026.
+ *
+ * Só produz marcador POSITIVO. Autor ausente da lista do TSE não vira
+ * "não é candidato": o prazo de registro fecha em 15/08/2026 e a lista está
+ * incompleta enquanto isso. Ambiguidade por homônimo também não vira
+ * marcador — vai para `ambiguos`, visível, em vez de virar um chute.
+ */
+export function exportarSiteCandidatos(db: Db): SiteDataCandidatos {
+  const candidatos = db.listCandidatos();
+  const indice = indexarPorNome(candidatos);
+
+  const marcadores: MarcadorCandidato[] = [];
+  const ambiguos: Array<{ autor: string; motivo: string }> = [];
+  const vistos = new Set<string>();
+
+  const avaliar = (autor: string, cargoAtual: CargoAtual, partido: string | null): void => {
+    if (!autor || vistos.has(autor)) return;
+    vistos.add(autor);
+    const v = casarCandidato(autor, cargoAtual, indice, partido);
+    if (v.situacao === "candidato") {
+      marcadores.push({ autor, cargo_2026: v.cargo_2026, partido: v.partido, reeleicao: v.reeleicao });
+    } else if (v.situacao === "ambiguo") {
+      ambiguos.push({ autor, motivo: v.motivo });
+    }
+  };
+
+  // Federais primeiro: são os únicos com partido conhecido, o que desempata
+  // homônimo. Um nome resolvido aqui não é reavaliado como estadual depois.
+  for (const p of db.listParlamentaresFederais()) {
+    avaliar(p.nome_normalizado, p.tipo === "senador" ? "Senador" : "Deputado Federal", p.partido ?? null);
+  }
+
+  // Estaduais: só autoria CONFIRMADA. Marcar como candidato alguém cuja
+  // autoria foi apenas inferida somaria duas incertezas num rótulo público.
+  const estaduais = db.raw
+    .query("SELECT DISTINCT autor_normalizado a FROM emenda WHERE confianca = 'alta' AND autor_normalizado IS NOT NULL")
+    .all() as Array<{ a: string }>;
+  for (const { a } of estaduais) avaliar(a, "Deputado Estadual", null);
+
+  const porCargo = candidatos.reduce<Record<string, number>>((acc, c) => ((acc[c.cargo] = (acc[c.cargo] ?? 0) + 1), acc), {});
+
+  return {
+    geradoEm: new Date().toISOString(),
+    fonte: "Candidaturas — TSE/DivulgaCandContas, Eleições Gerais 2026 (PE)",
+    ressalva:
+      "Registro de candidaturas aberto até 15/08/2026 e todas as candidaturas estão aguardando julgamento. " +
+      "A ausência do marcador não significa que a pessoa não é candidata.",
+    totalCandidatosPE: candidatos.length,
+    porCargo,
+    ambiguos: ambiguos.sort((x, y) => x.autor.localeCompare(y.autor)),
+    marcadores: marcadores.sort((x, y) => x.autor.localeCompare(y.autor)),
   };
 }

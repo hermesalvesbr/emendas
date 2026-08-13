@@ -60,7 +60,23 @@
     font: inherit; color: var(--ink-2); background: transparent;
     border: 1px solid var(--axis); border-radius: 7px; padding: 5px 12px; cursor: pointer;
   }
+  /* o seletor genérico .filters input dá largura de campo de texto; o
+     checkbox precisa voltar ao tamanho natural para colar no rótulo */
+  .filters .fcand { color: var(--ink-2); font-size: .8rem; cursor: pointer; white-space: nowrap; }
+  .filters .fcand input[type="checkbox"] { width: auto; min-width: 0; flex: none; margin: 0; accent-color: #2a78d6; }
   .filters button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
+  /* Marcador de candidatura 2026. Duas variantes porque disputar o mesmo
+     cargo e disputar outro são fatos diferentes — achatar os dois em
+     "é candidato" perderia justamente a informação mais interessante. */
+  .cand {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+    font-size: .68rem; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
+    border: 1px solid currentColor; vertical-align: baseline;
+  }
+  .cand-reeleicao { color: #2a78d6; }
+  .cand-outro { color: #eb6834; }
+  :root:not([data-theme="light"]) .cand-reeleicao { color: #3987e5; }
+  :root:not([data-theme="light"]) .cand-outro { color: #d95926; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
@@ -147,6 +163,7 @@
         <option value="nula">sem autor</option>
       </select>
     </label>
+    <label class="fcand"><input type="checkbox" id="fCandidato"> só candidatos em 2026</label>
     <button id="fLimpar" type="button">Limpar</button>
   </div>
 
@@ -203,6 +220,7 @@
     <a href="https://legis.senado.leg.br/dadosabertos/" target="_blank" rel="noopener">API do Senado</a>.
     <br>Gerado em <span id="metaData"></span>. <span id="metaFonte2" hidden></span>
     <span id="notaModo"></span>
+    <br><span id="notaCandidatos"></span>
     Projeto de dados abertos — código e metodologia no repositório.
   </footer>
 </div>
@@ -210,8 +228,15 @@
 <script src="echarts.min.js"></script>
 <script>
 (async function () {
-  const resp = await fetch("dados.json");
+  const [resp, respCand] = await Promise.all([fetch("dados.json"), fetch("dados-candidatos.json").catch(() => null)]);
   const dados = await resp.json();
+
+  // Marcadores de candidatura 2026. Só existe o positivo: ausência aqui NÃO
+  // quer dizer "não é candidato" (o registro fecha em 15/08/2026), por isso
+  // nada é renderizado quando o autor não está no mapa.
+  const candData = respCand && respCand.ok ? await respCand.json() : null;
+  const CAND = new Map((candData?.marcadores ?? []).map((m) => [m.autor, m]));
+  const ehCandidato = (autor) => (autor ? CAND.get(autor) ?? null : null);
   const linhasEstaduais = dados.linhas;
 
   // Modo atual: "estadual" ou uma categoria federal (deputado/senador/bancada).
@@ -251,6 +276,7 @@
 
   // filtros
   const fAutor = document.getElementById("fAutor");
+  const fCandidato = document.getElementById("fCandidato");
   const fMun = document.getElementById("fMun");
   const fAno = document.getElementById("fAno");
   const fConf = document.getElementById("fConf");
@@ -288,7 +314,8 @@
       (!vm || (l.mun ?? "").includes(vm)) &&
       (vy === null || l.ex === vy) &&
       (!vc || l.conf === vc) &&
-      (!vp || l.partido === vp));
+      (!vp || l.partido === vp) &&
+      (!fCandidato.checked || ehCandidato(l.autor) !== null));
   }
 
   // ECharts base — grid recessivo, ink nos textos, sem decoração
@@ -424,7 +451,21 @@
         if (label) d.dataset.label = label;
         tr.append(d);
       };
-      td(l.em ?? "(sem nº)", null, "Emenda"); td(l.autor ?? "—", null, "Parlamentar");
+      td(l.em ?? "(sem nº)", null, "Emenda");
+      {
+        const dAutor = document.createElement("td");
+        dAutor.dataset.label = "Parlamentar";
+        dAutor.append(document.createTextNode(l.autor ?? "—"));
+        const m = ehCandidato(l.autor);
+        if (m) {
+          const b = document.createElement("span");
+          b.className = "cand " + (m.reeleicao ? "cand-reeleicao" : "cand-outro");
+          b.textContent = m.reeleicao ? "reeleição 2026" : m.cargo_2026 + " 2026";
+          b.title = "Candidatura registrada no TSE para 2026 (" + m.cargo_2026 + (m.partido ? " · " + m.partido : "") + "). " + (candData?.ressalva ?? "");
+          dAutor.append(b);
+        }
+        tr.append(dAutor);
+      }
       td(eFederal() ? (l.loc ?? "—") : (l.mun ?? "—"), null, eFederal() ? "Localidade" : "Município");
       td(eFederal() ? (l.func ?? "—") : (l.benef ?? "—"), null, eFederal() ? "Função" : "Beneficiário");
       td(eFederal() ? (l.tipo ?? "—") : (l.ug ?? "—"), null, eFederal() ? "Tipo" : "Unidade gestora");
@@ -524,7 +565,7 @@
   }
 
   function limparFiltros() {
-    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; fPartido.value = "";
+    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; fPartido.value = ""; fCandidato.checked = false;
   }
 
   async function trocarModo(novo) {
@@ -540,12 +581,25 @@
     render();
   }
 
+  if (candData) {
+    const el = document.getElementById("notaCandidatos");
+    const a = document.createElement("a");
+    a.href = "https://divulgacandcontas.tse.jus.br/"; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "TSE/DivulgaCandContas";
+    el.append(
+      document.createTextNode("Marcador de candidatura 2026 (" + candData.totalCandidatosPE + " candidaturas em PE): "),
+      a,
+      document.createTextNode(". " + candData.ressalva),
+    );
+  }
+
   aplicarTitulos(); preencherOpcoes(); initCharts(); render();
 
   for (const b of document.querySelectorAll(".modos button")) {
     b.addEventListener("click", () => { trocarModo(b.dataset.modo); });
   }
   for (const el of [fAutor, fMun, fAno, fConf, fPartido]) el.addEventListener("input", render);
+  fCandidato.addEventListener("change", render);
   document.getElementById("fLimpar").addEventListener("click", () => { limparFiltros(); render(); });
   window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });
