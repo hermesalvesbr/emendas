@@ -12,3 +12,4 @@
 {"id":"intervalo-de-anos","esperado":"aprovar","texto":"O painel cobre de 2023 a 2026, com 41 emendas no Sertão do Araripe somando R$ 8,5 mi. Sua cidade aparece?","nota":"regressão: 2023 virava 202 e 3"}
 {"id":"orfas-contadas-por-join","esperado":"reprovar","regra":"numero-sem-lastro","texto":"Em 426 emendas, somando 47,4 milhões, a fonte pública não diz quem assinou. Dá pra saber de outro jeito?","nota":"caso real: 426 são linhas do join; as emendas distintas sem autor são 238"}
 {"id":"orfas-contagem-certa","esperado":"aprovar","texto":"Em 238 emendas, somando 47,4 milhões, a fonte pública não diz quem assinou. Dá pra saber de outro jeito?"}
+{"id":"mil-nao-e-milhao","esperado":"aprovar","texto":"Araripina tem 85 mil habitantes e recebeu 2,7 milhões em emendas. Sabe o que foi feito com alguma delas?","fatosExternos":[{"valor":85088,"rotulo":"população de Araripina"}],"nota":"regressão: a alternância mi|mil casava mi primeiro e 85 mil virava 85 milhões"}

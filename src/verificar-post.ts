@@ -11,6 +11,7 @@
 
 import { Database } from "bun:sqlite";
 import { pesoX } from "./post-x.ts";
+import { POPULACAO_PE, POPULACAO_PE_TOTAL } from "./populacao-pe.ts";
 import { MUNICIPIO_REGIAO } from "./regioes-pe.ts";
 
 export type Achado = {
@@ -39,7 +40,9 @@ export type NumeroCitado = {
 // A alternância precisa exigir o separador de milhar no PRIMEIRO ramo. Com
 // `\d{1,3}(?:\.\d{3})*` na frente, "12967" casava como "129" e depois "67" —
 // todo número de 4+ dígitos sem ponto era partido ao meio.
-const RE_NUMERO = /(R\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(mi(?:lhões|lhão)?|bi(?:lhões|lhão)?|mil|%)?/gi;
+// "mil" ANTES de "mi": na ordem inversa, "85 mil" casava como "85 mi" e virava
+// 85 milhões — erro de mil vezes, silencioso se o valor acaso batesse.
+const RE_NUMERO = /(R\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(mil(?:hões|hão)?|bilhões|bilhão|bi|mi|%)?/gi;
 
 export function extrairNumeros(texto: string): NumeroCitado[] {
   const out: NumeroCitado[] = [];
@@ -54,16 +57,15 @@ export function extrairNumeros(texto: string): NumeroCitado[] {
     if (!Number.isFinite(valor)) continue;
 
     const s = sufixo?.toLowerCase() ?? "";
-    if (s.startsWith("mi")) valor *= 1e6;
-    else if (s.startsWith("bi")) valor *= 1e9;
-    else if (s === "mil") valor *= 1e3;
+    const escalaDe = (suf: string): number =>
+      suf === "mil" ? 1e3 : suf.startsWith("bi") ? 1e9 : suf.startsWith("mil") || suf === "mi" ? 1e6 : 1;
+    valor *= escalaDe(s);
 
     // A precisão escrita define quanto o autor está afirmando. Tolerância
     // fixa (2%) deixava "R$ 47,9 mi" casar com "R$ 47,4 mi" de outro fato
     // — falso negativo pego pelo eval "numero-inventado".
     const casasDecimais = corpo.includes(",") ? (corpo.split(",")[1]?.length ?? 0) : 0;
-    const escala = s.startsWith("mi") ? 1e6 : s.startsWith("bi") ? 1e9 : s === "mil" ? 1e3 : 1;
-    const tolerancia = (0.5 * 10 ** -casasDecimais) * escala;
+    const tolerancia = 0.5 * 10 ** -casasDecimais * escalaDe(s);
 
     out.push({
       bruto: bruto.trim(),
@@ -101,6 +103,25 @@ export function indiceDeFatos(db: Database): Fato[] {
   for (const r of db.query(`SELECT municipio m, SUM(vlrempenhado) v FROM emenda_federal
                             WHERE municipio IS NOT NULL GROUP BY municipio`).all() as Array<{ m: string; v: number }>) {
     porMunicipio.set(r.m, (porMunicipio.get(r.m) ?? 0) + (r.v ?? 0));
+  }
+
+  for (const r of db.query(`SELECT e.municipio m, COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n
+                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
+                            WHERE e.municipio IS NOT NULL GROUP BY e.municipio`).all() as Array<{ m: string; n: number }>) {
+    const fed = db.query(`SELECT COUNT(*) n FROM emenda_federal WHERE municipio = ?`).get(r.m) as { n: number };
+    add(r.n + (fed?.n ?? 0), `emendas de ${r.m}`);
+  }
+
+  // Autor x município, com autoria CONFIRMADA — é o que todo post regional
+  // cita ("fulano lidera com R$ X") e sem isso o número ficava sem lastro.
+  for (const r of db.query(`SELECT e.municipio m, e.autor_normalizado a,
+                                   COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n,
+                                   SUM(em.vlrempenhado) v
+                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
+                            WHERE e.municipio IS NOT NULL AND e.confianca = 'alta' AND e.autor_normalizado IS NOT NULL
+                            GROUP BY e.municipio, e.autor_normalizado`).all() as Array<{ m: string; a: string; n: number; v: number }>) {
+    add(r.v, `emendas de ${r.a} em ${r.m}`);
+    add(r.n, `nº de emendas de ${r.a} em ${r.m}`);
   }
 
   const porRegiao = new Map<string, number>();
@@ -189,6 +210,14 @@ export function indiceDeFatos(db: Database): Fato[] {
     add(r.n, `emendas com autoria "${r.c}"`);
     add(r.v, `valor das emendas com autoria "${r.c}"`);
   }
+
+  // População (Censo 2022). Fato externo, mas versionado no projeto — já foi
+  // escrita de memória duas vezes e publicada errada nas duas.
+  for (const [m, p] of POPULACAO_PE) add(p, `população de ${m}`);
+  add(POPULACAO_PE_TOTAL, "população de Pernambuco");
+  const porRegiaoPop = new Map<string, number>();
+  for (const [m, g] of MUNICIPIO_REGIAO) porRegiaoPop.set(g, (porRegiaoPop.get(g) ?? 0) + (POPULACAO_PE.get(m) ?? 0));
+  for (const [g, p] of porRegiaoPop) add(p, `população da região ${g}`);
 
   // As 12 regiões vêm do mapa do IBGE agrupado, não de uma consulta — mas são
   // fato do projeto e aparecem em quase todo post da série.
