@@ -16,6 +16,7 @@ import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
 import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, responderPost, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
+import { verificarPost } from "./verificar-post.ts";
 import { vigiar } from "./watch.ts";
 
 const COMMANDS = [
@@ -32,6 +33,7 @@ const COMMANDS = [
   "servir",
   "compilar",
   "postar:x",
+  "verificar-post",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -55,6 +57,7 @@ async function main(): Promise<void> {
       intervalo: { type: "string" },
       responder: { type: "string" },
       texto: { type: "string" },
+      "com-link": { type: "boolean" },
       confirmar: { type: "boolean" },
       diagnostico: { type: "boolean" },
       "so-detalhe": { type: "boolean" },
@@ -107,6 +110,9 @@ async function main(): Promise<void> {
       break;
     case "postar:x":
       await cmdPostarX(values);
+      break;
+    case "verificar-post":
+      await cmdVerificarPost(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -548,6 +554,35 @@ async function cmdPostarX(values: Record<string, unknown>): Promise<void> {
 
   console.log(`\nthread no ar: ${final.publicados.length} post(s).`);
   console.log(`  ${final.publicados[0]?.url ?? "—"}`);
+}
+
+/**
+ * Confere um texto antes de ele virar post: peso, link no corpo e — o que
+ * importa — se cada número citado existe no banco. Nasceu de três erros já
+ * publicados por números escritos de memória.
+ */
+async function cmdVerificarPost(values: Record<string, unknown>): Promise<void> {
+  const texto = (typeof values.texto === "string" ? values.texto : await Bun.stdin.text()).trim();
+  if (!texto) {
+    console.error("nada a verificar: passe --texto ou envie por stdin");
+    process.exitCode = 1;
+    return;
+  }
+
+  const db = openDb();
+  try {
+    const v = verificarPost(texto, db.raw, { permitirLink: values["com-link"] === true });
+    console.log(`peso ${v.peso}/280`);
+    for (const a of v.achados) {
+      const cor = a.severidade === "erro" ? "red" : a.regra === "numero-conferido" ? "green" : "yellow";
+      const ansi = Bun.color(cor, "ansi") ?? "";
+      console.log(`  ${ansi}[${a.severidade}]\u001b[0m ${a.regra}: ${a.detalhe}`);
+    }
+    console.log(v.ok ? "\npode publicar." : "\nNÃO publique: corrija os erros acima.");
+    if (!v.ok) process.exitCode = 1;
+  } finally {
+    db.close();
+  }
 }
 
 async function cmdCronInstall(): Promise<void> {

@@ -1,9 +1,19 @@
 # Posts para o X — painel de emendas de PE
 
-ERRATA (14/08/2026): os posts 4 e 7 foram ao ar com população estimada de
-memória — Casinhas como "14 mil" (real: 12.967) e Jaqueira como "12 mil"
-(real: 10.247), Censo 2022. Corrigido aqui; a thread publicada não pôde ser
-editada (janela do X fechada) e recebeu resposta de correção.
+ERRATA (14/08/2026) — duas correções, ambas já corrigidas neste arquivo e
+impossíveis de editar na thread publicada (janela do X fechada):
+
+1. População estimada de memória nos posts 4 e 7: Casinhas como "14 mil"
+   (real 12.967) e Jaqueira como "12 mil" (real 10.247), Censo 2022. Ambos
+   receberam resposta de correção na própria thread.
+
+2. CONTAGEM DE EMENDAS INFLADA NOS 12 POSTS REGIONAIS. A contagem somava
+   todas as emendas ligadas ao município, inclusive as SEM empenho no escopo,
+   enquanto o valor em R$ vinha só das que têm empenho — dois universos numa
+   frase só. O Agreste Central saiu como "317 emendas: R$ 90,2 mi" quando as
+   emendas que produziram esses R$ 90,2 mi são 204. Todos os valores em reais
+   estavam corretos; só as contagens estavam erradas, de 1,3x a 1,9x.
+   Achado pelo eval `.claude/evals/posts.jsonl`, não por revisão manual.
 
 Gerado a partir dos dados reais do painel. Valores = emendas com destino municipal
 identificado (estadual + federal). Rankings de parlamentar usam apenas autoria
@@ -34,7 +44,7 @@ https://hermesalvesbr.github.io/emendas/
 ```
 REGIÃO METROPOLITANA DO RECIFE 🏙️
 
-327 emendas com destino municipal identificado, em 19 municípios: R$ 125,5 mi.
+261 emendas com destino municipal identificado, em 19 municípios: R$ 125,5 mi.
 
 Recife concentra R$ 80,5 mi. Entre as de autoria confirmada, Iza Arruda lidera (R$ 5,0 mi).
 ```
@@ -44,7 +54,7 @@ Recife concentra R$ 80,5 mi. Entre as de autoria confirmada, Iza Arruda lidera (
 ```
 AGRESTE CENTRAL 🐄
 
-317 emendas rastreadas até o município, em 27 cidades: R$ 90,2 mi.
+204 emendas rastreadas até o município, em 27 cidades: R$ 90,2 mi.
 
 Belo Jardim puxa a fila com R$ 28,2 mi. Entre as de autoria confirmada, Fernando Rodolfo lidera (R$ 7,0 mi).
 ```
@@ -54,7 +64,7 @@ Belo Jardim puxa a fila com R$ 28,2 mi. Entre as de autoria confirmada, Fernando
 ```
 AGRESTE SETENTRIONAL 🧵
 
-235 emendas com município identificado, em 19 cidades: R$ 52,2 mi.
+130 emendas com município identificado, em 18 cidades: R$ 52,2 mi.
 
 Casinhas — 12.967 habitantes — aparece com R$ 8,0 mi. Ossésio Silva lidera entre as de autoria confirmada (R$ 7,9 mi).
 ```
@@ -64,7 +74,7 @@ Casinhas — 12.967 habitantes — aparece com R$ 8,0 mi. Ossésio Silva lidera 
 ```
 AGRESTE MERIDIONAL 🌾
 
-152 emendas rastreadas, espalhadas por 25 municípios: R$ 37,6 mi.
+98 emendas rastreadas, espalhadas por 25 municípios: R$ 37,6 mi.
 
 Bom Conselho lidera com R$ 8,0 mi. Fernando Rodolfo aparece também aqui no topo das de autoria confirmada (R$ 6,0 mi).
 ```
@@ -74,7 +84,7 @@ Bom Conselho lidera com R$ 8,0 mi. Fernando Rodolfo aparece também aqui no topo
 ```
 ZONA DA MATA NORTE 🌳
 
-190 emendas com destino identificado, em 17 municípios: R$ 27,9 mi.
+119 emendas com destino identificado, em 17 municípios: R$ 27,9 mi.
 
 Paudalho recebeu R$ 5,5 mi. Antônio Moraes lidera entre as de autoria confirmada (R$ 3,1 mi).
 ```
@@ -84,7 +94,7 @@ Paudalho recebeu R$ 5,5 mi. Antônio Moraes lidera entre as de autoria confirmad
 ```
 ZONA DA MATA SUL 🍬
 
-191 emendas rastreadas até o município, em 21 cidades: R$ 27,4 mi.
+107 emendas rastreadas até o município, em 20 cidades: R$ 27,4 mi.
 
 Jaqueira, com 10.247 habitantes, aparece com R$ 4,8 mi. Ossésio Silva lidera entre as confirmadas (R$ 3,6 mi).
 ```
@@ -94,7 +104,7 @@ Jaqueira, com 10.247 habitantes, aparece com R$ 4,8 mi. Ossésio Silva lidera en
 ```
 SERTÃO DO PAJEÚ ☀️
 
-164 emendas com município identificado, em 17 cidades: R$ 18,7 mi.
+87 emendas com município identificado, em 17 cidades: R$ 18,7 mi.
 
 Flores lidera com R$ 5,2 mi. Milton Coelho é quem mais aparece entre as de autoria confirmada (R$ 4,4 mi).
 ```
@@ -104,7 +114,7 @@ Flores lidera com R$ 5,2 mi. Milton Coelho é quem mais aparece entre as de auto
 ```
 SERTÃO DO MOXOTÓ 🌵
 
-60 emendas rastreadas em 7 municípios: R$ 11,4 mi.
+42 emendas rastreadas em 7 municípios: R$ 11,4 mi.
 
 Manari — que já foi apontado como menor IDH do país — aparece com R$ 3,0 mi. Claudiano Martins Filho lidera as confirmadas (R$ 1,6 mi).
 ```
@@ -114,7 +124,7 @@ Manari — que já foi apontado como menor IDH do país — aparece com R$ 3,0 m
 ```
 SERTÃO DO SÃO FRANCISCO 🍇
 
-55 emendas com destino identificado, em 8 municípios: R$ 9,4 mi.
+35 emendas com destino identificado, em 8 municípios: R$ 9,4 mi.
 
 Petrolina responde por R$ 4,8 mi — metade da região. Lucas Ramos lidera entre as de autoria confirmada (R$ 1,5 mi).
 ```
@@ -124,7 +134,7 @@ Petrolina responde por R$ 4,8 mi — metade da região. Lucas Ramos lidera entre
 ```
 SERTÃO DE ITAPARICA 💧
 
-40 emendas rastreadas em 7 municípios: R$ 9,0 mi.
+26 emendas rastreadas em 7 municípios: R$ 9,0 mi.
 
 Floresta lidera com R$ 2,7 mi. Fabrízio Ferraz é o nome no topo das emendas de autoria confirmada (R$ 1,9 mi).
 ```
@@ -134,7 +144,7 @@ Floresta lidera com R$ 2,7 mi. Fabrízio Ferraz é o nome no topo das emendas de
 ```
 SERTÃO DO ARARIPE 🏜️
 
-68 emendas com município identificado, em 9 cidades: R$ 8,5 mi.
+41 emendas com município identificado, em 9 cidades: R$ 8,5 mi.
 
 Araripina concentra R$ 2,7 mi. Socorro Pimentel lidera entre as de autoria confirmada (R$ 1,2 mi).
 ```
@@ -144,7 +154,7 @@ Araripina concentra R$ 2,7 mi. Socorro Pimentel lidera entre as de autoria confi
 ```
 SERTÃO CENTRAL 🚜
 
-57 emendas rastreadas em 7 municípios: R$ 6,3 mi — a região com menos emendas municipalizadas do estado.
+40 emendas rastreadas em 7 municípios: R$ 6,3 mi — a região com menos emendas municipalizadas do estado.
 
 Salgueiro responde por R$ 1,4 mi. Joãozinho Tenório lidera as de autoria confirmada.
 ```

@@ -1,6 +1,6 @@
 ---
 name: publicar
-description: Publica mudanças do painel de emendas em produção (GitHub Pages) com a validação de 4 frentes que este projeto exige. Use ao alterar docs/, os JSONs exportados ou qualquer coisa que o site sirva.
+description: Publica o painel de emendas em produção (GitHub Pages) com a validação de 4 frentes deste projeto. Use ao alterar docs/, os JSONs exportados, ou qualquer coisa servida pelo site. Não use para publicar no X nem para escrever posts.
 ---
 
 # Publicar o painel
