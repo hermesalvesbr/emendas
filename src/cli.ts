@@ -35,6 +35,7 @@ const COMMANDS = [
   "postar:x",
   "verificar-post",
   "apagar:x",
+  "postar:agenda",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -61,6 +62,7 @@ async function main(): Promise<void> {
       "com-link": { type: "boolean" },
       ids: { type: "string" },
       tudo: { type: "boolean" },
+      data: { type: "string" },
       confirmar: { type: "boolean" },
       diagnostico: { type: "boolean" },
       "so-detalhe": { type: "boolean" },
@@ -119,6 +121,9 @@ async function main(): Promise<void> {
       break;
     case "apagar:x":
       await cmdApagarX(values);
+      break;
+    case "postar:agenda":
+      await cmdPostarAgenda(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -643,6 +648,95 @@ async function cmdApagarX(values: Record<string, unknown>): Promise<void> {
     console.log("estado PRESERVADO por causa das falhas — resolva antes de republicar.");
     process.exitCode = 1;
   }
+}
+
+const AGENDA = "data/agenda-posts.json";
+/** Propaganda eleitoral só é permitida a partir desta data (calendário do TSE). */
+const INICIO_PROPAGANDA = "2026-08-16";
+
+/**
+ * Publica o post agendado para hoje — feito para rodar sem ninguém olhando.
+ *
+ * Três travas, nesta ordem, porque cada uma já falhou de verdade neste
+ * projeto: (1) só publica o que a agenda mandar, (2) só publica se o
+ * verificador aprovar contra o BANCO no momento da postagem — o texto foi
+ * escrito num dia e o dado pode ter mudado —, e (3) conteúdo de campanha só
+ * a partir de 16/08. Nada é publicado duas vezes: o estado da thread manda.
+ */
+async function cmdPostarAgenda(values: Record<string, unknown>): Promise<void> {
+  const hoje = typeof values.data === "string" ? values.data : new Date().toLocaleDateString("en-CA", { timeZone: "America/Recife" });
+  const { agenda } = (await Bun.file(AGENDA).json()) as { agenda: Record<string, number> };
+  const indice = agenda[hoje];
+
+  if (indice === undefined) {
+    console.log(`${hoje}: nada agendado.`);
+    return;
+  }
+
+  const posts = parsePostsMarkdown(await Bun.file(POSTS_MD).text());
+  const post = posts.find((p) => p.indice === indice);
+  if (!post) {
+    console.error(`${hoje}: post ${indice} está na agenda mas não existe em ${POSTS_MD}.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const estadoArquivo = Bun.file(ESTADO_THREAD);
+  const estado: EstadoThread | null = (await estadoArquivo.exists()) ? ((await estadoArquivo.json()) as EstadoThread) : null;
+  if (estado?.publicados.some((p) => p.indice === indice)) {
+    console.log(`${hoje}: post ${indice} (${post.titulo}) já está no ar — nada a fazer.`);
+    return;
+  }
+
+  const db = openDb();
+  let veredito;
+  try {
+    veredito = verificarPost(post.texto, db.raw, {
+      permitirLink: indice === 15,
+      fatosExternos: [
+        { valor: 12967, rotulo: "população de Casinhas (IBGE 2022)" },
+        { valor: 10247, rotulo: "população de Jaqueira (IBGE 2022)" },
+      ],
+    });
+  } finally {
+    db.close();
+  }
+
+  console.log(`${hoje} · post ${indice} · ${post.titulo} · peso ${veredito.peso}/280`);
+
+  if (!veredito.ok) {
+    console.log("NÃO PUBLICADO — o verificador reprovou:");
+    for (const a of veredito.achados.filter((x) => x.severidade === "erro")) console.log(`  ${a.regra}: ${a.detalhe}`);
+    console.log("Os números mudaram desde que o texto foi escrito. Reescreva antes.");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (hoje < INICIO_PROPAGANDA && indice !== 16) {
+    console.log(`NÃO PUBLICADO — ${hoje} é anterior a ${INICIO_PROPAGANDA}, quando começa a propaganda eleitoral.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (values.confirmar !== true) {
+    console.log("ENSAIO — aprovado, mas nada publicado. Use --confirmar.");
+    return;
+  }
+
+  const cred = lerCredenciais();
+  const usuario = await verificarCredenciais(cred);
+  const final = await publicarThread({
+    cred,
+    posts: [post],
+    usuario,
+    estado,
+    intervaloMs: 0,
+    aoPublicar: (p) => console.log(`PUBLICADO: ${p.url}`),
+    salvarEstado: async (e) => {
+      await Bun.write(ESTADO_THREAD, JSON.stringify(e, null, 2));
+    },
+  });
+  console.log(`thread agora com ${final.publicados.length} post(s).`);
 }
 
 async function cmdVerificarPost(values: Record<string, unknown>): Promise<void> {

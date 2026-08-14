@@ -18,6 +18,7 @@
     "compilar": "bun run src/cli.ts compilar",
     "postar:x": "bun run src/cli.ts postar:x",
     "apagar:x": "bun run src/cli.ts apagar:x",
+    "postar:agenda": "bun run src/cli.ts postar:agenda",
     "cron:install": "bun run src/cli.ts cron:install",
     "cron:remove": "bun run src/cli.ts cron:remove",
     "check": "bunx tsc --noEmit && bun test && bun run .claude/evals/rodar.ts",

@@ -176,3 +176,13 @@ Tudo isso é conferível linha a linha, com o link pra fonte oficial de cada uma
 
 https://hermesalvesbr.github.io/emendas/
 ```
+
+## 16 · limites do dado
+
+```
+Antes de mostrar região por região, o que este levantamento NÃO consegue dizer:
+
+em 238 emendas, somando 47,4 milhões, a fonte pública não identifica quem assinou. O painel mostra "sem autor" em vez de chutar um nome.
+
+Vocês acham que dá pra saber de outro jeito?
+```
