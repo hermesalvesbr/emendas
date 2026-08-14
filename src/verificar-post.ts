@@ -160,6 +160,27 @@ export function indiceDeFatos(db: Database): Fato[] {
   for (const r of db.query(`SELECT funcao, SUM(vlrempenhado) v FROM emenda_federal GROUP BY funcao`).all() as Array<{ funcao: string; v: number }>) {
     add(r.v, `emendas federais em ${r.funcao ?? "?"}`);
   }
+
+  // Totais globais — o post de abertura cita os dois, e sem eles ficavam sem
+  // lastro mesmo estando corretos no painel.
+  // Universo inteiro coletado, que é o que o painel exibe como KPI. Filtrar
+  // por "tem emenda identificada" daria 265 mi e divergiria do site — dois
+  // universos outra vez.
+  add((db.query(`SELECT SUM(vlrempenhado) v FROM empenho`).get() as { v: number }).v, "total empenhado em emendas estaduais (painel)");
+  add(
+    (db.query(`SELECT SUM(em.vlrempenhado) v FROM empenho em
+               WHERE EXISTS (SELECT 1 FROM emenda e WHERE e.subacao_codigo = substr(em.cd_nm_subacao,1,4))`)
+      .get() as { v: number }).v,
+    "empenhado apenas nas emendas identificadas",
+  );
+  add((db.query(`SELECT SUM(vlrempenhado) v FROM emenda_federal`).get() as { v: number }).v, "total empenhado em emendas federais");
+  add((db.query(`SELECT COUNT(DISTINCT municipio) c FROM emenda WHERE municipio IS NOT NULL`).get() as { c: number }).c, "municípios com emenda estadual");
+
+  // As 12 regiões vêm do mapa do IBGE agrupado, não de uma consulta — mas são
+  // fato do projeto e aparecem em quase todo post da série.
+  add(new Set(MUNICIPIO_REGIAO.values()).size, "regiões de PE no agrupamento do projeto");
+  add(MUNICIPIO_REGIAO.size, "municípios de PE");
+
   return fatos;
 }
 

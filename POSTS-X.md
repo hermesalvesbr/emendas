@@ -22,11 +22,11 @@ CONFIRMADA (nunca inferida). Regiões: microrregiões do IBGE agrupadas.
 ## 0 · abertura  `peso 259/280`
 
 ```
-Coloquei no ar um painel aberto das emendas parlamentares de Pernambuco: estaduais da ALEPE e federais, 2023 a 2026.
+Levantei quanto cada município de Pernambuco recebeu em emenda parlamentar de 2023 a 2026.
 
-Dá pra filtrar por parlamentar e por município, e cada linha tem link pra conferir na fonte.
+São 601,7 milhões em emendas estaduais e 5,6 bilhões em federais, num painel aberto, com link pra fonte oficial em cada linha.
 
-Vou percorrer as 12 regiões, uma por dia. Por qual começo?
+Percorro as 12 regiões, uma por dia. Começo pela sua?
 ```
 
 ## 1 · metodologia  `peso 249/280`
