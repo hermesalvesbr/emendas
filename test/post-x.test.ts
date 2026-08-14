@@ -127,10 +127,10 @@ describe("parse de POSTS-X.md", () => {
 
   test("o arquivo real rende a thread inteira, em ordem e sem buracos", async () => {
     const posts = parsePostsMarkdown(await Bun.file("POSTS-X.md").text());
-    // 16 desde 14/08/2026: o link saiu dos posts 0/1/14 e virou o post 15,
-    // porque link no corpo custa de 50% a 90% de alcance.
-    expect(posts).toHaveLength(16);
-    expect(posts.map((p) => p.indice)).toEqual([...Array(16).keys()]);
+    // 17 desde 14/08/2026: o link virou o post 15 (link no corpo custa de 50%
+    // a 90% de alcance) e o 16 é o post de limites do dado, do dia 15/08.
+    expect(posts).toHaveLength(17);
+    expect(posts.map((p) => p.indice)).toEqual([...Array(17).keys()]);
     expect(posts.every((p) => p.texto.length > 0)).toBe(true);
   });
 
