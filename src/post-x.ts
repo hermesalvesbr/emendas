@@ -324,3 +324,8 @@ export async function publicarThread(opts: OpcoesThread): Promise<EstadoThread> 
 
   return estado;
 }
+
+/** Resposta avulsa a um post existente (errata, réplica). Devolve o id criado. */
+export async function responderPost(cred: Credenciais, texto: string, emRespostaA: string): Promise<string> {
+  return await publicarUm(cred, texto, emRespostaA);
+}

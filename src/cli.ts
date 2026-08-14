@@ -14,7 +14,7 @@ import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
-import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, verificarCredenciais } from "./post-x.ts";
+import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, responderPost, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
 import { vigiar } from "./watch.ts";
 
@@ -43,7 +43,23 @@ function isCommand(value: string | undefined): value is Command {
 }
 
 async function main(): Promise<void> {
-  const { positionals, values } = parseArgs({ args: Bun.argv.slice(2), allowPositionals: true, strict: false });
+  // As opções com valor PRECISAM ser declaradas: em strict:false e sem esta
+  // config, "--apenas 3" vira {apenas: true} e o 3 cai em positionals — o
+  // valor some silenciosamente. Só flags booleanas sobrevivem sem declaração.
+  const { positionals, values } = parseArgs({
+    args: Bun.argv.slice(2),
+    allowPositionals: true,
+    strict: false,
+    options: {
+      apenas: { type: "string" },
+      intervalo: { type: "string" },
+      responder: { type: "string" },
+      texto: { type: "string" },
+      confirmar: { type: "boolean" },
+      diagnostico: { type: "boolean" },
+      "so-detalhe": { type: "boolean" },
+    },
+  });
   const command = positionals[0];
 
   if (!isCommand(command)) {
@@ -443,6 +459,34 @@ async function cmdPostarX(values: Record<string, unknown>): Promise<void> {
 
   const confirmar = values.confirmar === true;
   const intervaloMs = Number(values.intervalo ?? 6000);
+
+  // Resposta avulsa a um post existente (errata, réplica). Fora do fluxo da
+  // thread: não entra no estado, porque não é parte da série planejada.
+  if (typeof values.responder === "string") {
+    const texto = typeof values.texto === "string" ? values.texto : await Bun.stdin.text();
+    const limpo = texto.trim();
+    if (!limpo) {
+      console.error("nada a publicar: passe --texto ou envie o texto por stdin");
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`peso ${pesoX(limpo)}/280\n---\n${limpo}\n---`);
+    if (pesoX(limpo) > 280) {
+      console.error("acima de 280 de peso — encurte antes de publicar.");
+      process.exitCode = 1;
+      return;
+    }
+    const credR = lerCredenciais();
+    const userR = await verificarCredenciais(credR);
+    if (!confirmar) {
+      console.log(`\nENSAIO — nada publicado. Responderia ao post ${values.responder} como @${userR}.`);
+      console.log(`Para publicar: acrescente --confirmar`);
+      return;
+    }
+    const id = await responderPost(credR, limpo, values.responder);
+    console.log(`\nresposta publicada: https://x.com/${userR}/status/${id}`);
+    return;
+  }
 
   const posts = parsePostsMarkdown(await Bun.file(POSTS_MD).text());
   const apenas = values.apenas === undefined ? null : Number(values.apenas);

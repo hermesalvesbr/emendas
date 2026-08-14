@@ -1,5 +1,10 @@
 # Posts para o X — painel de emendas de PE
 
+ERRATA (14/08/2026): os posts 4 e 7 foram ao ar com população estimada de
+memória — Casinhas como "14 mil" (real: 12.967) e Jaqueira como "12 mil"
+(real: 10.247), Censo 2022. Corrigido aqui; a thread publicada não pôde ser
+editada (janela do X fechada) e recebeu resposta de correção.
+
 Gerado a partir dos dados reais do painel. Valores = emendas com destino municipal
 identificado (estadual + federal). Rankings de parlamentar usam apenas autoria
 CONFIRMADA (nunca inferida). Regiões: microrregiões do IBGE agrupadas.
@@ -51,7 +56,7 @@ AGRESTE SETENTRIONAL 🧵
 
 235 emendas com município identificado, em 19 cidades: R$ 52,2 mi.
 
-Casinhas — 14 mil habitantes — aparece com R$ 8,0 mi. Ossésio Silva lidera entre as de autoria confirmada (R$ 7,9 mi).
+Casinhas — 12.967 habitantes — aparece com R$ 8,0 mi. Ossésio Silva lidera entre as de autoria confirmada (R$ 7,9 mi).
 ```
 
 ## 5 · Agreste Meridional  `peso 208/280`
@@ -81,7 +86,7 @@ ZONA DA MATA SUL 🍬
 
 191 emendas rastreadas até o município, em 21 cidades: R$ 27,4 mi.
 
-Jaqueira, com 12 mil habitantes, aparece com R$ 4,8 mi. Ossésio Silva lidera entre as confirmadas (R$ 3,6 mi).
+Jaqueira, com 10.247 habitantes, aparece com R$ 4,8 mi. Ossésio Silva lidera entre as confirmadas (R$ 3,6 mi).
 ```
 
 ## 8 · Pajeú  `peso 194/280`
