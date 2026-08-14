@@ -140,6 +140,9 @@ export function indiceDeFatos(db: Database): Fato[] {
       .get(...ms) as { c: number };
     add(est.n + fed.n, `emendas com execução na região ${g}`);
     add(Math.max(mun.c, fed.m), `municípios com emenda na região ${g}`);
+    // Total da região, que é diferente de "com emenda" — a diferença entre os
+    // dois é justamente onde moram os achados (Santa Filomena, no Araripe).
+    add(ms.length, `municípios existentes na região ${g}`);
   }
 
   for (const r of db.query(`SELECT cargo, COUNT(*) n FROM candidato_2026 GROUP BY cargo`).all() as Array<{ cargo: string; n: number }>) {
