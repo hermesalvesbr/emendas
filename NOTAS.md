@@ -703,3 +703,31 @@ ir à contabilidade do município, não ao portal da União.
 **Efeito no painel:** a nota do modo federal e o subtítulo do gráfico de
 funções passam a dizer as duas coisas, porque o gráfico sozinho induz
 exatamente ao erro que originou este item.
+
+---
+
+## 32. O painel contava empenho solto como emenda
+
+Achado em 14/08/2026 ao auditar o painel depois de o mesmo erro aparecer nos
+posts publicados: **casar contagem de um universo com valor de outro**.
+
+O KPI dizia "3.269 emendas (subações)". A contagem vinha de
+`new Set(linhas.map(l => l.s))`, e a chave `s` do export tem três formas:
+
+| forma | o que é | quantas |
+|---|---|---|
+| `XXXX` | código de subação — emenda de verdade | 2.320 |
+| `T:num/ano` | elo textual numero/ano — emenda de verdade | 548 |
+| `E:<id>` | **empenho sem vínculo nenhum** | 401 |
+
+As 401 chaves `E:` existem para que a linha não desapareça da tabela quando
+não há elo com emenda alguma (ver item 20). Mas contá-las como emenda inflava
+o KPI em 401 unidades, R$ 61,2 mi. O número honesto é **2.868**.
+
+O KPI agora exclui `E:` e o rótulo passa a declarar o resto:
+"2.868 emendas · 401 empenhos sem vínculo". As linhas continuam na tabela —
+esconder o que não casou seria o erro oposto.
+
+**Padrão a vigiar em todo número público deste projeto:** contagem e valor
+precisam vir do mesmo conjunto. Já falhou três vezes — nos 12 posts regionais
+(item 31 da errata em POSTS-X.md), no índice de fatos do verificador, e aqui.

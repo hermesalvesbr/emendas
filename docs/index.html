@@ -734,7 +734,17 @@
     if (eBens()) { renderBens(filtrar()); return; }
     const fl = filtrar();
     document.getElementById("kValor").textContent = brlCompact(fl.reduce((s, l) => s + l.vemp, 0));
-    document.getElementById("kEmendas").textContent = new Set(fl.map((l) => l.s)).size.toLocaleString("pt-BR");
+    // Chave "E:" é empenho SEM vínculo com emenda alguma — contá-la como
+    // emenda inflava o KPI em 401 unidades (R$ 61,2 mi). A linha continua na
+    // tabela, mas não vira "emenda" no contador.
+    const unidades = new Set(fl.map((l) => l.s).filter((s) => !String(s).startsWith("E:")));
+    const soltos = new Set(fl.map((l) => l.s).filter((s) => String(s).startsWith("E:"))).size;
+    document.getElementById("kEmendas").textContent = unidades.size.toLocaleString("pt-BR");
+    document.getElementById("kEmendasLabel").textContent = eFederal()
+      ? "emendas (registros)"
+      : soltos > 0
+        ? `emendas · ${soltos.toLocaleString("pt-BR")} empenhos sem vínculo`
+        : "emendas (subações)";
     document.getElementById("kAutores").textContent = new Set(fl.map((l) => l.autor).filter(Boolean)).size.toLocaleString("pt-BR");
     document.getElementById("kMun").textContent = new Set(fl.map((l) => l.mun).filter(Boolean)).size.toLocaleString("pt-BR");
     renderAutores(fl); renderMunicipios(fl); renderEvolucao(fl); renderTabela(fl);
