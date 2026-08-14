@@ -83,6 +83,12 @@ describe("contagem de peso do X", () => {
     expect(pesoX("Sertão")).toBe(6); // acento latino segue pesando 1
   });
 
+  test("só o post de fecho carrega link — os demais pagariam alcance", async () => {
+    const posts = parsePostsMarkdown(await Bun.file("POSTS-X.md").text());
+    const comLink = posts.filter((p) => /https?:\/\//.test(p.texto)).map((p) => p.indice);
+    expect(comLink).toEqual([15]);
+  });
+
   test("todos os posts reais cabem em 280", async () => {
     const posts = parsePostsMarkdown(await Bun.file("POSTS-X.md").text());
     const estourados = posts.filter((p) => pesoX(p.texto) > 280);
@@ -121,8 +127,10 @@ describe("parse de POSTS-X.md", () => {
 
   test("o arquivo real rende a thread inteira, em ordem e sem buracos", async () => {
     const posts = parsePostsMarkdown(await Bun.file("POSTS-X.md").text());
-    expect(posts).toHaveLength(15);
-    expect(posts.map((p) => p.indice)).toEqual([...Array(15).keys()]);
+    // 16 desde 14/08/2026: o link saiu dos posts 0/1/14 e virou o post 15,
+    // porque link no corpo custa de 50% a 90% de alcance.
+    expect(posts).toHaveLength(16);
+    expect(posts.map((p) => p.indice)).toEqual([...Array(16).keys()]);
     expect(posts.every((p) => p.texto.length > 0)).toBe(true);
   });
 

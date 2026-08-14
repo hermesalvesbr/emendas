@@ -329,3 +329,34 @@ export async function publicarThread(opts: OpcoesThread): Promise<EstadoThread> 
 export async function responderPost(cred: Credenciais, texto: string, emRespostaA: string): Promise<string> {
   return await publicarUm(cred, texto, emRespostaA);
 }
+
+/**
+ * Apaga um post. Irreversível: a X não oferece lixeira nem restauração, e o
+ * id some para sempre — respostas de terceiros àquele post ficam órfãs.
+ * Devolve true quando a X confirma `deleted`.
+ */
+export async function apagarPost(cred: Credenciais, id: string): Promise<boolean> {
+  const url = `${API}/tweets/${id}`;
+  const r = await insist(
+    `x:DELETE /tweets/${id}`,
+    async (signal) => {
+      const res = await fetch(url, {
+        method: "DELETE",
+        signal,
+        headers: { Authorization: cabecalhoOAuth({ method: "DELETE", url, cred }) },
+      });
+      const texto = await res.text();
+      // 404 = já não existe; para o nosso propósito (garantir que sumiu) é sucesso.
+      if (res.status === 404) return { data: { deleted: true } };
+      if (!res.ok) {
+        const detalhe = `${res.status} ${texto.slice(0, 300)}`;
+        if (res.status === 401 || res.status === 403) throw new HarvestError("parse", detalhe);
+        throw new HarvestError("http", detalhe, { status: res.status });
+      }
+      return JSON.parse(texto) as { data?: { deleted?: boolean } };
+    },
+    { maxAttempts: 4, baseMs: 1500 },
+  );
+  if (!r.ok) throw r.lastError;
+  return r.value.data?.deleted === true;
+}

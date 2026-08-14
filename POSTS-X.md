@@ -22,11 +22,11 @@ CONFIRMADA (nunca inferida). Regiões: microrregiões do IBGE agrupadas.
 ## 0 · abertura  `peso 259/280`
 
 ```
-Coloquei no ar um painel aberto das emendas parlamentares de Pernambuco — estaduais (ALEPE) e federais (Câmara e Senado), 2023–2026.
+Coloquei no ar um painel aberto das emendas parlamentares de Pernambuco: estaduais da ALEPE e federais, 2023 a 2026.
 
-Dá pra filtrar por parlamentar e por município, e cada linha tem link pra conferir na fonte oficial.
+Dá pra filtrar por parlamentar e por município, e cada linha tem link pra conferir na fonte.
 
-https://hermesalvesbr.github.io/emendas/
+Vou percorrer as 12 regiões, uma por dia. Por qual começo?
 ```
 
 ## 1 · metodologia  `peso 249/280`
@@ -34,9 +34,9 @@ https://hermesalvesbr.github.io/emendas/
 ```
 Como foi feito: coleta automatizada do Portal da Transparência de PE, do CKAN da SCGE, da API da ALEPE e do arquivo da CGU.
 
-Onde o dado não diz o autor, o painel mostra "sem autor" em vez de chutar. Código e método abertos.
+Onde o dado não diz quem assinou, o painel mostra "sem autor" em vez de chutar: são 426 emendas assim.
 
-https://hermesalvesbr.github.io/emendas/
+O que você conferiria primeiro?
 ```
 
 ## 2 · RMR  `peso 206/280`
@@ -162,9 +162,17 @@ Salgueiro responde por R$ 1,4 mi. Joãozinho Tenório lidera as de autoria confi
 ## 14 · ressalva final  `peso 260/280`
 
 ```
-Uma ressalva importante: esses valores são só das emendas cujo destino aparece no dado como um município.
+Uma ressalva que vale mais que qualquer número acima: isto tudo é só das emendas cujo destino aparece no dado como um município.
 
 A maior parte do dinheiro federal é registrada como "PERNAMBUCO (UF)", sem cidade. Ou seja: é piso, não teto.
 
-Tudo conferível em https://hermesalvesbr.github.io/emendas/
+Ficou faltando algum recorte?
+```
+
+## 15 · link do painel
+
+```
+Tudo isso é conferível linha a linha, com o link pra fonte oficial de cada uma:
+
+https://hermesalvesbr.github.io/emendas/
 ```

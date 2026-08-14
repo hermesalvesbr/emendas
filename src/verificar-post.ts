@@ -36,7 +36,10 @@ export type NumeroCitado = {
   tolerancia: number;
 };
 
-const RE_NUMERO = /(R\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:,\d+)?)\s*(mi(?:lhões|lhão)?|bi(?:lhões|lhão)?|mil|%)?/gi;
+// A alternância precisa exigir o separador de milhar no PRIMEIRO ramo. Com
+// `\d{1,3}(?:\.\d{3})*` na frente, "12967" casava como "129" e depois "67" —
+// todo número de 4+ dígitos sem ponto era partido ao meio.
+const RE_NUMERO = /(R\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(mi(?:lhões|lhão)?|bi(?:lhões|lhão)?|mil|%)?/gi;
 
 export function extrairNumeros(texto: string): NumeroCitado[] {
   const out: NumeroCitado[] = [];

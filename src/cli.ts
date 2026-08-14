@@ -14,7 +14,7 @@ import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
-import { diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, responderPost, verificarCredenciais } from "./post-x.ts";
+import { apagarPost, diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, responderPost, verificarCredenciais } from "./post-x.ts";
 import { serve } from "./serve.ts";
 import { verificarPost } from "./verificar-post.ts";
 import { vigiar } from "./watch.ts";
@@ -34,6 +34,7 @@ const COMMANDS = [
   "compilar",
   "postar:x",
   "verificar-post",
+  "apagar:x",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -58,6 +59,7 @@ async function main(): Promise<void> {
       responder: { type: "string" },
       texto: { type: "string" },
       "com-link": { type: "boolean" },
+      extras: { type: "string" },
       confirmar: { type: "boolean" },
       diagnostico: { type: "boolean" },
       "so-detalhe": { type: "boolean" },
@@ -113,6 +115,9 @@ async function main(): Promise<void> {
       break;
     case "verificar-post":
       await cmdVerificarPost(values);
+      break;
+    case "apagar:x":
+      await cmdApagarX(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -561,6 +566,62 @@ async function cmdPostarX(values: Record<string, unknown>): Promise<void> {
  * importa — se cada número citado existe no banco. Nasceu de três erros já
  * publicados por números escritos de memória.
  */
+/**
+ * Apaga a thread inteira registrada em data/x-thread.json, mais quaisquer ids
+ * extras (--extras a,b). Ensaio por padrão: exclusão na X é definitiva.
+ * O estado é reescrito ao final para que uma nova publicação comece limpa.
+ */
+async function cmdApagarX(values: Record<string, unknown>): Promise<void> {
+  const arquivo = Bun.file(ESTADO_THREAD);
+  const estado: EstadoThread | null = (await arquivo.exists()) ? ((await arquivo.json()) as EstadoThread) : null;
+  const extras = typeof values.extras === "string" ? values.extras.split(",").map((x) => x.trim()).filter(Boolean) : [];
+  const ids = [...(estado?.publicados.map((p) => p.id) ?? []), ...extras];
+
+  if (ids.length === 0) {
+    console.log("nada a apagar.");
+    return;
+  }
+
+  console.log(`${ids.length} post(s) a apagar da conta @${estado?.usuario ?? "?"}:`);
+  for (const p of estado?.publicados ?? []) console.log(`  [${String(p.indice).padStart(2)}] ${p.url}`);
+  for (const e of extras) console.log(`  [extra] ${e}`);
+
+  if (values.confirmar !== true) {
+    console.log("\nENSAIO — nada foi apagado. Exclusão na X é DEFINITIVA (não há lixeira).");
+    console.log("Para apagar de verdade: acrescente --confirmar");
+    return;
+  }
+
+  const cred = lerCredenciais();
+  const usuario = await verificarCredenciais(cred);
+  console.log(`\napagando como @${usuario}...`);
+
+  let apagados = 0;
+  const falhas: string[] = [];
+  for (const id of ids) {
+    try {
+      if (await apagarPost(cred, id)) apagados++;
+      else falhas.push(`${id}: a X não confirmou deleted`);
+    } catch (err) {
+      falhas.push(`${id}: ${err instanceof Error ? err.message.slice(0, 120) : String(err)}`);
+    }
+    await Bun.sleep(1200);
+  }
+
+  console.log(`\n${apagados}/${ids.length} apagado(s).`);
+  for (const f of falhas) console.log(`  FALHA ${f}`);
+
+  // Zera o estado só se tudo saiu — senão a próxima publicação duplicaria o
+  // que sobrou no ar.
+  if (falhas.length === 0) {
+    await Bun.write(ESTADO_THREAD, JSON.stringify({ usuario, iniciada_em: new Date().toISOString(), publicados: [] }, null, 2));
+    console.log("estado zerado: uma nova publicação começa do post 0.");
+  } else {
+    console.log("estado PRESERVADO por causa das falhas — resolva antes de republicar.");
+    process.exitCode = 1;
+  }
+}
+
 async function cmdVerificarPost(values: Record<string, unknown>): Promise<void> {
   const texto = (typeof values.texto === "string" ? values.texto : await Bun.stdin.text()).trim();
   if (!texto) {
