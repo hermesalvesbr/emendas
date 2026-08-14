@@ -563,7 +563,11 @@
     'instituições estaduais sediadas no Recife, o valor aparece na sede do beneficiário, que pode não ser o destino final do gasto.';
   const NOTA_FEDERAL = 'Autoria vem nominal da própria fonte (CGU) — sem inferência. A classificação por casa (deputado/senador) usa as ' +
     'APIs da Câmara (56ª e 57ª legislaturas) e do Senado. "Localidade" é como a União registra o destino: a maioria das emendas é ' +
-    'estadual ("PERNAMBUCO (UF)") ou multi-município, então o ranking por município cobre só parte do valor — por isso o painel ranqueia por função.';
+    'estadual ("PERNAMBUCO (UF)") ou multi-município, então o ranking por município cobre só parte do valor — por isso o painel ranqueia por função. ' +
+    'ATENÇÃO ao ler o ranking de função: Saúde lidera por IMPOSIÇÃO LEGAL, não por escolha da bancada — a Constituição (EC 86/2015, ' +
+    'consolidada pela EC 126/2022) obriga no mínimo 50% das emendas individuais a irem para saúde. Em PE elas somam R$ 4,24 bi com 57,7% ' +
+    'em saúde, ou seja, 7,7 pontos acima do piso. E "Encargos especiais" (R$ 1,31 bi) não é uma área: são as transferências especiais, ' +
+    'as "emendas Pix", que a lei obriga a aplicar no mínimo 70% em investimento mas cujo setor a União não registra.';
 
   const TITULOS = {
     estadual: { seg: "Top municípios por valor empenhado", segSub: "clique numa barra para filtrar",
@@ -573,7 +577,7 @@
       sub: "20ª Legislatura da ALEPE (execução 2023–2026) · consulta por parlamentar e município",
       nota: NOTA_ESTADUAL,
       kEmendas: "emendas (subações)", cols: ["Emenda","Parlamentar","Município","Beneficiário","Unidade gestora","Exercício","Empenhado","Pago","Autoria","Conferir na fonte"] },
-    federal: { seg: "Top funções por valor empenhado", segSub: "onde o recurso foi aplicado (Saúde, Educação…)",
+    federal: { seg: "Top funções por valor empenhado", segSub: "Saúde lidera por piso constitucional de 50% das emendas individuais, não por escolha · \u0022Encargos especiais\u0022 são as emendas Pix, sem setor declarado",
       evo: "Evolução por exercício e tipo de emenda",
       evoSub: "autoria federal é nativa da fonte (CGU) — o empilhamento mostra o tipo: individual, transferência especial ou de bancada",
       titulo: "Emendas Parlamentares Federais — foco Pernambuco",

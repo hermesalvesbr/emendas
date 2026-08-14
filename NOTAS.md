@@ -664,3 +664,42 @@ Vitória de Santo Antão entra na RMR — não porque seja a RMR legal (que tem 
 municípios), mas porque foi assim que os números publicados em `POSTS-X.md`
 foram calculados: lá a RMR aparece com 19 municípios, o que só fecha com essa
 microrregião dentro. Painel e thread pública precisam contar a mesma história.
+
+---
+
+## 31. Saúde no topo é piso legal, não escolha — e a emenda Pix
+
+Correção apontada pelo Hermes em 14/08/2026, depois de o plano editorial
+tratar "Saúde leva quase tudo" como achado. Não é achado: é a Constituição.
+
+**A regra.** EC 86/2015, consolidada pela EC 126/2022 (art. 166 CF): no mínimo
+**50% das emendas individuais impositivas** vão obrigatoriamente para ações e
+serviços públicos de saúde. O mesmo piso de 50% vale para emendas de comissão,
+e o Executivo aplicou o mesmo critério às de bancada estadual. Logo, qualquer
+leitura do ranking de função que trate a liderança da saúde como decisão
+política da bancada está errada.
+
+**O que os dados de PE mostram quando a pergunta é a certa** (2023–2026):
+
+| recorte | valor | saúde |
+|---|---|---|
+| Emendas individuais (universo do piso) | R$ 4,24 bi | **57,7%** |
+| — com finalidade definida | R$ 2,93 bi | 83,5% |
+| — transferências especiais (Pix) | R$ 1,31 bi | **0%** |
+| Emenda de bancada | R$ 1,36 bi | 75,7% |
+
+A margem de escolha real da bancada é a diferença entre 57,7% e o piso de 50%:
+**R$ 325,5 mi**. Todo o resto é lei cumprida.
+
+**A emenda Pix.** As transferências especiais (EC 105/2019, art. 166-A) somam
+R$ 1,31 bi em 133 registros, todos com função "Encargos especiais" e subfunção
+"Outras transferências"; em 121 deles a localidade é "MÚLTIPLO", sem município.
+Cuidado com a leitura fácil: **não é dinheiro sem regra**. A lei exige no
+mínimo **70% em despesas de capital** (investimento), no máximo 30% em custeio,
+e proíbe pessoal e serviço da dívida. O que falta não é a regra — é o
+*registro do setor* no dado federal. Para saber o que foi comprado é preciso
+ir à contabilidade do município, não ao portal da União.
+
+**Efeito no painel:** a nota do modo federal e o subtítulo do gráfico de
+funções passam a dizer as duas coisas, porque o gráfico sozinho induz
+exatamente ao erro que originou este item.
