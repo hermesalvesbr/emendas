@@ -10,3 +10,5 @@
 {"id":"contagem-consistente","esperado":"aprovar","texto":"AGRESTE CENTRAL\n\n204 emendas rastreadas até o município, em 27 cidades: R$ 90,2 mi.\n\nBelo Jardim puxa a fila com R$ 28,2 mi. Sua cidade está na lista?"}
 {"id":"numero-longo-sem-ponto","esperado":"aprovar","texto":"Casinhas tem 12967 habitantes e recebeu R$ 8,0 mi em emendas. Quanto a sua cidade recebeu?","fatosExternos":[{"valor":12967,"rotulo":"população de Casinhas"}],"nota":"regressão: a regex partia 12967 em 129 e 67"}
 {"id":"intervalo-de-anos","esperado":"aprovar","texto":"O painel cobre de 2023 a 2026, com 41 emendas no Sertão do Araripe somando R$ 8,5 mi. Sua cidade aparece?","nota":"regressão: 2023 virava 202 e 3"}
+{"id":"orfas-contadas-por-join","esperado":"reprovar","regra":"numero-sem-lastro","texto":"Em 426 emendas, somando 47,4 milhões, a fonte pública não diz quem assinou. Dá pra saber de outro jeito?","nota":"caso real: 426 são linhas do join; as emendas distintas sem autor são 238"}
+{"id":"orfas-contagem-certa","esperado":"aprovar","texto":"Em 238 emendas, somando 47,4 milhões, a fonte pública não diz quem assinou. Dá pra saber de outro jeito?"}

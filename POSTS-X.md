@@ -34,7 +34,7 @@ Percorro as 12 regiões, uma por dia. Começo pela sua?
 ```
 Como foi feito: coleta automatizada do Portal da Transparência de PE, do CKAN da SCGE, da API da ALEPE e do arquivo da CGU.
 
-Onde o dado não diz quem assinou, o painel mostra "sem autor" em vez de chutar: são 426 emendas assim.
+Onde o dado não diz quem assinou, o painel mostra "sem autor" em vez de chutar: são 238 emendas assim.
 
 O que você conferiria primeiro?
 ```

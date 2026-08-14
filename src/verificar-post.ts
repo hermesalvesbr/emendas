@@ -179,6 +179,17 @@ export function indiceDeFatos(db: Database): Fato[] {
   add((db.query(`SELECT SUM(vlrempenhado) v FROM emenda_federal`).get() as { v: number }).v, "total empenhado em emendas federais");
   add((db.query(`SELECT COUNT(DISTINCT municipio) c FROM emenda WHERE municipio IS NOT NULL`).get() as { c: number }).c, "municípios com emenda estadual");
 
+  // Qualidade da autoria — contagem DISTINTA de emendas, não linhas do join.
+  // A soma por join dava 426 e eu já a publiquei como "426 emendas"; as
+  // emendas distintas sem autor são 238. Quarta vez que o mesmo padrão morde.
+  for (const r of db.query(`SELECT e.confianca c, COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n,
+                                   SUM(em.vlrempenhado) v
+                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
+                            GROUP BY e.confianca`).all() as Array<{ c: string; n: number; v: number }>) {
+    add(r.n, `emendas com autoria "${r.c}"`);
+    add(r.v, `valor das emendas com autoria "${r.c}"`);
+  }
+
   // As 12 regiões vêm do mapa do IBGE agrupado, não de uma consulta — mas são
   // fato do projeto e aparecem em quase todo post da série.
   add(new Set(MUNICIPIO_REGIAO.values()).size, "regiões de PE no agrupamento do projeto");
