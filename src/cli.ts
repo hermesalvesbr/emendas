@@ -59,7 +59,8 @@ async function main(): Promise<void> {
       responder: { type: "string" },
       texto: { type: "string" },
       "com-link": { type: "boolean" },
-      extras: { type: "string" },
+      ids: { type: "string" },
+      tudo: { type: "boolean" },
       confirmar: { type: "boolean" },
       diagnostico: { type: "boolean" },
       "so-detalhe": { type: "boolean" },
@@ -574,8 +575,30 @@ async function cmdPostarX(values: Record<string, unknown>): Promise<void> {
 async function cmdApagarX(values: Record<string, unknown>): Promise<void> {
   const arquivo = Bun.file(ESTADO_THREAD);
   const estado: EstadoThread | null = (await arquivo.exists()) ? ((await arquivo.json()) as EstadoThread) : null;
-  const extras = typeof values.extras === "string" ? values.extras.split(",").map((x) => x.trim()).filter(Boolean) : [];
-  const ids = [...(estado?.publicados.map((p) => p.id) ?? []), ...extras];
+  const avulsos = typeof values.ids === "string" ? values.ids.split(",").map((x) => x.trim()).filter(Boolean) : [];
+
+  // Apagar a thread inteira exige --tudo explícito. Antes, passar um id
+  // avulso levava junto tudo que estivesse no estado: foi assim que a
+  // abertura já publicada foi apagada por engano em 14/08/2026.
+  if (avulsos.length > 0 && values.tudo !== true) {
+    console.log(`modo avulso: ${avulsos.length} id(s). A thread em ${ESTADO_THREAD} NÃO será tocada.`);
+    if (values.confirmar !== true) {
+      console.log("ENSAIO — nada apagado. Acrescente --confirmar.");
+      return;
+    }
+    const credA = lerCredenciais();
+    await verificarCredenciais(credA);
+    for (const id of avulsos) console.log(`  ${id}: ${(await apagarPost(credA, id)) ? "apagado" : "a X não confirmou"}`);
+    return;
+  }
+
+  if (values.tudo !== true) {
+    console.error("apagar:x apaga a THREAD INTEIRA. Use --tudo para confirmar a intenção, ou --ids a,b para apagar posts avulsos.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const ids = [...(estado?.publicados.map((p) => p.id) ?? []), ...avulsos];
 
   if (ids.length === 0) {
     console.log("nada a apagar.");
@@ -584,7 +607,7 @@ async function cmdApagarX(values: Record<string, unknown>): Promise<void> {
 
   console.log(`${ids.length} post(s) a apagar da conta @${estado?.usuario ?? "?"}:`);
   for (const p of estado?.publicados ?? []) console.log(`  [${String(p.indice).padStart(2)}] ${p.url}`);
-  for (const e of extras) console.log(`  [extra] ${e}`);
+  for (const e of avulsos) console.log(`  [avulso] ${e}`);
 
   if (values.confirmar !== true) {
     console.log("\nENSAIO — nada foi apagado. Exclusão na X é DEFINITIVA (não há lixeira).");
