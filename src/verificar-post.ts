@@ -10,6 +10,7 @@
 // é apontado — não silenciosamente aceito.
 
 import { Database } from "bun:sqlite";
+import { linhasPainel } from "./elo-painel.ts";
 import {
   agregadoPorAutorEstadual,
   agregadoPorAutorFederal,
@@ -142,6 +143,18 @@ export type Fato = { valor: number; rotulo: string; dominio?: DominioFato };
  * região, por município, contagens de candidatura e patrimônio. É este
  * conjunto que decide se um número do post "existe".
  */
+/**
+ * O mesmo arredondamento que formatarReais/valorAfirmado do gerador — copiado
+ * (e travado por teste) em vez de importado, porque gerar-posts.ts importa
+ * este módulo e o ciclo quebraria o carregamento.
+ */
+function valorAfirmadoReais(v: number): number {
+  if (v >= 1e9) return Number((v / 1e9).toFixed(2)) * 1e9;
+  if (v >= 1e6) return Number((v / 1e6).toFixed(1)) * 1e6;
+  if (v >= 1e3) return Math.round(v / 1e3) * 1e3;
+  return Math.round(v);
+}
+
 export function indiceDeFatos(db: Database): Fato[] {
   const fatos: Fato[] = [];
   let dominioAtual: DominioFato = "emendas";
@@ -149,77 +162,40 @@ export function indiceDeFatos(db: Database): Fato[] {
     if (Number.isFinite(valor) && valor > 0) fatos.push({ valor, rotulo, dominio });
   };
 
-  const porMunicipio = new Map<string, number>();
-  const q = `SELECT e.municipio m, SUM(em.vlrempenhado) v FROM emenda e
-             JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
-             WHERE e.municipio IS NOT NULL GROUP BY e.municipio`;
-  for (const r of db.query(q).all() as Array<{ m: string; v: number }>) {
-    porMunicipio.set(r.m, (porMunicipio.get(r.m) ?? 0) + (r.v ?? 0));
+  // ---- município, região e autor — TUDO do elo do painel (elo-painel.ts).
+  // Os SQLs próprios que viviam aqui usavam o join antigo (substr(...,1,4)),
+  // que soma o mesmo empenho N vezes; o índice validava números que o painel
+  // não mostra. Uma fonte só: agregados.ts.
+  const municipios = agregadoPorMunicipio(db);
+  for (const m of municipios) {
+    add(m.v, `emendas de ${m.municipio}`);
+    add(m.n, `emendas de ${m.municipio}`);
   }
-  for (const r of db.query(`SELECT municipio m, SUM(vlrempenhado) v FROM emenda_federal
-                            WHERE municipio IS NOT NULL GROUP BY municipio`).all() as Array<{ m: string; v: number }>) {
-    porMunicipio.set(r.m, (porMunicipio.get(r.m) ?? 0) + (r.v ?? 0));
+  for (const r of agregadoPorRegiao(db)) {
+    add(r.v, `emendas da região ${r.regiao}`);
+    add(r.n, `emendas com execução na região ${r.regiao}`);
+    add(r.municipiosComEmenda, `municípios com emenda na região ${r.regiao}`);
+    add(r.municipiosExistentes, `municípios existentes na região ${r.regiao}`);
   }
-
-  for (const r of db.query(`SELECT e.municipio m, COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n
-                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
-                            WHERE e.municipio IS NOT NULL GROUP BY e.municipio`).all() as Array<{ m: string; n: number }>) {
-    const fed = db.query(`SELECT COUNT(*) n FROM emenda_federal WHERE municipio = ?`).get(r.m) as { n: number };
-    add(r.n + (fed?.n ?? 0), `emendas de ${r.m}`);
-  }
-
-  // Autor x município, com autoria CONFIRMADA — é o que todo post regional
-  // cita ("fulano lidera com R$ X") e sem isso o número ficava sem lastro.
-  for (const r of db.query(`SELECT e.municipio m, e.autor_normalizado a,
-                                   COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n,
-                                   SUM(em.vlrempenhado) v
-                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
-                            WHERE e.municipio IS NOT NULL AND e.confianca = 'alta' AND e.autor_normalizado IS NOT NULL
-                            GROUP BY e.municipio, e.autor_normalizado`).all() as Array<{ m: string; a: string; n: number; v: number }>) {
-    add(r.v, `emendas de ${r.a} em ${r.m}`);
-    add(r.n, `nº de emendas de ${r.a} em ${r.m}`);
-  }
-
-  const porRegiao = new Map<string, number>();
-  for (const [m, v] of porMunicipio) {
-    add(v, `emendas de ${m}`);
-    const g = MUNICIPIO_REGIAO.get(m);
-    if (g) porRegiao.set(g, (porRegiao.get(g) ?? 0) + v);
-  }
-  for (const [g, v] of porRegiao) add(v, `emendas da região ${g}`);
-
-  // Contagens por região. Precisa ser DISTINCT sobre a região inteira, não
-  // soma por município: a mesma emenda pode aparecer em vários municípios e a
-  // soma inflaria. Foi exatamente esse erro que foi publicado — "317 emendas"
-  // no Agreste Central quando as que produzem o valor citado são 204.
-  // E o universo é o das emendas COM empenho no escopo, o mesmo que gera o
-  // valor em reais; casar contagem de um universo com valor de outro é o bug.
-  const municipiosPorRegiao = new Map<string, string[]>();
-  for (const [m, g] of MUNICIPIO_REGIAO) {
-    const lista = municipiosPorRegiao.get(g);
-    if (lista) lista.push(m);
-    else municipiosPorRegiao.set(g, [m]);
-  }
-  for (const [g, ms] of municipiosPorRegiao) {
-    const marcadores = ms.map(() => "?").join(",");
-    const est = db
-      .query(`SELECT COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n
-              FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
-              WHERE e.municipio IN (${marcadores})`)
-      .get(...ms) as { n: number };
-    const fed = db
-      .query(`SELECT COUNT(*) n, COUNT(DISTINCT municipio) m FROM emenda_federal WHERE municipio IN (${marcadores})`)
-      .get(...ms) as { n: number; m: number };
-    const mun = db
-      .query(`SELECT COUNT(DISTINCT municipio) c FROM emenda
-              WHERE municipio IN (${marcadores})
-                AND EXISTS (SELECT 1 FROM empenho em WHERE substr(em.cd_nm_subacao,1,4) = emenda.subacao_codigo)`)
-      .get(...ms) as { c: number };
-    add(est.n + fed.n, `emendas com execução na região ${g}`);
-    add(Math.max(mun.c, fed.m), `municípios com emenda na região ${g}`);
-    // Total da região, que é diferente de "com emenda" — a diferença entre os
-    // dois é justamente onde moram os achados (Santa Filomena, no Araripe).
-    add(ms.length, `municípios existentes na região ${g}`);
+  // Autor × município (autoria confirmada + dicionário oficial), do mesmo elo.
+  {
+    const nomesOficiais = new Set(
+      (db.query(`SELECT DISTINCT autor_normalizado a FROM autoria_oficial`).all() as Array<{ a: string }>).map((x) => x.a),
+    );
+    const pares = new Map<string, { n: Set<string>; v: number }>();
+    for (const l of linhasPainel(db)) {
+      if (!l.mun || l.conf !== "alta" || !l.autor || !nomesOficiais.has(l.autor)) continue;
+      const k = `${l.autor}|${l.mun}`;
+      const cur = pares.get(k) ?? { n: new Set<string>(), v: 0 };
+      if (l.em) cur.n.add(l.em);
+      cur.v += l.vemp;
+      pares.set(k, cur);
+    }
+    for (const [k, a] of pares) {
+      const [autor, mun] = k.split("|");
+      add(a.v, `emendas de ${autor} em ${mun}`);
+      add(a.n.size, `nº de emendas de ${autor} em ${mun}`);
+    }
   }
 
   for (const r of db.query(`SELECT cargo, COUNT(*) n FROM candidato_2026 GROUP BY cargo`).all() as Array<{ cargo: string; n: number }>) {
@@ -256,15 +232,35 @@ export function indiceDeFatos(db: Database): Fato[] {
   add((db.query(`SELECT SUM(vlrempenhado) v FROM emenda_federal`).get() as { v: number }).v, "total empenhado em emendas federais");
   add((db.query(`SELECT COUNT(DISTINCT municipio) c FROM emenda WHERE municipio IS NOT NULL`).get() as { c: number }).c, "municípios com emenda estadual");
 
-  // Qualidade da autoria — contagem DISTINTA de emendas, não linhas do join.
-  // A soma por join dava 426 e eu já a publiquei como "426 emendas"; as
-  // emendas distintas sem autor são 238. Quarta vez que o mesmo padrão morde.
-  for (const r of db.query(`SELECT e.confianca c, COUNT(DISTINCT e.numero_emenda || "/" || e.exercicio_emenda) n,
-                                   SUM(em.vlrempenhado) v
-                            FROM emenda e JOIN empenho em ON substr(em.cd_nm_subacao,1,4) = e.subacao_codigo
-                            GROUP BY e.confianca`).all() as Array<{ c: string; n: number; v: number }>) {
-    add(r.n, `emendas com autoria "${r.c}"`);
-    add(r.v, `valor das emendas com autoria "${r.c}"`);
+  // Qualidade da autoria — SÓ emendas identificadas (com elo), como o post
+  // publicado sempre afirmou ("em N emendas, a fonte não diz quem assinou").
+  // Linha órfã (E:) é empenho sem emenda nenhuma: outro universo, outro
+  // rótulo — misturá-los inflaria o "sem autor" com o "sem elo".
+  {
+    const porConf = new Map<string, { n: Set<string>; v: number }>();
+    let orfaos = 0;
+    let vOrfaos = 0;
+    for (const l of linhasPainel(db)) {
+      if (!l.em) {
+        // Só a chave E: é "empenho sem vínculo" (o KPI do painel, NOTAS 32);
+        // subação sem emenda identificada é outra coisa e não vira fato.
+        if (l.s.startsWith("E:")) {
+          orfaos += 1;
+          vOrfaos += l.vemp;
+        }
+        continue;
+      }
+      const cur = porConf.get(l.conf) ?? { n: new Set<string>(), v: 0 };
+      cur.n.add(l.em);
+      cur.v += l.vemp;
+      porConf.set(l.conf, cur);
+    }
+    for (const [c, a] of porConf) {
+      add(a.n.size, `emendas com autoria "${c}"`);
+      add(a.v, `valor das emendas com autoria "${c}"`);
+    }
+    add(orfaos, "empenhos sem vínculo com emenda");
+    add(vOrfaos, "valor dos empenhos sem vínculo");
   }
 
   // População (Censo 2022). Fato externo, mas versionado no projeto — já foi
@@ -292,8 +288,16 @@ export function indiceDeFatos(db: Database): Fato[] {
   // que é justamente a trava que importa quando o texto foi escrito num dia
   // e o dado mudou no outro.
   for (const m of agregadoPorMunicipio(db)) {
-    if (m.porHabitante > 0) add(m.porHabitante, `R$ por habitante em ${m.municipio}`);
+    // O per capita citável é o que a série PUBLICA: total exibido (arredondado
+    // como formatarReais escreve) dividido pela população. Guardar o valor de
+    // precisão cheia fazia a conta do leitor não fechar em 18 posts.
+    if (m.populacao > 0 && m.v > 0) {
+      const exibido = Math.round(valorAfirmadoReais(m.v) / m.populacao);
+      if (exibido > 0) add(exibido, `R$ por habitante em ${m.municipio}`);
+    }
     add(m.n, `nº de emendas de ${m.municipio}`);
+    // Empenho não é entrega: o post agora mostra o pago ao lado do empenhado.
+    add(m.pago, `pagos em ${m.municipio}`);
   }
   for (const r of agregadoPorRegiao(db)) {
     if (r.porHabitante > 0) add(r.porHabitante, `R$ por habitante na região ${r.regiao}`);
@@ -338,6 +342,9 @@ export function indiceDeFatos(db: Database): Fato[] {
     } else semNativo++;
     add(c.candidatos2022, `candidatos que receberam voto em ${c.municipio} em 2022`, "votacao");
     add(c.totalVotos2022, `votos nominais em ${c.municipio} em 2022`, "votacao");
+    for (const [cargo, nCargo] of Object.entries(c.candidatosPorCargo2022)) {
+      if (nCargo) add(nCargo, `candidatos a ${cargo} que receberam voto em ${c.municipio} em 2022`, "votacao");
+    }
     for (const [cargo, t] of Object.entries(c.top)) {
       if (t) add(t.votos, `votos de ${t.nome} para ${cargo} em ${c.municipio} em 2022`, "votacao");
     }

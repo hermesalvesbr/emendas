@@ -822,6 +822,18 @@ async function cmdPostarAgenda(values: Record<string, unknown>): Promise<void> {
 // ------------------------------------------------- série de 3 em 3 horas
 
 const POOL = "data/pool-posts.json";
+
+/**
+ * Texto da 1ª resposta, por eixo: cada post aponta para a tela que de fato
+ * mostra o número citado — mandar o leitor de curiosidade para o painel de
+ * emendas seria prometer verificação e entregar outra página.
+ */
+const LINK_REPLY: Record<string, string> = {
+  cidade: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
+  autor: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
+  funcao: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
+  curiosidade: "Naturalidade e votação de 2022, com a fonte do TSE:\nhttps://hermesalvesbr.github.io/emendas/candidatos.html",
+};
 const FILA = "data/fila-posts.json";
 const PUBLICADOS = "data/x-publicados.json";
 const LOG_POSTS = "data/log-posts.jsonl";
@@ -1088,7 +1100,22 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
   publicados.usuario = usuario;
   publicados.publicados.push({ slot: alvo, post_id: postId, hash: post.hash, id, url, em: new Date().toISOString() });
   await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
-  await appendJsonl(LOG_POSTS, { slot: alvo, post_id: postId, url, peso: post.peso, em: new Date().toISOString() });
+
+  // O link do painel vai na 1ª RESPOSTA de todo post (decisão do candidato,
+  // 16/08/2026): no corpo mataria 50–90% do alcance, e sem ele "dado
+  // conferível" era promessa sem endereço. Falha aqui NÃO desfaz o post — o
+  // post vale sozinho; a resposta é reforço.
+  let replyId: string | null = null;
+  try {
+    replyId = await responderPost(cred, LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string), id);
+    const ultimo = publicados.publicados.at(-1);
+    if (ultimo) (ultimo as { reply_id?: string }).reply_id = replyId;
+    await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
+  } catch (err) {
+    console.log(`aviso: post publicado, mas a resposta com o link falhou: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`);
+  }
+
+  await appendJsonl(LOG_POSTS, { slot: alvo, post_id: postId, url, reply_id: replyId, peso: post.peso, em: new Date().toISOString() });
 
   // Sucesso é silencioso: a 8 posts/dia, avisar a cada acerto vira ruído e o
   // alerta perde valor. O que interessa está no log e no resumo das 21:30.

@@ -18,6 +18,7 @@ import {
 const SCHEMA_MINIMO = `
 CREATE TABLE empenho (
   id INTEGER PRIMARY KEY, exercicio INTEGER, numero_empenho TEXT,
+  unidade_gestora TEXT, credor TEXT, obs TEXT,
   cd_nm_subacao TEXT, cd_nm_funcao TEXT,
   vlrempenhado REAL, vlrliquidado REAL, vlrtotalpago REAL,
   fonte TEXT, hash TEXT, coletado_em TEXT
@@ -31,7 +32,7 @@ CREATE TABLE emenda (
 CREATE TABLE emenda_federal (
   id INTEGER PRIMARY KEY, ano INTEGER, autor TEXT, autor_normalizado TEXT,
   cat TEXT, partido TEXT, municipio TEXT, funcao TEXT, subfuncao TEXT,
-  vlrempenhado REAL
+  vlrempenhado REAL, vlrpago REAL
 );
 CREATE TABLE autoria_oficial (
   numero_emenda TEXT, autor_nome TEXT, autor_normalizado TEXT
@@ -100,8 +101,11 @@ describe("universo único: n e v saem da mesma query", () => {
     expect(recife?.v).toBe(3000);
   });
 
-  test("a mesma emenda em dois municípios conta uma vez em cada, e a região não soma em dobro", () => {
-    // Uma subação, dois municípios da MESMA região (RMR).
+  test("um empenho entra numa chave só — a semântica é a do painel", () => {
+    // Duas emendas disputando a mesma subação: o elo escolhe UMA (a de melhor
+    // confiança) e o empenho conta uma única vez. O join antigo somava o
+    // mesmo empenho nas duas — foi assim que o agregado inflou 9,1% e os
+    // posts divergiram do painel que mandavam o leitor conferir.
     db.run(`INSERT INTO emenda (numero_emenda, exercicio_emenda, subacao_codigo, municipio, confianca)
             VALUES ('9', 2024, 'ZZZZ', 'RECIFE', 'nula')`);
     db.run(`INSERT INTO emenda (numero_emenda, exercicio_emenda, subacao_codigo, municipio, confianca)
@@ -110,9 +114,11 @@ describe("universo único: n e v saem da mesma query", () => {
             VALUES (2024, 'NE9', 'ZZZZ - EMENDA', 500, 'ckan', 'h9', '2026-08-16')`);
 
     const rmr = agregadoPorRegiao(db).find((r) => r.regiao === "Região Metropolitana do Recife");
-    // 2 pares (numero, exercicio) distintos na região — contados uma vez cada,
-    // pela query regional, não pela soma dos municípios.
-    expect(rmr?.n).toBe(2);
+    expect(rmr?.n).toBe(1);
+    expect(rmr?.v).toBe(500);
+    // E o valor regional é a soma dos municípios SEM dupla contagem.
+    const soma = agregadoPorMunicipio(db).filter((m) => m.regiao === "Região Metropolitana do Recife").reduce((a, b) => a + b.v, 0);
+    expect(soma).toBe(500);
   });
 
   test("federal e estadual somam no mesmo município sem se atropelar", () => {
@@ -391,17 +397,17 @@ describe("curiosidades por município", () => {
     voto("d2", "OUTRO DEPUTADO", "Deputado Estadual", "PL", "ARARIPINA", 8000);
 
     const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
-    expect(c?.top["Deputado Estadual"]?.nome).toBe("DEPUTADO LOCAL");
+    expect(c?.top["Deputado Estadual"]?.nome).toBe("Deputado Local");
     expect(c?.top["Deputado Estadual"]?.votos).toBe(9000);
-    expect(c?.top.Senador?.nome).toBe("SENADOR FAMOSO");
+    expect(c?.top.Senador?.nome).toBe("Senador Famoso");
   });
 
-  test("nome de urna do TSE vem com espaço sobrando e é aparado", () => {
-    // "SOCORRO PIMENTEL " no arquivo real. Publicar assim deixa a marca do
-    // descuido num texto que se propõe a ser conferível.
+  test("nome de urna do TSE sai legível: aparado e sem CAIXA ALTA", () => {
+    // "SOCORRO PIMENTEL " no arquivo real — espaço sobrando E grito. Publicar
+    // assim destoava dos posts de emendas e deixava a marca do descuido.
     voto("d1", "SOCORRO PIMENTEL ", "Deputado Estadual", "UNIÃO ", "ARARIPINA", 19290);
     const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
-    expect(c?.top["Deputado Estadual"]?.nome).toBe("SOCORRO PIMENTEL");
+    expect(c?.top["Deputado Estadual"]?.nome).toBe("Socorro Pimentel");
     expect(c?.top["Deputado Estadual"]?.partido).toBe("UNIÃO");
   });
 

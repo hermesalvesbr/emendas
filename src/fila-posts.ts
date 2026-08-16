@@ -185,6 +185,38 @@ export function distribuir(slots: string[], posts: PostGerado[], horas: readonly
   const ordenadas = [...horas].sort((x, y) => x - y);
   const diaZero = slots[0]?.slice(0, 10) ?? "";
 
+  // Anti-monotonia: a fila regerada em 16/08 tinha 46 pares vizinhos com o
+  // MESMO template e dias com a mesma cidade três vezes — timeline de robô.
+  // Antes de aceitar um post, olhamos os vizinhos cronológicos já atribuídos
+  // e as cidades do dia; quando o estoque não permite, aceita-se mesmo assim
+  // (melhor repetir do que deixar slot vazio).
+  const slotsOrdenados = [...slots].sort();
+  const posSlot = new Map(slotsOrdenados.map((x, i) => [x, i] as const));
+  const templatePorSlot = new Map<string, string>();
+  const cidadesPorDia = new Map<string, Set<string>>();
+  const porId = new Map(posts.map((p) => [p.id, p] as const));
+
+  const violaMonotonia = (slotAtual: string, p: PostGerado): boolean => {
+    const i = posSlot.get(slotAtual) ?? -1;
+    for (const viz of [slotsOrdenados[i - 1], slotsOrdenados[i + 1]]) {
+      if (viz && templatePorSlot.get(viz) === p.template) return true;
+    }
+    const mun = typeof p.chave.municipio === "string" ? p.chave.municipio : null;
+    if (mun && cidadesPorDia.get(slotAtual.slice(0, 10))?.has(mun)) return true;
+    return false;
+  };
+
+  const registrar = (slotAtual: string, p: PostGerado): void => {
+    templatePorSlot.set(slotAtual, p.template);
+    const mun = typeof p.chave.municipio === "string" ? p.chave.municipio : null;
+    if (mun) {
+      const dia = slotAtual.slice(0, 10);
+      const set = cidadesPorDia.get(dia) ?? new Set<string>();
+      set.add(mun);
+      cidadesPorDia.set(dia, set);
+    }
+  };
+
   for (const s of ordemDeAtendimento) {
     const dia = Math.round(
       (Date.parse(`${s.slice(0, 10)}T00:00:00Z`) - Date.parse(`${diaZero}T00:00:00Z`)) / 86_400_000,
@@ -194,25 +226,32 @@ export function distribuir(slots: string[], posts: PostGerado[], horas: readonly
     pedidos.set(alvo, (pedidos.get(alvo) ?? 0) + 1);
 
     let escolhido: PostGerado | undefined;
-    for (const tentativa of [alvo, "curiosidade", "cidade", "autor", "funcao", "campanha"]) {
-      const fila = filas.get(tentativa);
-      const devolver: PostGerado[] = [];
-      while (fila && fila.length > 0) {
-        const p = fila.shift();
-        if (!p) break;
-        // O recorte, não só o id: "cidade:RECIFE:total" e a versão :campanha
-        // afirmam o MESMO número. Publicar os dois é repetir o fato com outra
-        // roupa, e num dia só o leitor percebe.
-        if (usados.has(p.id) || basesUsadas.has(baseDe(p.id))) continue;
-        escolhido = p;
-        break;
+    // Duas passadas: primeiro respeitando a anti-monotonia, depois sem ela.
+    for (const relaxado of [false, true]) {
+      for (const tentativa of [alvo, "curiosidade", "cidade", "autor", "funcao", "campanha"]) {
+        const fila = filas.get(tentativa);
+        if (!fila) continue;
+        const devolver: PostGerado[] = [];
+        while (fila.length > 0) {
+          const p = fila.shift();
+          if (!p) break;
+          if (usados.has(p.id) || basesUsadas.has(baseDe(p.id))) continue;
+          if (!relaxado && violaMonotonia(s, p)) {
+            devolver.push(p);
+            continue;
+          }
+          escolhido = p;
+          break;
+        }
+        if (devolver.length > 0) fila.unshift(...devolver);
+        if (escolhido) break;
       }
-      if (fila && devolver.length > 0) fila.unshift(...devolver);
       if (escolhido) break;
     }
     if (!escolhido) continue;
     usados.add(escolhido.id);
     basesUsadas.add(baseDe(escolhido.id));
+    registrar(s, escolhido);
     saida[s] = escolhido.id;
   }
 

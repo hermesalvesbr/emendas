@@ -28,6 +28,7 @@ import {
   curiosidadesPorMunicipio,
   liderPorMunicipio,
 } from "./agregados.ts";
+import { MUNICIPIO_REGIAO } from "./regioes-pe.ts";
 import { pesoX } from "./post-x.ts";
 import { type DominioFato, type Fato, indiceDeFatos, verificarPost } from "./verificar-post.ts";
 
@@ -134,6 +135,16 @@ export function cidadeUF(nome: string): string {
   return `${nome} (PE)`;
 }
 
+/**
+ * Como cidadeCom, mas SEMPRE termina em vírgula — para uso no meio de oração.
+ * Sem isto, o Recife (que não recebe rótulo de região, seria pleonasmo) saía
+ * grudado no que vem depois: "No município de Recife (PE) 973 candidatos".
+ */
+export function cidadeVirgula(nome: string, regiao: string | null): string {
+  const c = cidadeCom(nome, regiao);
+  return c.endsWith(",") ? c : `${c},`;
+}
+
 /** "Região"/"Zona" são femininos; "Agreste"/"Sertão", masculinos. */
 export function artigoDaRegiao(regiao: string): string {
   return /^(Região|Zona)\b/.test(regiao) ? "na" : "no";
@@ -202,10 +213,14 @@ function hashTexto(texto: string): string {
 
 // A UF e a região vão na PRIMEIRA linha, não numa camada de rodapé: é ali que
 // a ambiguidade nasce, e rodapé é o primeiro a cair quando o post estoura.
+// Verbo de EMPENHO, nunca de entrega. "Chegaram"/"recebeu" sobre vlrempenhado
+// era refutável com o próprio banco: havia município com empenho e pagamento
+// muito menor. Empenhar é reservar no orçamento; pagar é outra coluna — e o
+// post agora mostra as duas.
 const ABERTURA_CIDADE = [
-  (m: AgregadoMunicipio) => `O município de ${cidadeCom(m.nome, m.regiao)} recebeu ${formatarReais(m.v)} em emendas parlamentares entre 2023 e 2026.`,
-  (m: AgregadoMunicipio) => `${formatarReais(m.v)} em emendas parlamentares chegaram ao município de ${cidadeCom(m.nome, m.regiao)} de 2023 a 2026.`,
-  (m: AgregadoMunicipio) => `Emendas parlamentares no município de ${cidadeCom(m.nome, m.regiao)} entre 2023 e 2026: ${formatarReais(m.v)}.`,
+  (m: AgregadoMunicipio) => `O município de ${cidadeCom(m.nome, m.regiao)} teve ${formatarReais(m.v)} empenhados em emendas parlamentares entre 2023 e 2026.`,
+  (m: AgregadoMunicipio) => `${formatarReais(m.v)} em emendas parlamentares foram empenhados para o município de ${cidadeCom(m.nome, m.regiao)} de 2023 a 2026.`,
+  (m: AgregadoMunicipio) => `Emendas parlamentares empenhadas para o município de ${cidadeCom(m.nome, m.regiao)} 2023–2026: ${formatarReais(m.v)}.`,
   (m: AgregadoMunicipio) => `O painel registra ${formatarReais(m.v)} em emendas com destino ao município de ${cidadeCom(m.nome, m.regiao)} desde 2023.`,
 ] as const;
 
@@ -214,27 +229,39 @@ function templateCidadeTotal(m: AgregadoMunicipio): { camadas: Camada[]; fatos: 
   const variante = varianteDe(`cidade:${m.municipio}:total`, ABERTURA_CIDADE.length);
   const abertura = ABERTURA_CIDADE[variante] ?? ABERTURA_CIDADE[0];
 
+  // Empenhado e pago lado a lado: é a diferença entre reserva e entrega, e
+  // escondê-la era o flanco mais fácil de atacar em toda a série.
+  const linhaPago =
+    m.pago > 0
+      ? `${contagem(m.n, "emenda", "emendas")}, somando estaduais e federais — ${formatarReais(m.pago)} já efetivamente pagos.`
+      : `${contagem(m.n, "emenda", "emendas")}, somando estaduais e federais — nada pago até aqui.`;
+
+  const fatos: Fato[] = [
+    { valor: valorAfirmado(m.v), rotulo: `emendas de ${m.municipio}` },
+    { valor: m.n, rotulo: `nº de emendas de ${m.municipio}` },
+  ];
+  if (m.pago > 0) fatos.push({ valor: valorAfirmado(m.pago), rotulo: `pagos em ${m.municipio}` });
+
   return {
     camadas: [
       { texto: abertura(m), prioridade: 100 },
-      {
-        texto: `${contagem(m.n, "emenda", "emendas")} com execução orçamentária registrada, somando estaduais e federais.`,
-        prioridade: 80,
-      },
+      { texto: linhaPago, prioridade: 80 },
       { texto: "Dado do painel aberto, com a fonte oficial de cada linha.", prioridade: 30 },
     ],
-    fatos: [
-      { valor: valorAfirmado(m.v), rotulo: `emendas de ${m.municipio}` },
-      { valor: m.n, rotulo: `nº de emendas de ${m.municipio}` },
-    ],
+    fatos,
   };
 }
 
+// O per capita exibido vem do TOTAL EXIBIDO dividido pela população — não do
+// valor cheio. A conta que o próprio post propõe tem de fechar para quem a
+// refizer com os números do post; havia 18 posts em que não fechava.
+const pcExibido = (m: AgregadoMunicipio): number => Math.round(valorAfirmado(m.v) / m.populacao);
+
 const ABERTURA_PER_CAPITA = [
-  (m: AgregadoMunicipio) => `O município de ${cidadeCom(m.nome, m.regiao)} tem ${formatarReais(m.porHabitante)} por habitante em emendas parlamentares.`,
-  (m: AgregadoMunicipio) => `No município de ${cidadeCom(m.nome, m.regiao)} a emenda parlamentar equivale a ${formatarReais(m.porHabitante)} por morador.`,
-  (m: AgregadoMunicipio) => `${formatarReais(m.porHabitante)} por habitante: é o que o município de ${cidadeCom(m.nome, m.regiao)} recebeu em emendas.`,
-  (m: AgregadoMunicipio) => `Divididas pela população, as emendas do município de ${cidadeCom(m.nome, m.regiao)} dão ${formatarReais(m.porHabitante)} por pessoa.`,
+  (m: AgregadoMunicipio) => `O município de ${cidadeCom(m.nome, m.regiao)} tem R$ ${pcExibido(m)} por habitante empenhados em emendas parlamentares (2023–2026).`,
+  (m: AgregadoMunicipio) => `No município de ${cidadeVirgula(m.nome, m.regiao)} a emenda parlamentar 2023–2026 equivale a R$ ${pcExibido(m)} por morador.`,
+  (m: AgregadoMunicipio) => `R$ ${pcExibido(m)} por habitante: é o que o município de ${cidadeCom(m.nome, m.regiao)} tem empenhado em emendas de 2023 a 2026.`,
+  (m: AgregadoMunicipio) => `Divididas pela população, as emendas 2023–2026 do município de ${cidadeCom(m.nome, m.regiao)} dão R$ ${pcExibido(m)} por pessoa.`,
 ] as const;
 
 function templateCidadePerCapita(m: AgregadoMunicipio): { camadas: Camada[]; fatos: Fato[] } | null {
@@ -260,16 +287,40 @@ function templateCidadePerCapita(m: AgregadoMunicipio): { camadas: Camada[]; fat
   };
 }
 
-// O post em que cidade e pessoa dividem a mesma frase: sem "o município de"
-// e sem a UF, "Em Joaquim Nabuco, quem mais aparece é Fulano" fica ilegível.
+// O post em que cidade e pessoa dividem a mesma frase. Três regras duras,
+// todas nascidas da revisão adversarial de 16/08:
+// (1) "estaduais" É OBRIGATÓRIO — o líder federal do mesmo município pode ser
+//     outro, com mais dinheiro, e o painel mostra os dois;
+// (2) nada de "Nome: R$ X" — dois-pontos entre pessoa e cifra lê como
+//     apropriação;
+// (3) a variante "R$ X destinados ao município vêm de emendas assinadas por"
+//     morreu: lida rápido, dizia que o valor do líder era o total da cidade.
 const ABERTURA_LIDER = [
-  (l: AgregadoAutorMunicipio) => `No município de ${cidadeCom(l.nome, l.regiao)} quem mais aparece nas emendas de autoria confirmada é ${l.autorNome}: ${formatarReais(l.v)}.`,
-  (l: AgregadoAutorMunicipio) => `${l.autorNome} lidera as emendas de autoria confirmada no município de ${cidadeCom(l.nome, l.regiao)} com ${formatarReais(l.v)}.`,
-  (l: AgregadoAutorMunicipio) => `${formatarReais(l.v)} destinados ao município de ${cidadeCom(l.nome, l.regiao)} vêm de emendas assinadas por ${l.autorNome}.`,
+  (l: AgregadoAutorMunicipio) => `No município de ${cidadeVirgula(l.nome, l.regiao)} quem mais aparece nas emendas estaduais de autoria confirmada é ${l.autorNome}, com ${formatarReais(l.v)}.`,
+  (l: AgregadoAutorMunicipio) => `${l.autorNome} lidera as emendas estaduais de autoria confirmada no município de ${cidadeCom(l.nome, l.regiao)} com ${formatarReais(l.v)}.`,
 ] as const;
 
 function templateCidadeLider(l: AgregadoAutorMunicipio): { camadas: Camada[]; fatos: Fato[] } | null {
   if (l.v < 2e5) return null;
+
+  // Ranking de um item não é ranking: com uma única emenda confirmada, o post
+  // diz exatamente isso, em vez de coroar um "líder" de si mesmo.
+  if (l.n === 1) {
+    return {
+      camadas: [
+        {
+          texto: `A única emenda estadual com autoria confirmada no município de ${cidadeCom(l.nome, l.regiao)} é de ${l.autorNome} (${formatarReais(l.v)}).`,
+          prioridade: 100,
+        },
+        { texto: "Onde o dado não diz quem assinou, o painel mostra \"sem autor\" — nunca um nome por dedução.", prioridade: 40 },
+      ],
+      fatos: [
+        { valor: valorAfirmado(l.v), rotulo: `emendas de ${l.autorNome} em ${l.municipio}` },
+        { valor: l.n, rotulo: `nº de emendas de ${l.autorNome} em ${l.municipio}` },
+      ],
+    };
+  }
+
   const variante = varianteDe(`cidade:${l.municipio}:lider`, ABERTURA_LIDER.length);
   const abertura = ABERTURA_LIDER[variante] ?? ABERTURA_LIDER[0];
 
@@ -323,15 +374,19 @@ function templateAutorEstadual(a: AgregadoAutor): { camadas: Camada[]; fatos: Fa
   };
 }
 
+// Sem partido: o campo da CGU não é datável e já contradisse a votação de
+// 2022 na mesma timeline (Bivar MDB×UNIÃO, Monteiro PSD×PP, Arraes
+// SOLIDARIEDADE×PDT). Partido só aparece em frase ancorada no tempo
+// ("Em 2022, ..."), como nos posts de votação.
 const ABERTURA_AUTOR_FED = [
-  (a: AgregadoAutor) => `${a.nome} (${a.partido}) tem ${formatarReais(a.v)} em emendas federais empenhadas para Pernambuco.`,
-  (a: AgregadoAutor) => `Emendas federais de ${a.nome} (${a.partido}) com foco em PE: ${formatarReais(a.v)}.`,
-  (a: AgregadoAutor) => `${formatarReais(a.v)} em emendas federais para Pernambuco levam a assinatura de ${a.nome} (${a.partido}).`,
-  (a: AgregadoAutor) => `No recorte federal, ${a.nome} (${a.partido}) responde por ${formatarReais(a.v)} em PE.`,
+  (a: AgregadoAutor) => `${a.nome} tem ${formatarReais(a.v)} em emendas federais empenhadas para Pernambuco.`,
+  (a: AgregadoAutor) => `Emendas federais de ${a.nome} com foco em PE: ${formatarReais(a.v)} empenhados.`,
+  (a: AgregadoAutor) => `${formatarReais(a.v)} em emendas federais para Pernambuco levam a assinatura de ${a.nome}.`,
+  (a: AgregadoAutor) => `No recorte federal, ${a.nome} responde por ${formatarReais(a.v)} empenhados em PE.`,
 ] as const;
 
 function templateAutorFederal(a: AgregadoAutor): { camadas: Camada[]; fatos: Fato[] } | null {
-  if (a.v < 1e6 || !a.partido) return null;
+  if (a.v < 1e6) return null;
   const variante = varianteDe(`autor:fed:${a.chave}:total`, ABERTURA_AUTOR_FED.length);
   const abertura = ABERTURA_AUTOR_FED[variante] ?? ABERTURA_AUTOR_FED[0];
 
@@ -362,11 +417,14 @@ function ressalvaDaFuncao(funcao: string): string | null {
   return null;
 }
 
+// Construções que não concordam verbo com o nome da função: "Outras
+// transferências soma" era erro publicável. "A função X soma" é sempre
+// singular; as demais nem têm verbo depois do nome.
 const ABERTURA_FUNCAO = [
-  (f: AgregadoFuncao) => `${f.funcao} concentra ${formatarReais(f.v)} em emendas federais empenhadas para Pernambuco.`,
-  (f: AgregadoFuncao) => `Emendas federais para PE em ${f.funcao}: ${formatarReais(f.v)}.`,
-  (f: AgregadoFuncao) => `${formatarReais(f.v)} das emendas federais de Pernambuco foram para ${f.funcao}.`,
-  (f: AgregadoFuncao) => `No recorte por área, ${f.funcao} soma ${formatarReais(f.v)} em emendas federais em PE.`,
+  (f: AgregadoFuncao) => `A função ${f.funcao} soma ${formatarReais(f.v)} em emendas federais empenhadas para Pernambuco.`,
+  (f: AgregadoFuncao) => `Emendas federais para PE em ${f.funcao}: ${formatarReais(f.v)} empenhados.`,
+  (f: AgregadoFuncao) => `${formatarReais(f.v)} das emendas federais de Pernambuco foram empenhados em ${f.funcao}.`,
+  (f: AgregadoFuncao) => `No recorte por área, a função ${f.funcao} soma ${formatarReais(f.v)} em emendas federais em PE.`,
 ] as const;
 
 function templateFuncao(f: AgregadoFuncao): { camadas: Camada[]; fatos: Fato[] } | null {
@@ -394,7 +452,7 @@ function templateFuncaoAno(f: AgregadoFuncaoAno): { camadas: Camada[]; fatos: Fa
   const ressalva = ressalvaDaFuncao(f.funcao);
   return {
     camadas: [
-      { texto: `Em ${f.ano}, ${f.funcao} recebeu ${formatarReais(f.v)} em emendas federais empenhadas para Pernambuco.`, prioridade: 100 },
+      { texto: `Em ${f.ano}, a função ${f.funcao} somou ${formatarReais(f.v)} em emendas federais empenhadas para Pernambuco.`, prioridade: 100 },
       { texto: `${formatarInteiro(f.n)} ${f.n === 1 ? "emenda" : "emendas"} no exercício.`, prioridade: 70 },
       { texto: ressalva ?? "Um ano de cada vez mostra o que o total esconde.", prioridade: ressalva ? 90 : 30 },
     ],
@@ -407,10 +465,12 @@ function templateFuncaoAno(f: AgregadoFuncaoAno): { camadas: Camada[]; fatos: Fa
 
 function templateSubfuncao(s: AgregadoSubfuncao): { camadas: Camada[]; fatos: Fato[] } | null {
   if (s.v < 5e6) return null;
+  // Sem "dentro da função X": a CGU classifica "Atenção básica" sob "Defesa
+  // nacional", e repetir o par sem ressalva faz o erro DELES parecer NOSSO.
   return {
     camadas: [
-      { texto: `${s.subfuncao} soma ${formatarReais(s.v)} em emendas federais empenhadas em Pernambuco.`, prioridade: 100 },
-      { texto: `${contagem(s.n, "emenda", "emendas")}, dentro da função ${s.funcao}.`, prioridade: 70 },
+      { texto: `Em ${s.subfuncao}: ${formatarReais(s.v)} em emendas federais empenhadas em Pernambuco.`, prioridade: 100 },
+      { texto: `${contagem(s.n, "emenda", "emendas")} no arquivo aberto da CGU.`, prioridade: 70 },
       { texto: "A subfunção é o nível em que dá para ver o que o dinheiro comprou.", prioridade: 30 },
     ],
     fatos: [
@@ -444,20 +504,26 @@ function templateCuriosidadeBerco(c: CuriosidadeMunicipio): { camadas: Camada[];
   const variante = varianteDe(`curiosidade:${c.municipio}:berco`, ABERTURA_BERCO.length);
   const abertura = ABERTURA_BERCO[variante] ?? ABERTURA_BERCO[0];
 
+  // "1,3 candidatos por 100 mil" com UM candidato é convite ao deboche: taxa
+  // só quando há pelo menos 2 nascidos; com 1, a população fala sozinha.
+  const linhaTaxa =
+    c.nascidos >= 2
+      ? `São ${pct(c.por100Mil)} candidatos por 100 mil habitantes — a cidade tem ${formatarInteiro(c.populacao)} moradores (Censo 2022).`
+      : `A cidade tem ${formatarInteiro(c.populacao)} moradores (Censo 2022).`;
+
+  const fatos: Fato[] = [
+    { valor: c.nascidos, rotulo: `candidatos de 2026 nascidos em ${c.municipio}` },
+    { valor: c.populacao, rotulo: `população de ${c.municipio}` },
+  ];
+  if (c.nascidos >= 2) fatos.push({ valor: valorAfirmadoDecimal(c.por100Mil), rotulo: `candidatos por 100 mil habitantes em ${c.municipio}` });
+
   return {
     camadas: [
       { texto: abertura(c), prioridade: 100 },
-      {
-        texto: `São ${pct(c.por100Mil)} candidatos por 100 mil habitantes — a cidade tem ${formatarInteiro(c.populacao)} moradores (Censo 2022).`,
-        prioridade: 70,
-      },
+      { texto: linhaTaxa, prioridade: 70 },
       { texto: "Naturalidade não é a região que alguém representa: em Pernambuco a eleição é em circunscrição única, o estado inteiro.", prioridade: 40 },
     ],
-    fatos: [
-      { valor: c.nascidos, rotulo: `candidatos de 2026 nascidos em ${c.municipio}` },
-      { valor: valorAfirmadoDecimal(c.por100Mil), rotulo: `candidatos por 100 mil habitantes em ${c.municipio}` },
-      { valor: c.populacao, rotulo: `população de ${c.municipio}` },
-    ],
+    fatos,
   };
 }
 
@@ -471,21 +537,29 @@ function templateCuriosidadeMaisVotado(
   if (!t || t.votos < 500) return null;
   const artigo = cargo === "Deputado Estadual" ? "estadual" : "federal";
 
+  // A contagem tem de ser DO CARGO da frase de cima: "442 candidatos" logo
+  // abaixo de "para deputado estadual" fazia o leitor ler 442 estaduais —
+  // eram os quatro cargos somados.
+  const nCargo = c.candidatosPorCargo2022[cargo] ?? 0;
+
   return {
     camadas: [
       {
-        texto: `Em 2022, quem mais recebeu votos para deputado ${artigo} no município de ${cidadeCom(c.nome, c.regiao)} foi ${t.nome}${t.partido ? ` (${t.partido})` : ""}: ${formatarInteiro(t.votos)} votos.`,
+        texto: `Em 2022, quem mais recebeu votos para deputado ${artigo} no município de ${cidadeCom(c.nome, c.regiao)} foi ${t.nome}${t.partido ? ` (${t.partido}, à época)` : ""}, com ${formatarInteiro(t.votos)} votos.`,
         prioridade: 100,
       },
       {
-        texto: `Naquela eleição, ${formatarInteiro(c.candidatos2022)} candidatos receberam ao menos um voto na cidade.`,
+        texto:
+          nCargo > 0
+            ? `Naquela eleição, ${formatarInteiro(nCargo)} candidatos a deputado ${artigo} receberam ao menos um voto na cidade.`
+            : "",
         prioridade: 70,
       },
       { texto: "Dado da apuração oficial do TSE, município por município.", prioridade: 30 },
     ],
     fatos: [
       { valor: t.votos, rotulo: `votos de ${t.nome} para ${cargo} em ${c.municipio} em 2022` },
-      { valor: c.candidatos2022, rotulo: `candidatos que receberam voto em ${c.municipio} em 2022` },
+      ...(nCargo > 0 ? [{ valor: nCargo, rotulo: `candidatos a ${cargo} que receberam voto em ${c.municipio} em 2022` }] : []),
     ],
   };
 }
@@ -495,13 +569,23 @@ function templateCuriosidadeUrna(c: CuriosidadeMunicipio): { camadas: Camada[]; 
   return {
     camadas: [
       {
-        // cidadeCom() já fecha com vírgula quando traz a região — acrescentar
-        // outra produzia "no Sertão do Pajeú,, 172 candidatos".
-        texto: `No município de ${cidadeCom(c.nome, c.regiao)} ${formatarInteiro(c.candidatos2022)} candidatos diferentes receberam voto em 2022.`,
+        texto: `No município de ${cidadeVirgula(c.nome, c.regiao)} ${formatarInteiro(c.candidatos2022)} candidatos diferentes receberam voto em 2022, somando os quatro cargos da eleição.`,
         prioridade: 100,
       },
-      { texto: `Foram ${formatarInteiro(c.totalVotos2022)} votos nominais somados na cidade.`, prioridade: 70 },
-      { texto: "A urna de uma cidade pequena distribui voto entre muito mais nomes do que parece.", prioridade: 30 },
+      {
+        // Sem o "cada eleitor vota em até quatro cargos", o total maior que a
+        // população vira munição de negacionismo eleitoral. Em 2026, nenhum
+        // número sai sem a própria explicação.
+        texto: `Foram ${formatarInteiro(c.totalVotos2022)} votos nominais na cidade — cada eleitor vota em até quatro cargos.`,
+        prioridade: 70,
+      },
+      {
+        texto:
+          c.populacao > 0 && c.populacao < 50_000
+            ? "A urna de uma cidade pequena distribui voto entre muito mais nomes do que parece."
+            : "São mais nomes na disputa do que parece — a urna distribui muito além dos eleitos.",
+        prioridade: 30,
+      },
     ],
     fatos: [
       { valor: c.candidatos2022, rotulo: `candidatos que receberam voto em ${c.municipio} em 2022` },
@@ -517,14 +601,25 @@ function templateCuriosidadeUrna(c: CuriosidadeMunicipio): { camadas: Camada[]; 
  * dado, trocada por posicionamento. Depende do fato "número de urna" que
  * `indiceDeFatos` passou a expor — sem ele todo post assinado é reprovado.
  */
+// A assinatura diz o papel e a chapa por extenso. "Hermes Alves · 300 · NOVO"
+// omitia que o 300 é a chapa de Carlos Sant'Anna e que ele é o 2º suplente —
+// "o gotcha mais barato que existe", nas palavras da revisão adversarial.
+// Escolha do próprio candidato em 16/08/2026.
+const ASSINATURA = "Hermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO";
+
 const FECHOS_CAMPANHA = [
-  "Levantei esses números porque quem quer fiscalizar precisa primeiro conseguir enxergar.\n\nHermes Alves · 300 · NOVO",
-  "Transparência não é promessa de campanha: é o trabalho que dá para mostrar antes da eleição.\n\nHermes Alves · 300 · NOVO",
-  "Construí este painel para que esse número não dependa de ninguém acreditar em mim.\n\nHermes Alves · 300 · NOVO",
-  "Dado público conferível é o começo de qualquer controle sobre o orçamento.\n\nHermes Alves · 300 · NOVO",
-  "É esse tipo de conta que eu quero que Pernambuco possa fazer sozinho, a qualquer hora.\n\nHermes Alves · 300 · NOVO",
-  "Sou de Araripina e comecei este levantamento pelo sertão, que é de onde menos se fala.\n\nHermes Alves · 300 · NOVO",
+  `Levantei esses números porque quem quer fiscalizar precisa primeiro conseguir enxergar.\n\n${ASSINATURA}`,
+  `Transparência não é promessa de campanha: é o trabalho que dá para mostrar antes da eleição.\n\n${ASSINATURA}`,
+  `Construí este painel para que esse número não dependa de ninguém acreditar em mim.\n\n${ASSINATURA}`,
+  `Dado público conferível é o começo de qualquer controle sobre o orçamento.\n\n${ASSINATURA}`,
+  `É esse tipo de conta que eu quero que Pernambuco possa fazer sozinho, a qualquer hora.\n\n${ASSINATURA}`,
 ] as const;
+
+/**
+ * "Comecei pelo sertão, que é de onde menos se fala" só pode encostar em post
+ * que É do sertão. Colado num post sobre o Recife virava piada pronta.
+ */
+const FECHO_SERTAO = `Sou de Araripina e comecei este levantamento pelo sertão, que é de onde menos se fala.\n\n${ASSINATURA}`;
 
 const FATO_URNA: Fato = { valor: 300, rotulo: "número de urna de HERMES ALVES (2º Suplente)" };
 
@@ -610,19 +705,47 @@ export function gerarPool(db: Database): Pool {
   for (const c of candidatos(db)) {
     // A versão de campanha é o mesmo recorte com a última camada trocada.
     for (const postura of ["dado", "campanha"] as const) {
+      // Post que cita terceiro NUNCA leva a assinatura do candidato: citar
+      // adversário com cifra em post assinado é pedido de direito de resposta
+      // em bandeja (decisão do candidato, 16/08/2026).
+      if (postura === "campanha" && (c.template === "cidade-lider" || c.template.startsWith("curiosidade-mais-votado"))) continue;
+
       const id = postura === "campanha" ? `${c.id}:campanha` : c.id;
-      const camadas =
-        postura === "dado"
-          ? c.camadas
-          : [
-              ...c.camadas.filter((x) => x.prioridade >= 70),
-              { texto: FECHOS_CAMPANHA[varianteDe(id, FECHOS_CAMPANHA.length)] ?? FECHOS_CAMPANHA[0], prioridade: 90 },
-            ];
+
+      // O fecho é ACRÉSCIMO, nunca substituto: a versão assinada carrega as
+      // MESMAS camadas de dado e fonte do post comum. A revisão adversarial
+      // mostrou que a regra antiga (só camadas >= 70) fazia os posts com o
+      // nome dele serem os menos documentados da série.
+      // A versão assinada carrega TODAS as camadas de dado (>= 70): abertura,
+      // contagem, pago. O rodapé genérico (< 70) sai — o link do painel vai na
+      // 1ª resposta, que é fonte melhor que qualquer frase. O que NÃO pode é
+      // derrubar camada de dado para caber o fecho: nesse caso a versão
+      // assinada simplesmente não existe.
+      let camadas = c.camadas;
+      if (postura === "campanha") {
+        const regiao = typeof c.chave.municipio === "string" ? MUNICIPIO_REGIAO.get(c.chave.municipio) : undefined;
+        const doSertao = typeof regiao === "string" && regiao.startsWith("Sertão");
+        const fechos = doSertao ? [...FECHOS_CAMPANHA, FECHO_SERTAO] : [...FECHOS_CAMPANHA];
+        camadas = [
+          ...c.camadas.filter((x) => x.prioridade >= 70),
+          { texto: fechos[varianteDe(id, fechos.length)] ?? fechos[0] ?? "", prioridade: 90 },
+        ];
+      }
       const postFatos = postura === "campanha" ? [...c.fatos, FATO_URNA] : c.fatos;
 
       const texto = montar(camadas);
       const peso = pesoX(texto);
       const hash = hashTexto(texto);
+
+      // Se nem o conjunto de dados + fecho coube, a versão assinada não
+      // existe — assinatura não compra atalho sobre camada de dado.
+      if (postura === "campanha") {
+        const completo = limparPontuacao(camadas.map((x) => x.texto.trim()).filter((t) => t.length > 0).join("\n\n"));
+        if (pesoX(completo) > 280) {
+          descartes.push({ id, regra: "campanha-nao-coube", detalhe: `camadas de dado + fecho pesam ${pesoX(completo)}/280` });
+          continue;
+        }
+      }
 
       if (vistos.has(hash)) {
         descartes.push({ id, regra: "texto-duplicado", detalhe: `hash ${hash} já usado` });

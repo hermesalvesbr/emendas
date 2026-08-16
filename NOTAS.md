@@ -1030,3 +1030,75 @@ Nenhum template afirma nada sobre a candidatura de 2026 de quem aparece na
 votação de 2022. O dado citado é do passado; dizer que fulano "é candidato"
 exigiria o marcador do TSE (item 29). Os posts de berço repetem a ressalva do
 item 30: naturalidade não é a região que alguém representa.
+
+## 36. Auditoria de credibilidade da série — "quando ele assina, some a fonte"
+
+Pedido do candidato em 16/08/2026: revisar as 386 postagens pendentes — "os
+dados estão corretos e verificáveis? meu nome tem que agregar confiabilidade".
+Uma revisão adversarial (49 assinados + amostra dos 12 templates, conferida
+contra o banco) respondeu que não: **a série trabalhava contra o nome dele**.
+Os posts assinados eram sistematicamente os menos documentados do conjunto.
+
+### Os três achados estruturais
+
+1. **O join antigo dos agregados contava empenho em dobro.** O elo
+   `substr(cd_nm_subacao,1,4) = subacao_codigo` soma o mesmo empenho N vezes
+   quando a subação casa com N emendas: R$ 240,97 mi contra R$ 220,82 mi de
+   empenhos únicos (+9,1%). Pior: o painel usa o elo sofisticado de
+   export-site (código / T:num-ano / E:órfão, NOTAS 26/32), então **o post
+   mandava o leitor conferir no painel um número que o painel não mostra**
+   (Recife: post R$ 80,5 mi, painel R$ 81,2 mi). Correção estrutural: o elo
+   virou módulo próprio (`src/elo-painel.ts`, com o invariante embutido) e
+   TUDO — export do site, agregados dos posts, índice de fatos — o consome.
+   Paridade agregados × dados.json verificada: exata, 0 divergências.
+2. **"Chegaram"/"recebeu" descreviam valor EMPENHADO.** Itacuruba, no join
+   antigo: R$ 250 mil "chegaram", R$ 0,00 pagos. Empenhar é reservar; pagar é
+   outra coluna. Todos os verbos de entrega morreram; o post de cidade agora
+   mostra empenhado E pago lado a lado ("R$ X já efetivamente pagos" / "nada
+   pago até aqui").
+3. **A camada de campanha removia as ressalvas.** O fecho assinado
+   SUBSTITUÍA a linha de fonte e a de contagem — os posts com o nome do
+   candidato eram os menos verificáveis. Regra nova: o fecho é acréscimo; se
+   o conjunto camadas-de-dado + fecho não cabe em 280, a versão assinada NÃO
+   EXISTE (regra `campanha-nao-coube`, 662 descartes no pool atual).
+
+### Decisões do candidato
+
+- **Link do painel na 1ª resposta de TODO post** (custo ~US$ 0,015/reply):
+  "dado conferível" sem endereço era a definição de alegação não-verificável.
+  `postar:slot` publica a reply após o post (falha na reply não desfaz o
+  post); backfill feito nos 6 já publicados de 16/08.
+- **Assinatura vira** "Hermes Alves, 2º suplente na chapa Carlos Sant'Anna
+  300 · NOVO" — a antiga ("Hermes Alves · 300 · NOVO") omitia que o 300 é a
+  chapa do titular.
+- **Post que cita terceiro nunca leva assinatura** (líder por cidade e mais
+  votado de 2022 são sempre posts de dado): seis assinados citavam seis
+  candidatos adversários com cifra, um deles com a construção "Fulana:
+  R$ 531 mil" — leitura de apropriação, direito de resposta em bandeja.
+
+### Correções de texto (todas travadas em teste ou eval)
+
+"emendas **estaduais** de autoria confirmada" no líder (o líder federal do
+mesmo município pode ser outro: Coronel Meira R$ 1,0 mi × Socorro Pimentel
+R$ 531 mil em Araripina) · contagem do mais-votado por CARGO (442 era a soma
+de 4 cargos sob uma frase sobre deputado estadual) · "cada eleitor vota em
+até quatro cargos" no post de urna (total de votos > população era munição
+de negacionismo) · partido fora dos posts de emenda federal (o campo da CGU
+não é datável; Bivar saía MDB num post e UNIÃO noutro) · per capita exibido =
+total exibido / população (a conta do leitor não fechava em 18 posts) ·
+nomes de urna em title-case (`nomeProprio`) · "a única emenda" quando n=1
+(ranking de um item não é ranking) · fecho "comecei pelo sertão" só em post
+do Sertão (caía num post sobre o Recife) · concordância por construção ("a
+função X soma"; "Em [subfunção]: R$") · sem "dentro da função X" (a CGU
+classifica Atenção básica sob Defesa nacional; repetir sem ressalva faz o
+erro deles parecer nosso).
+
+### Efeitos colaterais assumidos
+
+Os números mudaram levemente com o elo (RMR 125,5→125,4 mi; Agreste Central
+204→201 emendas; Casinhas R$ 8,0→8,2 mi; "238 órfãs"→"167 identificadas sem
+autor" + 401 empenhos sem vínculo, o recorte do KPI do painel). Os evals
+foram REANCORADOS ao universo novo — os posts publicados sob o universo
+antigo ficam como estão (diferenças na casa de 1%, dentro do que a errata de
+POSTS-X.md já ensinou a tratar). A fila ganhou anti-monotonia (46 pares
+vizinhos de mesmo template → 0; mesma cidade 3× no dia → 1 caso de fallback).

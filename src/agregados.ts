@@ -13,10 +13,23 @@
 // campo na mesma frase que `v`.
 
 import type { Database } from "bun:sqlite";
+import { type LinhaPainel, linhasPainel } from "./elo-painel.ts";
 import { COD_IBGE, nomeMunicipio } from "./nomes-pe.ts";
 import { POPULACAO_PE } from "./populacao-pe.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE, type RegiaoPE } from "./regioes-pe.ts";
 import { normalizarAutor } from "./normalize.ts";
+
+// O elo é caro (varre empenho+emenda inteiros); os agregados o consultam
+// várias vezes por chamada de indiceDeFatos/gerarPool. Cache por conexão.
+const cacheElo = new WeakMap<Database, LinhaPainel[]>();
+function elo(db: Database): LinhaPainel[] {
+  let l = cacheElo.get(db);
+  if (!l) {
+    l = linhasPainel(db);
+    cacheElo.set(db, l);
+  }
+  return l;
+}
 
 // --------------------------------------------------------------- município
 
@@ -31,53 +44,58 @@ export type AgregadoMunicipio = {
   n: number;
   /** R$ empenhado — do MESMO conjunto que produziu `n`. */
   v: number;
+  /** R$ efetivamente pago, do mesmo conjunto. Empenho NÃO é entrega. */
+  pago: number;
   /** v / populacao. Zero quando a população é desconhecida. */
   porHabitante: number;
 };
 
-/**
- * Estadual: o universo é a emenda que TEM empenho no escopo — é o join que
- * produz o valor, então é o mesmo que produz a contagem.
- */
-const SQL_MUN_ESTADUAL = `
-  SELECT e.municipio AS m,
-         COUNT(DISTINCT e.numero_emenda || '/' || e.exercicio_emenda) AS n,
-         SUM(em.vlrempenhado) AS v
-  FROM emenda e
-  JOIN empenho em ON substr(em.cd_nm_subacao, 1, 4) = e.subacao_codigo
-  WHERE e.municipio IS NOT NULL
-  GROUP BY e.municipio`;
-
 const SQL_MUN_FEDERAL = `
-  SELECT municipio AS m, COUNT(*) AS n, SUM(vlrempenhado) AS v
+  SELECT municipio AS m, COUNT(*) AS n, SUM(vlrempenhado) AS v, SUM(COALESCE(vlrpago, 0)) AS pago
   FROM emenda_federal
   WHERE municipio IS NOT NULL
   GROUP BY municipio`;
 
-type LinhaNV = { m: string; n: number; v: number };
-
+/**
+ * Estadual vem do MESMO elo do painel (elo-painel.ts) — cada empenho contado
+ * uma vez, na mesma chave que docs/dados.json publica. O join antigo
+ * (`substr(...,1,4)`) somava o mesmo empenho N vezes quando a subação casava
+ * com N emendas: +9,1% no agregado, e o post mandava o leitor conferir no
+ * painel um número que o painel não mostrava.
+ */
 export function agregadoPorMunicipio(db: Database): AgregadoMunicipio[] {
-  const acc = new Map<string, { n: number; v: number }>();
-  const somar = (linhas: LinhaNV[]): void => {
-    for (const r of linhas) {
-      const cur = acc.get(r.m) ?? { n: 0, v: 0 };
-      acc.set(r.m, { n: cur.n + (r.n ?? 0), v: cur.v + (r.v ?? 0) });
-    }
-  };
-  somar(db.query(SQL_MUN_ESTADUAL).all() as LinhaNV[]);
-  somar(db.query(SQL_MUN_FEDERAL).all() as LinhaNV[]);
+  const acc = new Map<string, { n: Set<string>; v: number; pago: number }>();
+
+  for (const l of elo(db)) {
+    if (!l.mun) continue;
+    const cur = acc.get(l.mun) ?? { n: new Set<string>(), v: 0, pago: 0 };
+    if (l.em) cur.n.add(l.em);
+    cur.v += l.vemp;
+    cur.pago += l.vpago;
+    acc.set(l.mun, cur);
+  }
+
+  for (const r of db.query(SQL_MUN_FEDERAL).all() as Array<{ m: string; n: number; v: number; pago: number }>) {
+    const cur = acc.get(r.m) ?? { n: new Set<string>(), v: 0, pago: 0 };
+    // federal: cada linha do arquivo da CGU é uma emenda distinta no recorte
+    for (let i = 0; i < (r.n ?? 0); i++) cur.n.add(`F:${r.m}:${i}`);
+    cur.v += r.v ?? 0;
+    cur.pago += r.pago ?? 0;
+    acc.set(r.m, cur);
+  }
 
   const saida: AgregadoMunicipio[] = [];
-  for (const [municipio, { n, v }] of acc) {
+  for (const [municipio, a] of acc) {
     const populacao = POPULACAO_PE.get(municipio) ?? 0;
     saida.push({
       municipio,
       nome: nomeMunicipio(municipio),
       regiao: MUNICIPIO_REGIAO.get(municipio) ?? null,
       populacao,
-      n,
-      v,
-      porHabitante: populacao > 0 ? v / populacao : 0,
+      n: a.n.size,
+      v: a.v,
+      pago: a.pago,
+      porHabitante: populacao > 0 ? a.v / populacao : 0,
     });
   }
   return saida.sort((a, b) => b.v - a.v);
@@ -106,50 +124,82 @@ export function agregadoPorRegiao(db: Database): AgregadoRegiao[] {
     popRegiao.set(g, (popRegiao.get(g) ?? 0) + (POPULACAO_PE.get(m) ?? 0));
   }
 
-  const acc = new Map<RegiaoPE, { n: number; v: number; muns: number }>();
+  // Valores: soma dos municípios (mesmo elo). Contagem: DISTINCT sobre a
+  // região inteira — a mesma emenda pode atender mais de um município, e
+  // somar contagens municipais foi o que inflou o Agreste Central para 317.
+  const vRegiao = new Map<RegiaoPE, { v: number; muns: number }>();
   for (const m of porMun) {
     if (!m.regiao) continue;
-    const cur = acc.get(m.regiao) ?? { n: 0, v: 0, muns: 0 };
-    // `n` somado por município CONTA A MESMA EMENDA VÁRIAS VEZES quando ela
-    // atende mais de uma cidade — foi assim que o Agreste Central virou 317.
-    // Por isso a contagem regional vem de query própria, abaixo.
-    acc.set(m.regiao, { n: cur.n, v: cur.v + m.v, muns: cur.muns + 1 });
+    const cur = vRegiao.get(m.regiao) ?? { v: 0, muns: 0 };
+    cur.v += m.v;
+    cur.muns += 1;
+    vRegiao.set(m.regiao, cur);
   }
 
-  const municipiosPorRegiao = new Map<RegiaoPE, string[]>();
-  for (const [m, g] of MUNICIPIO_REGIAO) {
-    const lista = municipiosPorRegiao.get(g);
-    if (lista) lista.push(m);
-    else municipiosPorRegiao.set(g, [m]);
+  const emendasRegiao = new Map<RegiaoPE, Set<string>>();
+  for (const l of elo(db)) {
+    if (!l.mun || !l.em) continue;
+    const g = MUNICIPIO_REGIAO.get(l.mun);
+    if (!g) continue;
+    const set = emendasRegiao.get(g) ?? new Set<string>();
+    set.add(l.em);
+    emendasRegiao.set(g, set);
+  }
+
+  const fedRegiao = new Map<RegiaoPE, number>();
+  for (const r of db
+    .query(`SELECT municipio m, COUNT(*) n FROM emenda_federal WHERE municipio IS NOT NULL GROUP BY municipio`)
+    .all() as Array<{ m: string; n: number }>) {
+    const g = MUNICIPIO_REGIAO.get(r.m);
+    if (g) fedRegiao.set(g, (fedRegiao.get(g) ?? 0) + r.n);
   }
 
   const saida: AgregadoRegiao[] = [];
-  for (const [regiao, ms] of municipiosPorRegiao) {
-    const marcadores = ms.map(() => "?").join(",");
-    const est = db
-      .query(`SELECT COUNT(DISTINCT e.numero_emenda || '/' || e.exercicio_emenda) AS n
-              FROM emenda e
-              JOIN empenho em ON substr(em.cd_nm_subacao, 1, 4) = e.subacao_codigo
-              WHERE e.municipio IN (${marcadores})`)
-      .get(...ms) as { n: number };
-    const fed = db
-      .query(`SELECT COUNT(*) AS n FROM emenda_federal WHERE municipio IN (${marcadores})`)
-      .get(...ms) as { n: number };
-
-    const a = acc.get(regiao) ?? { n: 0, v: 0, muns: 0 };
+  for (const [regiao, existentesN] of existentes) {
+    const a = vRegiao.get(regiao) ?? { v: 0, muns: 0 };
     const populacao = popRegiao.get(regiao) ?? 0;
-    const v = a.v;
     saida.push({
       regiao,
       populacao,
       municipiosComEmenda: a.muns,
-      municipiosExistentes: existentes.get(regiao) ?? ms.length,
-      n: (est?.n ?? 0) + (fed?.n ?? 0),
-      v,
-      porHabitante: populacao > 0 ? v / populacao : 0,
+      municipiosExistentes: existentesN,
+      n: (emendasRegiao.get(regiao)?.size ?? 0) + (fedRegiao.get(regiao) ?? 0),
+      v: a.v,
+      porHabitante: populacao > 0 ? a.v / populacao : 0,
     });
   }
   return saida.sort((a, b) => b.v - a.v);
+}
+
+// ------------------------------------------------------------- nomes próprios
+
+const PARTICULAS = new Set(["da", "de", "do", "das", "dos", "e", "o", "a", "os", "as"]);
+
+/**
+ * Title-case para nome que a fonte entrega em CAIXA ALTA (votação do TSE):
+ * "PASTOR JÚNIOR TÉRCIO" → "Pastor Júnior Tércio". Partículas ficam minúsculas.
+ * Publicar o grito da fonte destoava dos posts de emendas, onde os mesmos
+ * tipos de nome saem em caixa normal.
+ */
+export function nomeProprio(nome: string): string {
+  return nome
+    .trim()
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .map((p, i) => (i > 0 && PARTICULAS.has(p) ? p : p.charAt(0).toLocaleUpperCase("pt-BR") + p.slice(1)))
+    .join(" ");
+}
+
+/**
+ * Conserto SUAVE para nome que já vem em caixa mista mas com anomalia no meio
+ * ("William BrIgido", da autoria_oficial). Só mexe em palavras com maiúscula
+ * fora da primeira posição — não inventa acento nem reescreve o resto.
+ */
+export function nomeProprioSuave(nome: string): string {
+  return nome
+    .split(/\s+/)
+    .map((p) => (/^.+[A-ZÀ-Ú]/.test(p.slice(1)) ? p.charAt(0) + p.slice(1).toLocaleLowerCase("pt-BR") : p))
+    .join(" ");
 }
 
 // ------------------------------------------------------------------- autor
@@ -176,18 +226,6 @@ export type AgregadoAutor = {
  * sem revisão humana, "APORTE FINANCEIRO lidera com R$ 3,2 mi" vai ao ar.
  * `autoria_oficial` vem do XML dos PLOAs e tem o nome como a ALEPE escreve.
  */
-const SQL_AUTOR_ESTADUAL = `
-  SELECT e.autor_normalizado AS chave,
-         COUNT(DISTINCT e.numero_emenda || '/' || e.exercicio_emenda) AS n,
-         SUM(em.vlrempenhado) AS v,
-         COUNT(DISTINCT e.municipio) AS municipios
-  FROM emenda e
-  JOIN empenho em ON substr(em.cd_nm_subacao, 1, 4) = e.subacao_codigo
-  WHERE e.confianca = 'alta'
-    AND e.autor_normalizado IS NOT NULL
-    AND e.autor_normalizado IN (SELECT autor_normalizado FROM autoria_oficial)
-  GROUP BY e.autor_normalizado`;
-
 export function agregadoPorAutorEstadual(db: Database): AgregadoAutor[] {
   const nomes = new Map<string, string>();
   for (const r of db
@@ -197,8 +235,28 @@ export function agregadoPorAutorEstadual(db: Database): AgregadoAutor[] {
     nomes.set(r.k, r.nome);
   }
 
-  return (db.query(SQL_AUTOR_ESTADUAL).all() as Array<Omit<AgregadoAutor, "nome" | "esfera" | "partido">>)
-    .map((r) => ({ ...r, nome: nomes.get(r.chave) ?? r.chave, esfera: "estadual" as const, partido: null }))
+  // Mesmo elo do painel; catraca do dicionário oficial (": EDUI" e "APORTE
+  // FINANCEIRO" têm confiança alta no banco e NUNCA podem virar ranking).
+  const acc = new Map<string, { n: Set<string>; v: number; muns: Set<string> }>();
+  for (const l of elo(db)) {
+    if (l.conf !== "alta" || !l.autor || !nomes.has(l.autor)) continue;
+    const cur = acc.get(l.autor) ?? { n: new Set<string>(), v: 0, muns: new Set<string>() };
+    if (l.em) cur.n.add(l.em);
+    if (l.mun) cur.muns.add(l.mun);
+    cur.v += l.vemp;
+    acc.set(l.autor, cur);
+  }
+
+  return [...acc.entries()]
+    .map(([chave, a]) => ({
+      chave,
+      nome: nomeProprioSuave(nomes.get(chave) ?? chave),
+      esfera: "estadual" as const,
+      partido: null,
+      n: a.n.size,
+      v: a.v,
+      municipios: a.muns.size,
+    }))
     .filter((a) => a.v > 0)
     .sort((a, b) => b.v - a.v);
 }
@@ -302,7 +360,14 @@ export type AgregadoAutorMunicipio = {
   v: number;
 };
 
-/** Quem lidera, por autoria CONFIRMADA, em cada município. Um por município. */
+/**
+ * Quem lidera as emendas ESTADUAIS de autoria confirmada em cada município.
+ *
+ * Estaduais e só estaduais: o texto do post TEM de dizer isso, porque o
+ * federal tem outro universo — em Araripina, Coronel Meira (federal) tem
+ * R$ 1,0 mi contra R$ 531 mil da líder estadual, e um "quem mais aparece nas
+ * emendas" sem o qualificador é refutável com o próprio painel.
+ */
 export function liderPorMunicipio(db: Database): AgregadoAutorMunicipio[] {
   const nomes = new Map<string, string>();
   for (const r of db
@@ -312,35 +377,36 @@ export function liderPorMunicipio(db: Database): AgregadoAutorMunicipio[] {
     nomes.set(r.k, r.nome);
   }
 
-  const linhas = db
-    .query(`SELECT e.municipio AS municipio, e.autor_normalizado AS autorChave,
-                   COUNT(DISTINCT e.numero_emenda || '/' || e.exercicio_emenda) AS n,
-                   SUM(em.vlrempenhado) AS v
-            FROM emenda e
-            JOIN empenho em ON substr(em.cd_nm_subacao, 1, 4) = e.subacao_codigo
-            WHERE e.municipio IS NOT NULL
-              AND e.confianca = 'alta'
-              AND e.autor_normalizado IS NOT NULL
-              AND e.autor_normalizado IN (SELECT autor_normalizado FROM autoria_oficial)
-            GROUP BY e.municipio, e.autor_normalizado`)
-    .all() as Array<{ municipio: string; autorChave: string; n: number; v: number }>;
-
-  const melhor = new Map<string, AgregadoAutorMunicipio>();
-  for (const r of linhas) {
-    if (r.v <= 0) continue;
-    const atual = melhor.get(r.municipio);
-    if (atual && atual.v >= r.v) continue;
-    melhor.set(r.municipio, {
-      municipio: r.municipio,
-      nome: nomeMunicipio(r.municipio),
-      regiao: MUNICIPIO_REGIAO.get(r.municipio) ?? null,
-      autorChave: r.autorChave,
-      autorNome: nomes.get(r.autorChave) ?? r.autorChave,
-      n: r.n,
-      v: r.v,
-    });
+  const acc = new Map<string, Map<string, { n: Set<string>; v: number }>>();
+  for (const l of elo(db)) {
+    if (!l.mun || l.conf !== "alta" || !l.autor || !nomes.has(l.autor)) continue;
+    const porAutor = acc.get(l.mun) ?? new Map();
+    const cur = porAutor.get(l.autor) ?? { n: new Set<string>(), v: 0 };
+    if (l.em) cur.n.add(l.em);
+    cur.v += l.vemp;
+    porAutor.set(l.autor, cur);
+    acc.set(l.mun, porAutor);
   }
-  return [...melhor.values()].sort((a, b) => b.v - a.v);
+
+  const out: AgregadoAutorMunicipio[] = [];
+  for (const [municipio, porAutor] of acc) {
+    let melhor: AgregadoAutorMunicipio | null = null;
+    for (const [autorChave, a] of porAutor) {
+      if (a.v <= 0) continue;
+      if (melhor && melhor.v >= a.v) continue;
+      melhor = {
+        municipio,
+        nome: nomeMunicipio(municipio),
+        regiao: MUNICIPIO_REGIAO.get(municipio) ?? null,
+        autorChave,
+        autorNome: nomeProprioSuave(nomes.get(autorChave) ?? autorChave),
+        n: a.n.size,
+        v: a.v,
+      };
+    }
+    if (melhor) out.push(melhor);
+  }
+  return out.sort((a, b) => b.v - a.v);
 }
 
 // ------------------------------------------------------------------ globais
@@ -630,8 +696,10 @@ export type CuriosidadeMunicipio = {
    * deputado, estadual e federal.
    */
   top: Partial<Record<string, { nome: string; partido: string; votos: number }>>;
-  /** Candidatos distintos que receberam ao menos um voto ali em 2022. */
+  /** Candidatos distintos que receberam ao menos um voto ali em 2022 (todos os cargos). */
   candidatos2022: number;
+  /** O mesmo, POR CARGO — o nº citável num post sobre um cargo específico. */
+  candidatosPorCargo2022: Partial<Record<string, number>>;
   totalVotos2022: number;
 };
 
@@ -663,7 +731,7 @@ export function curiosidadesPorMunicipio(db: Database): CuriosidadeMunicipio[] {
     // que chega é o maior. O TSE às vezes traz o nome de urna com espaço
     // sobrando — publicar "SOCORRO PIMENTEL " deixaria a marca do descuido.
     if (!porCargo[r.cargo]) {
-      porCargo[r.cargo] = { nome: r.nome_urna.trim(), partido: (r.partido ?? "").trim(), votos: r.votos };
+      porCargo[r.cargo] = { nome: nomeProprio(r.nome_urna), partido: (r.partido ?? "").trim().replace(/^PC DO B$/i, "PCdoB"), votos: r.votos };
       topo.set(r.municipio, porCargo);
     }
   }
@@ -674,6 +742,18 @@ export function curiosidadesPorMunicipio(db: Database): CuriosidadeMunicipio[] {
             FROM votacao_2022_municipio GROUP BY municipio`)
     .all() as Array<{ municipio: string; n: number; v: number }>) {
     resumo.set(r.municipio, { n: r.n, v: r.v ?? 0 });
+  }
+
+  // Por cargo: "442 candidatos" logo abaixo de "para deputado estadual" fazia
+  // o leitor ler 442 como candidatos DAQUELE cargo — eram os 4 somados.
+  const porCargo = new Map<string, Partial<Record<string, number>>>();
+  for (const r of db
+    .query(`SELECT municipio, cargo, COUNT(DISTINCT sq_candidato) AS n
+            FROM votacao_2022_municipio GROUP BY municipio, cargo`)
+    .all() as Array<{ municipio: string; cargo: string; n: number }>) {
+    const m = porCargo.get(r.municipio) ?? {};
+    m[r.cargo] = r.n;
+    porCargo.set(r.municipio, m);
   }
 
   const out: CuriosidadeMunicipio[] = [];
@@ -691,6 +771,7 @@ export function curiosidadesPorMunicipio(db: Database): CuriosidadeMunicipio[] {
       por100Mil: populacao > 0 ? (n / populacao) * 1e5 : 0,
       top: t,
       candidatos2022: r?.n ?? 0,
+      candidatosPorCargo2022: porCargo.get(municipio) ?? {},
       totalVotos2022: r?.v ?? 0,
     });
   }

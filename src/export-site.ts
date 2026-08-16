@@ -14,8 +14,7 @@ import type { Db } from "./db.ts";
 import type { CargoAtual } from "./harvest-candidatos.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
 import type { EmendaFederalRow } from "./db.ts";
-import type { EmpenhoRow, EmendaRow } from "./types.ts";
-import { extrairCodigoSubacao, extrairNumeroEmenda } from "./normalize.ts";
+import { linhasPainel } from "./elo-painel.ts";
 
 type LinhaSite = {
   /** chave do elo (código de subação ou numero/ano textual) */
@@ -46,11 +45,10 @@ export type SiteData = {
   linhas: LinhaSite[];
 };
 
-const RANK = { alta: 0, media: 1, nula: 2 } as const;
-
 export function exportarSite(db: Db): SiteData {
-  const empenhos = db.listEmpenhos();
-  const emendas = db.raw.query("SELECT * FROM emenda").all() as EmendaRow[];
+  // O elo mora em elo-painel.ts, compartilhado com os agregados dos posts:
+  // painel e série do X têm de chegar ao MESMO número por construção.
+  const base = linhasPainel(db.raw);
 
   // (numero, ano) -> PLOA da ALEPE onde a emenda consta, para o link "conferir
   // na fonte" (primeiro pelo ano-LOA, semântica dominante; depois apresentação)
@@ -61,74 +59,13 @@ export function exportarSite(db: Db): SiteData {
   for (const o of oficiais) ploaPorEmenda.set(`${o.numero_emenda}/${o.exercicio_apresentacao}`, o.ploa);
   for (const o of oficiais) ploaPorEmenda.set(`${o.numero_emenda}/${o.exercicio_loa}`, o.ploa);
 
-  // melhor emenda por código de subação e índice por (numero/ano)
-  const porSubacao = new Map<string, EmendaRow>();
-  const porNumeroAno = new Map<string, EmendaRow>();
-  for (const e of emendas) {
-    if (e.subacao_codigo) {
-      const atual = porSubacao.get(e.subacao_codigo);
-      if (!atual || RANK[e.confianca] < RANK[atual.confianca]) porSubacao.set(e.subacao_codigo, e);
-    }
-    porNumeroAno.set(`${e.numero_emenda}/${e.exercicio_emenda}`, e);
-  }
-
-  type Acc = { ex: number; emenda: EmendaRow | null; ug: string | null; vemp: number; vpago: number; n: number; fontes: Set<string> };
-  const acc = new Map<string, Acc>();
-
-  for (const em of empenhos) {
-    const codigo = extrairCodigoSubacao(em.cd_nm_subacao);
-    let chave: string;
-    let emenda: EmendaRow | null = null;
-
-    if (codigo) {
-      chave = codigo;
-      emenda = porSubacao.get(codigo) ?? null;
-    } else {
-      // elo textual: numero/ano extraído da própria subação (histórico) ou do obs
-      const num =
-        extrairNumeroEmenda(em.cd_nm_subacao ?? "", em.exercicio) ?? extrairNumeroEmenda(em.obs ?? "", em.exercicio);
-      if (num) {
-        chave = `T:${num.numeroEmenda}/${num.exercicioEmenda}`;
-        emenda = porNumeroAno.get(`${num.numeroEmenda}/${num.exercicioEmenda}`) ?? null;
-      } else {
-        chave = `E:${em.id}`; // sem elo nenhum — linha isolada, não some com nada
-      }
-    }
-
-    const k = `${chave}|${em.exercicio}`;
-    const a = acc.get(k) ?? { ex: em.exercicio, emenda, ug: em.unidade_gestora, vemp: 0, vpago: 0, n: 0, fontes: new Set<string>() };
-    a.fontes.add(em.fonte);
-    a.vemp += em.vlrempenhado ?? 0;
-    a.vpago += em.vlrtotalpago ?? 0;
-    a.n += 1;
-    if (!a.emenda && emenda) a.emenda = emenda;
-    acc.set(k, a);
-  }
-
-  const linhas: LinhaSite[] = [...acc.entries()].map(([k, a]) => {
-    const chave = k.slice(0, k.lastIndexOf("|"));
-    const e = a.emenda;
-    return {
-      s: chave,
-      ex: a.ex,
-      em: e ? `${e.numero_emenda}/${e.exercicio_emenda}` : null,
-      autor: e?.autor_normalizado ?? null,
-      tipo: e?.autor_tipo ?? null,
-      conf: e?.confianca ?? "nula",
-      mun: e?.municipio ?? null,
-      benef: e?.beneficiario_nome ?? null,
-      ug: a.ug,
-      vemp: Math.round(a.vemp * 100) / 100,
-      vpago: Math.round(a.vpago * 100) / 100,
-      n: a.n,
-      f: [...a.fontes].sort(),
-      ploa: e ? (ploaPorEmenda.get(`${e.numero_emenda}/${e.exercicio_emenda}`) ?? null) : null,
-    };
-  });
-  linhas.sort((x, y) => x.ex - y.ex || x.s.localeCompare(y.s));
+  const linhas: LinhaSite[] = base.map((l) => ({
+    ...l,
+    ploa: l.em ? (ploaPorEmenda.get(l.em) ?? null) : null,
+  }));
 
   const totalEmpenhadoBanco =
-    Math.round(empenhos.reduce((s, em) => s + (em.vlrempenhado ?? 0), 0) * 100) / 100;
+    Math.round(((db.raw.query("SELECT SUM(vlrempenhado) v FROM empenho").get() as { v: number | null }).v ?? 0) * 100) / 100;
   const totalSite = Math.round(linhas.reduce((s, l) => s + l.vemp, 0) * 100) / 100;
   if (Math.abs(totalSite - totalEmpenhadoBanco) > 1) {
     throw new Error(`export inconsistente: site R$ ${totalSite} != banco R$ ${totalEmpenhadoBanco}`);
