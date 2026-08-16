@@ -46,7 +46,13 @@ devolve `n` e `v` na mesma linha justamente para tornar isso impossível.
   por perto para responder — resposta vale ~27x um like. A 8 posts por dia
   não há como ficar meia hora em cada um, e a pergunta sem resposta lê como
   automação. Em post avulso, pergunte à vontade.
-- **Sem link no corpo** — custa de 50% a 90% de alcance; vai na 1ª resposta.
+- **Sem link no corpo** — custa de 50% a 90% de alcance. A série publica o
+  link do painel na **1ª resposta automática** de todo post (`postar:slot`
+  faz isso sozinho); post avulso deve fazer o mesmo à mão.
+- **Verbo de EMPENHO, nunca de entrega.** "Chegaram"/"recebeu" sobre
+  `vlrempenhado` é refutável com o próprio banco — houve município com
+  empenho alto e pagamento zero. Escreva "empenhados para", "com destino a",
+  e mostre o pago ao lado quando couber.
 - **Post avulso, nunca resposta.** `publicarAvulso`, não `publicarThread`. A
   thread de agosto tinha 3 posts no ar e só 1 aparecia na aba "Posts" do
   perfil: os outros dois eram respostas, e o X os esconde ali.
@@ -100,6 +106,13 @@ Série: o cron publica sozinho e em silêncio. O que olhar é o resumo do dia
 um ou o motivo de não ter saído.
 
 ## Nunca
+
+- **Citar terceiro em post assinado.** Post de "quem lidera" ou "mais votado"
+  sai sempre como dado, sem assinatura — nome de adversário com cifra em post
+  de candidato é pedido de direito de resposta.
+- **"Emendas" sem esfera no líder por cidade.** É "emendas ESTADUAIS de
+  autoria confirmada" — o líder federal do mesmo município pode ser outro,
+  com mais dinheiro, e o painel mostra os dois.
 
 - Afirmar que alguém **não** é candidato — a lista do TSE só sustenta o
   positivo (NOTAS.md 29). O verificador reprova a frase.
