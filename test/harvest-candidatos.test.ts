@@ -180,6 +180,20 @@ describe("parseDetalhe — bens e região", () => {
     expect(d).toEqual({
       total_bens: null, qtd_bens: null, municipio_nascimento: null, uf_nascimento: null,
       regiao: null, ocupacao: null, grau_instrucao: null, sexo: null,
+      cpf: null, data_nascimento: null,
     });
+  });
+
+  test("CPF sai só com dígitos e preserva zero à esquerda", () => {
+    // O TSE devolve sem máscara em 2026 e com zeros à esquerda em
+    // consulta_cand_2022. Perder um zero silenciaria o casamento do candidato
+    // com a própria votação — falha muda, não erro.
+    expect(parseDetalhe({ cpf: "02260496474" }).cpf).toBe("02260496474");
+    expect(parseDetalhe({ cpf: "022.604.964-74" }).cpf).toBe("02260496474");
+    expect(parseDetalhe({ cpf: "" }).cpf).toBeNull();
+  });
+
+  test("data de nascimento é preservada como o TSE manda", () => {
+    expect(parseDetalhe({ dataDeNascimento: "1982-10-27" }).data_nascimento).toBe("1982-10-27");
   });
 });

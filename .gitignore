@@ -13,3 +13,8 @@ emendas-pe
 .env
 .env.*
 data/x-thread.json
+
+# Estado de runtime da série de 3 em 3 horas — não é fonte, é registro.
+data/x-publicados.json
+data/x-conta.json
+data/log-posts.jsonl

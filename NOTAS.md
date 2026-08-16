@@ -731,3 +731,228 @@ esconder o que não casou seria o erro oposto.
 **Padrão a vigiar em todo número público deste projeto:** contagem e valor
 precisam vir do mesmo conjunto. Já falhou três vezes — nos 12 posts regionais
 (item 31 da errata em POSTS-X.md), no índice de fatos do verificador, e aqui.
+
+## 33. Série de 3 em 3 horas: o gerador, e as três colisões que o verificador não pegava
+
+Pedido do usuário em 16/08/2026: trocar a série diária de 17 posts escritos à
+mão por publicação **de 3 em 3 horas até a eleição**, com tom afirmativo em
+vez de pergunta, e **posts avulsos em vez de thread**. São 392 slots
+(16/08 a 03/10, 8 por dia) — uma ordem de grandeza acima do que dá para
+escrever à mão, e a terceira vez que escrever à mão produziria erro.
+
+Três diagnósticos separados por trás da mesma queixa:
+
+1. **Tom.** A regra estava escrita: `post-do-dia/SKILL.md` mandava "pergunta
+   na 3ª linha", e `verificarPost` emitia aviso quando o post **não** tinha
+   pergunta. Invertido: `tom: "afirmativo"` é o padrão e `pergunta-no-final`
+   é o aviso; `tom: "pergunta"` preserva o comportamento antigo para errata e
+   réplica.
+2. **Formato.** `publicarThread` encadeia cada post como resposta ao anterior.
+   O X esconde resposta da aba "Posts": a thread tinha 3 posts no ar e só 1
+   aparecia no perfil. Novo `publicarAvulso` publica sem `reply`.
+3. **Volume.** Novo `src/gerar-posts.ts` produz **1.334 posts** a partir de 8
+   templates × recortes do banco, todos aprovados pelo verificador antes de
+   entrar no pool. Contra 392 necessários: folga de 3,4×.
+
+### O que só apareceu medindo
+
+**(a) O verificador aprovava número derivado por colisão acidental.** Medido:
+
+```
+verificarPost("Caruaru recebeu R$ 45 por habitante em emendas.")  → ok: true
+  aviso numero-conferido: "R$ 45" confere com "emendas de CARUARU"
+```
+
+45 é o **número de emendas** de Caruaru; o texto afirma reais por habitante.
+O mesmo "R$ 45" também casava com o per capita de **Carpina**. Num regime de
+8 posts/dia sem revisão humana essa é a falha dominante — silenciosa, com
+número plausível e cidade certa. Resolvido com `rotulosEsperados`: o fato que
+casou tem de ser o que o post afirma, não qualquer um do mesmo valor.
+
+**(b) Ordinal e citação legal casavam por acidente.** `"2º Suplente"` casava
+com as emendas de Afrânio; `"EC 86/2015"` fazia o 86 casar com o per capita
+de Santa Cruz da Baixa Verde e `"art. 166-A"` ficava sem lastro. Ou seja: as
+duas ressalvas que a lei **obriga** a escrever (piso de 50% da saúde, regra
+das emendas Pix) reprovavam o post que as escrevia. Ambos passaram a ser
+ignorados em `extrairNumeros`, como o ano solto já era. Em contrapartida,
+template da série é proibido de citar posição de ranking em número.
+
+**(c) O universo de autoria estava sujo.** `confianca='alta'` tem 110 autores
+distintos, entre eles `": EDUI"`, `"APORTE FINANCEIRO"` e `"ADALTO SANTOS."`
+— sobras de regex sobre texto livre. Sem catraca, "APORTE FINANCEIRO lidera
+com R$ 3,2 mi" iria ao ar sozinho às 3 da manhã. `agregados.ts` cruza com
+`autoria_oficial` (dicionário da ALEPE): sobram 63 autores estaduais, com
+nome canônico e acentuado.
+
+### Decisão: fato derivado vai para `indiceDeFatos`, não para `fatosExternos`
+
+A alternativa era o gerador calcular o per capita e declará-lo como fato
+externo. Seria tautologia — o gerador calcula X, declara X como conferido e
+pede ao verificador para confirmar X. O verificador vira carimbo e um erro de
+universo entra no ar assinado como "conferido". Vindo do índice, o número é
+**rederivado do banco no instante da publicação**, que é a trava que importa
+quando o texto foi escrito num dia e o dado mudou no outro.
+
+Corolário estrutural: para gerador e verificador não terem duas cópias
+divergentes do mesmo SQL — que é literalmente como o bug de 1,9× nasceu — o
+agregado virou módulo único, `src/agregados.ts`, com a regra dura de que
+`n` e `v` nunca saem de queries diferentes.
+
+### Outras mudanças
+
+- `src/nomes-pe.ts` (novo, gerado do IBGE): 185 nomes acentuados. O banco
+  guarda `"SAO VICENTE FERRER"`; um post publicado escreve "São Vicente
+  Férrer". Os 17 posts antigos foram acentuados à mão; 392 não podem ser.
+- `verificarPost` aceita índice pré-construído (`opts.fatos`). Reconstruir a
+  cada chamada custava ~300 ms; verificar os 392 slots caiu de minutos para
+  **0,45 s**, e a suíte de evals de 5.440 ms para 6 ms.
+- `usuarioAtual` cacheia o `@usuário` (TTL 7 dias). A X migrou para
+  pay-per-use em fev/2026 e `cmdPostarAgenda` gastava um `GET /users/me`
+  (~US$ 0,010) **antes de cada** publicação — ~US$ 3,90 até a eleição para
+  confirmar um dado que não muda. O `@` só monta a URL de exibição;
+  credencial ruim já falha claro no `POST /2/tweets`.
+- Idempotência tripla em `data/x-publicados.json`: slot, recorte e hash do
+  texto. O terceiro existe porque o X rejeita texto duplicado com 403.
+- Cron: job `914e88efc013` reconfigurado de `0 9 * * *` para
+  `0 0,3,6,9,12,15,18,21 * * *`, script `emendas-post-slot.sh`, **silencioso
+  em sucesso** (a 8 posts/dia, avisar a cada acerto vira ruído e o alerta
+  perde valor). Novo job `cacf7878dc8e` às 21:30 entrega o resumo do dia.
+- `deliver` dos dois jobs está em `local`, não `telegram`: o
+  `~/.hermes/channel_directory.json` está com `platforms: {}` e o alias
+  genérico não resolve — era a causa do `no delivery target resolved` que o
+  job antigo vinha acumulando calado.
+
+`cmdPostarAgenda` e `POSTS-X.md` ficam congelados, com os 5 evals de
+`cron.sh` verdes. Não há ganho em reescrever um comando testado para
+reaproveitar o nome.
+
+### 33.1 Cidade não pode parecer pessoa (16/08/2026, mesmo dia)
+
+O primeiro post da série foi ao ar como:
+
+```
+João Alfredo recebeu R$ 3,6 mi em emendas parlamentares entre 2023 e 2026.
+```
+
+João Alfredo é município do Agreste Setentrional. Lido assim, é uma pessoa
+recebendo R$ 3,6 mi — e num post assinado por candidato isso sugere
+enriquecimento de alguém que não existe. PE tem vários casos (Joaquim Nabuco,
+Vicência, João Alfredo).
+
+Corrigido em `cidadeCom(nome, regiao)`: toda menção a cidade sai como
+"O município de João Alfredo (PE), no Agreste Setentrional,". Três detalhes
+que só apareceram aplicando:
+
+1. **A identificação vai na primeira linha.** A região já existia no post, mas
+   na camada de prioridade 30 — a primeira que `montar()` derruba quando o
+   texto passa de 280. A informação que desfaz a ambiguidade era a mais
+   descartável.
+2. **"(PE)" sozinho não bastava** no template de líder por município, onde
+   cidade e pessoa dividem a frase. Daí o "O município de".
+3. **Pleonasmo na capital:** "Recife (PE), na Região Metropolitana do Recife".
+   Quando o nome da cidade está dentro do nome da região, fica só a UF.
+
+A regeração expôs um segundo defeito de redação que estava latente desde o
+início: `São ${n} ${n===1?"emenda":"emendas"}` produzia **"São 1 emenda"** em
+todo município com uma emenda só. Virou `contagem(n, sing, plur)`, que também
+resolve o verbo. Os dois casos estão travados em teste.
+
+`cmdAgendar` passou a ler `data/x-publicados.json` antes de distribuir:
+exclui do pool os ids já publicados e refixa os slots que já saíram com o id
+que de fato saiu. Sem isso, regerar a fila depois de a série começar ou
+republicaria (barrado pelo ledger, deixando o slot vazio **em silêncio**) ou
+reembaralharia o histórico, e o resumo diário passaria a mentir sobre o que
+foi publicado.
+
+O resumo diário ganhou verificação de saúde: roda `ensaiar:fila` contra o
+banco, conta slots restantes e — o que importa — separa **slot vencido sem
+publicar** de **slot futuro**. Contá-los juntos esconderia exatamente o
+sintoma que o relatório existe para mostrar (máquina desligada, gateway
+caído, credencial vencida). A tolerância de 90 min impede publicar horário
+vencido, então slot perdido é perdido.
+
+**Durabilidade auditada:** `hermes-gateway.service` é `enabled` no systemd de
+usuário com `WantedBy=default.target`, `Restart=always`, `RestartSec=5` e
+`StartLimitIntervalSec=0` (reinício sem teto), e o usuário tem `Linger=yes` —
+sobe no boot sem login. As chaves OAuth 1.0a não expiram. A coleta de dados
+segue desligada (item 24), então o banco está congelado e o pool não deriva.
+
+## 34. De onde são os candidatos: naturalidade é proxy inválido, votação é o dado
+
+Pedido do usuário em 16/08/2026: uma tela nova mostrando de onde são os
+candidatos, por região de nascimento, cruzando com onde tiveram voto em
+eleições passadas.
+
+O pedido corrige um limite que o painel já carregava. O modo de bens filtra por
+região de NASCIMENTO e o item 30 avisa que isso não é a região representada —
+em PE a circunscrição é única. Até aqui o painel oferecia um proxy inválido de
+base territorial sem ter como mostrar o dado real. Agora tem os dois lado a
+lado, e quando divergem quem manda é o voto.
+
+**Página própria, não 6º modo.** `docs/index.html` discrimina modo por
+predicado negativo: `eFederal = () => modo !== "estadual" && modo !== "bens"`.
+É um catch-all — qualquer modo novo é renderizado como federal até que 14
+pontos imperativos sejam editados. Somam-se o teto de 10 `<th>`
+(`aplicarTitulos()` descarta a 11ª coluna em silêncio), as 3 instâncias fixas
+de gráfico e o handler de ordenação sem guarda de modo. `docs/candidatos.html`
+evita os quatro e não pesa o first paint do painel.
+
+### A junção é exata, por CPF
+
+```
+candidato_2026.cpf  →  consulta_cand_2022_PE.NR_CPF_CANDIDATO
+                    →  SQ_CANDIDATO
+                    →  votacao_candidato_munzona_2022_PE  →  votos por município
+```
+
+O detalhe do TSE 2026 devolve `cpf`, `dataDeNascimento` e `tituloEleitor` — o
+projeto simplesmente não guardava. Com CPF o casamento sobe de 246 (por nome
+civil) para **254 candidatos**, sem nenhum caso ambíguo para descartar.
+
+**CPF não sai para `docs/`.** É chave de junção interna; o JSON público leva o
+`id` do TSE, que já era publicado. Coletá-lo exigiu `--forcar`, que zera
+`detalhado` — sem isso, um campo novo no parser ficaria nulo para sempre nos
+836 já coletados.
+
+### O que só apareceu medindo
+
+- **O zip nacional tem 557 MB e não há recorte por UF** (testei
+  `..._2022_PE.zip` e `.csv`: 404). Mas o membro `votacao_candidato_munzona_2022_PE.csv`
+  existe dentro dele, e `unzip -p` extrai só ele (95 MB) — mesmo padrão de
+  `harvest-federal.ts`. O consulta_cand é pequeno (4,4 MB).
+- **Uma linha por ZONA ELEITORAL**, não por município. São 205.656 linhas para
+  PE. Sem somar por município, "onde teve mais votos" apontaria para a maior
+  zona, não para a maior cidade.
+- **`CD_MUNICIPIO` do TSE não é o código do IBGE** (24279 = Gravatá). A malha
+  do IBGE é chaveada por `codarea` de 7 dígitos. O casamento é por nome
+  normalizado, e `src/nomes-pe.ts` passou a exportar `COD_IBGE`.
+- **Layout com 50 colunas** e ISO-8859-1 com `;`, a mesma armadilha do CSV da
+  CGU. Os índices são resolvidos pelo NOME da coluna e falham alto se sumirem —
+  posição fixa leria partido como voto quando o TSE acrescentar campo.
+
+### Dois bugs de front que a validação renderizada pegou
+
+1. **`symbolSize` do scatter recebe `(valor, params)`**, e `valor` é o array
+   `[x, y]` — não o objeto do dado. Ler `d.b.totalVotos` devolvia `undefined`,
+   quebrava o render e levava a tabela junto. É exatamente o tipo de defeito
+   que o passo 2 do skill `publicar` existe para pegar: o typecheck passa.
+2. **Escala linear do mapa apagava o estado.** Recife tem 387 candidatos
+   nascidos e o segundo colocado tem 31; numa rampa contínua PE vira mancha
+   única. Virou `visualMap` por faixas, com cortes calculados sobre os valores
+   presentes — serve às três vistas sem número mágico.
+
+Também: o JSON saiu com 2,4 MB porque repetia o nome do município nas ~44 mil
+linhas de votação. Compactado para `[códigoIBGE, votos]` → **578 KB**.
+
+### Números da coleta (16/08/2026)
+
+254 de 836 candidatos casados por CPF · 241 com votos de 1º turno · 44.955
+linhas candidato×município×turno · 17,3 milhões de votos · 96 de 185 municípios
+com algum nativo candidato · Recife concentra 387 (46,3%).
+
+O per capita inverte o ranking: **Ibirajuba tem 28,0 candidatos nascidos por
+100 mil habitantes contra 26,0 do Recife**. É o recorte que mostra quais
+municípios de fato produzem quadros políticos, e não só quais são grandes.
+
+Caso que ilustra a tese: **Waldemar Oliveira nasceu no Recife, mas teve mais
+votos em Custódia** e só 14,0% da votação na região onde nasceu.

@@ -39,6 +39,11 @@ memória (NOTAS 31, e a errata no topo de `POSTS-X.md`).
 | Função federal | Saúde lidera por **piso constitucional de 50%**, não por escolha. "Encargos especiais" são as emendas Pix | NOTAS 31 |
 | CLI | `parseArgs` roda em `strict:false`; opção com valor **precisa** estar em `options`, senão vira booleano e o valor some | `cli.ts` |
 | X | Link dentro do post derruba o alcance de 50–90% — vai na primeira resposta | `POSTS-X.md` |
+| X | `publicarThread` encadeia como resposta e o X esconde isso da aba "Posts". A série usa `publicarAvulso` | `post-x.ts` |
+| Agregados | `n` e `v` **sempre** da mesma query. Duas cópias do SQL divergindo foi o que inflou 12 posts em até 1,9x | `agregados.ts` |
+| Autoria | `confianca='alta'` tem `"APORTE FINANCEIRO"` e `": EDUI"` — sobras de regex. Cruze com `autoria_oficial` | `agregados.ts` |
+| Verificação | Casar por valor não é casar por assunto: "R$ 45 por habitante" em Caruaru casava com a **contagem** de emendas de Caruaru. Use `rotulosEsperados` | `verificar-post.ts` |
+| Verificação | Ordinal e citação legal são ignorados de propósito — "2º" casava com Afrânio, "EC 86/2015" com um per capita | `verificar-post.ts` |
 
 ## Verificar
 

@@ -145,6 +145,13 @@
     <button type="button" data-modo="bens" aria-pressed="false">Bens dos candidatos 2026</button>
   </div>
 
+  <!-- Página própria, não um 6º modo: eFederal() é um catch-all
+       (modo !== "estadual" && modo !== "bens") e um modo novo seria renderizado
+       como federal até 14 pontos deste arquivo serem editados. -->
+  <p style="margin:-4px 0 12px;font-size:.82rem">
+    <a href="candidatos.html">De onde são os candidatos → naturalidade e base eleitoral de 2022</a>
+  </p>
+
   <div class="filters" role="search">
     <label id="lblAutor">Parlamentar
       <input id="fAutor" list="dlAutores" placeholder="todos" autocomplete="off">

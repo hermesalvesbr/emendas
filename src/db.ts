@@ -123,6 +123,31 @@ CREATE TABLE IF NOT EXISTS candidato_2026 (
 CREATE INDEX IF NOT EXISTS idx_cand_urna ON candidato_2026(nome_urna_normalizado);
 CREATE INDEX IF NOT EXISTS idx_cand_civil ON candidato_2026(nome_completo_normalizado);
 
+-- Votação nominal de 2022 por município, do repositório de dados abertos do
+-- TSE. Existe para responder à pergunta que a naturalidade NÃO responde: onde
+-- o candidato de fato tem voto. Circunscrição em PE é única, então "região que
+-- representa" não existe no dado (NOTAS 30) — base eleitoral, sim.
+--
+-- Só entram os candidatos de 2026 que também concorreram em 2022, casados por
+-- CPF. A coluna municipio já vem normalizada (maiúsculas, sem acento) para
+-- casar com MUNICIPIO_REGIAO.
+CREATE TABLE IF NOT EXISTS votacao_2022 (
+  sq_candidato TEXT NOT NULL,
+  cpf TEXT NOT NULL,
+  candidato_2026_id INTEGER,
+  cd_municipio TEXT NOT NULL,
+  municipio TEXT NOT NULL,
+  cargo TEXT,
+  nr_turno INTEGER NOT NULL,
+  votos INTEGER NOT NULL,
+  coletado_em TEXT NOT NULL,
+  PRIMARY KEY (sq_candidato, cd_municipio, nr_turno)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vot_cpf ON votacao_2022(cpf);
+CREATE INDEX IF NOT EXISTS idx_vot_cand ON votacao_2022(candidato_2026_id);
+CREATE INDEX IF NOT EXISTS idx_vot_mun ON votacao_2022(municipio);
+
 CREATE INDEX IF NOT EXISTS idx_fed_autor ON emenda_federal(autor_normalizado);
 CREATE INDEX IF NOT EXISTS idx_fed_ano ON emenda_federal(ano);
 CREATE INDEX IF NOT EXISTS idx_fed_cat ON emenda_federal(cat);
@@ -148,6 +173,12 @@ const COLUNAS_CANDIDATO_FASE2: ReadonlyArray<readonly [string, string]> = [
   ["sexo", "TEXT"],
   ["id_titular", "INTEGER"],
   ["detalhado", "INTEGER NOT NULL DEFAULT 0"],
+  // Chave de junção com o histórico eleitoral do TSE. É dado pessoal: fica no
+  // banco local (gitignorado) e NUNCA sai para docs/. O TSE publica o CPF nos
+  // dois lados — no detalhe de 2026 e em consulta_cand_2022 —, e é o que
+  // permite casar candidato com sua votação sem adivinhar por nome.
+  ["cpf", "TEXT"],
+  ["data_nascimento", "TEXT"],
 ];
 
 export type NewCandidato = {
@@ -173,6 +204,8 @@ export type DetalheCandidato = {
   ocupacao: string | null;
   grau_instrucao: string | null;
   sexo: string | null;
+  cpf: string | null;
+  data_nascimento: string | null;
 };
 
 export type CandidatoRow = NewCandidato &
@@ -601,7 +634,7 @@ export function openDb(path = "data/emendas.sqlite"): Db {
             total_bens = $total_bens, qtd_bens = $qtd_bens,
             municipio_nascimento = $municipio_nascimento, uf_nascimento = $uf_nascimento,
             regiao = $regiao, ocupacao = $ocupacao, grau_instrucao = $grau_instrucao,
-            sexo = $sexo, detalhado = 1
+            sexo = $sexo, cpf = $cpf, data_nascimento = $data_nascimento, detalhado = 1
           WHERE id = $id
         `)
         .run({ ...d, id });

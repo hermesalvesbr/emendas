@@ -19,11 +19,15 @@
     "postar:x": "bun run src/cli.ts postar:x",
     "apagar:x": "bun run src/cli.ts apagar:x",
     "postar:agenda": "bun run src/cli.ts postar:agenda",
+    "gerar:pool": "bun run src/cli.ts gerar:pool",
+    "agendar": "bun run src/cli.ts agendar",
+    "ensaiar:fila": "bun run src/cli.ts ensaiar:fila",
+    "postar:slot": "bun run src/cli.ts postar:slot",
     "cron:install": "bun run src/cli.ts cron:install",
     "cron:remove": "bun run src/cli.ts cron:remove",
-    "check": "bunx tsc --noEmit && bun test && bun run .claude/evals/rodar.ts",
+    "check": "bunx tsc --noEmit && bun test && bun run .claude/evals/rodar.ts && bash .claude/evals/cron.sh && bash .claude/evals/slots.sh",
     "verificar-post": "bun run src/cli.ts verificar-post",
-    "evals": "bun run .claude/evals/rodar.ts"
+    "evals": "bun run .claude/evals/rodar.ts && bash .claude/evals/cron.sh && bash .claude/evals/slots.sh"
   },
   "dependencies": {},
   "devDependencies": {

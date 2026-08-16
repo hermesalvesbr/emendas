@@ -9,14 +9,30 @@ import { harvestCkan } from "./harvest-ckan.ts";
 import { harvestAlepe } from "./harvest-alepe.ts";
 import { detalharCandidatos, harvestCandidatos } from "./harvest-candidatos.ts";
 import { harvestFederal } from "./harvest-federal.ts";
+import { harvestVotacao } from "./harvest-votacao.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
-import { exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal } from "./export-site.ts";
+import { exportarMalhaPE, exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal, exportarSiteOrigem } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
-import { apagarPost, diagnosticarApp, lerCredenciais, parsePostsMarkdown, pesoX, publicarThread, responderPost, verificarCredenciais } from "./post-x.ts";
+import {
+  apagarPost,
+  diagnosticarApp,
+  lerCredenciais,
+  parsePostsMarkdown,
+  pesoX,
+  publicarAvulso,
+  publicarThread,
+  responderPost,
+  usuarioAtual,
+  verificarCredenciais,
+} from "./post-x.ts";
+import type { Pool } from "./gerar-posts.ts";
+import { gerarPool } from "./gerar-posts.ts";
+import type { Fila } from "./fila-posts.ts";
+import { FUSO, HORAS_PADRAO, atrasoNoSlot, distribuir, slotAgora, slotsEntre } from "./fila-posts.ts";
 import { serve } from "./serve.ts";
-import { verificarPost } from "./verificar-post.ts";
+import { indiceDeFatos, verificarPost } from "./verificar-post.ts";
 import { vigiar } from "./watch.ts";
 
 const COMMANDS = [
@@ -27,6 +43,7 @@ const COMMANDS = [
   "coletar:alepe",
   "coletar:federal",
   "coletar:candidatos",
+  "coletar:votacao",
   "normalizar",
   "relatorio",
   "site",
@@ -36,6 +53,10 @@ const COMMANDS = [
   "verificar-post",
   "apagar:x",
   "postar:agenda",
+  "gerar:pool",
+  "agendar",
+  "ensaiar:fila",
+  "postar:slot",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -66,6 +87,13 @@ async function main(): Promise<void> {
       confirmar: { type: "boolean" },
       diagnostico: { type: "boolean" },
       "so-detalhe": { type: "boolean" },
+      forcar: { type: "boolean" },
+      slot: { type: "string" },
+      inicio: { type: "string" },
+      fim: { type: "string" },
+      horas: { type: "string" },
+      tolerancia: { type: "string" },
+      resumo: { type: "boolean" },
     },
   });
   const command = positionals[0];
@@ -98,6 +126,9 @@ async function main(): Promise<void> {
     case "coletar:candidatos":
       await cmdColetarCandidatos(values);
       break;
+    case "coletar:votacao":
+      await cmdColetarVotacao();
+      break;
     case "normalizar":
       await cmdNormalizar();
       break;
@@ -124,6 +155,18 @@ async function main(): Promise<void> {
       break;
     case "postar:agenda":
       await cmdPostarAgenda(values);
+      break;
+    case "gerar:pool":
+      await cmdGerarPool();
+      break;
+    case "agendar":
+      await cmdAgendar(values);
+      break;
+    case "ensaiar:fila":
+      await cmdEnsaiarFila(values);
+      break;
+    case "postar:slot":
+      await cmdPostarSlot(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -282,11 +325,37 @@ async function cmdColetarFederal(): Promise<void> {
   }
 }
 
+/**
+ * Votação de 2022 por município, para os candidatos de 2026 que já concorreram.
+ * O zip nacional tem 557 MB e só o membro de PE é lido — ver harvest-votacao.ts.
+ */
+async function cmdColetarVotacao(): Promise<void> {
+  const db = openDb();
+  try {
+    console.log("coletando votação nominal de 2022 por município (TSE)...");
+    const r = await harvestVotacao(db);
+    console.log(`${r.casadosEm2022} de ${r.candidatosComCpf} candidatos de 2026 também concorreram em 2022`);
+    console.log(`  ${r.linhasGravadas} linhas (candidato x município x turno) em ${r.municipiosComVoto} municípios`);
+    console.log(`  ${r.totalVotos.toLocaleString("pt-BR")} votos nominais somados`);
+  } finally {
+    db.close();
+  }
+}
+
 async function cmdColetarCandidatos(values: Record<string, unknown>): Promise<void> {
   const db = openDb();
   try {
     // --so-detalhe retoma a fase 2 sem refazer o espelho (que zeraria o
     // progresso de ~830 requests já feitos).
+    // --forcar rebusca o detalhe de quem já tem detalhado=1. Necessário quando
+    // o parser passa a extrair um campo novo (foi o caso do CPF, que só entrou
+    // depois dos 836 já coletados) — sem isto, o campo novo ficaria nulo para
+    // sempre e o espelho completo mentiria por omissão.
+    if (values.forcar === true) {
+      const n = db.raw.query("UPDATE candidato_2026 SET detalhado = 0").run().changes;
+      console.log(`--forcar: ${n} candidato(s) marcados para rebuscar o detalhe.`);
+    }
+
     if (values["so-detalhe"] !== true) {
       console.log("coletando candidaturas de PE nas Eleições 2026 (TSE/DivulgaCandContas)...");
       const r = await harvestCandidatos(db);
@@ -416,6 +485,16 @@ async function cmdSite(): Promise<void> {
       JSON.stringify({ regioes: REGIOES_PE, municipios: Object.fromEntries(MUNICIPIO_REGIAO) }),
     );
     console.log(`docs/regioes.json gerado: ${MUNICIPIO_REGIAO.size} municípios em ${REGIOES_PE.length} regiões`);
+
+    // Tela de origem dos candidatos. Página própria (docs/candidatos.html):
+    // o index.html discrimina modo por predicado negativo, e um 6º modo cairia
+    // no catch-all de eFederal() até 14 pontos serem editados à mão.
+    const nBase = await exportarSiteOrigem(db);
+    console.log(`docs/candidatos-origem.json gerado: ${nBase} candidato(s) com votação de 2022`);
+    if (!(await Bun.file("docs/malha-pe.json").exists())) {
+      const feicoes = await exportarMalhaPE();
+      console.log(`docs/malha-pe.json gerado: ${feicoes} municípios (malha IBGE)`);
+    }
 
     if (cand.ambiguos.length > 0) {
       console.log(`  ${cand.ambiguos.length} nome(s) ambíguo(s) sem marcador: ${cand.ambiguos.map((a) => a.autor).join(", ")}`);
@@ -737,6 +816,310 @@ async function cmdPostarAgenda(values: Record<string, unknown>): Promise<void> {
     },
   });
   console.log(`thread agora com ${final.publicados.length} post(s).`);
+}
+
+// ------------------------------------------------- série de 3 em 3 horas
+
+const POOL = "data/pool-posts.json";
+const FILA = "data/fila-posts.json";
+const PUBLICADOS = "data/x-publicados.json";
+const LOG_POSTS = "data/log-posts.jsonl";
+
+/** Fim da série: véspera do 1º turno (04/10/2026). */
+const FIM_SERIE = "2026-10-03";
+
+async function lerPool(): Promise<Pool & { gerado_em: string }> {
+  const f = Bun.file(POOL);
+  if (!(await f.exists())) throw new Error(`${POOL} não existe — rode 'bun run gerar:pool' primeiro.`);
+  return (await f.json()) as Pool & { gerado_em: string };
+}
+
+async function lerFila(): Promise<Fila> {
+  const f = Bun.file(FILA);
+  if (!(await f.exists())) throw new Error(`${FILA} não existe — rode 'bun run agendar' primeiro.`);
+  return (await f.json()) as Fila;
+}
+
+type Publicados = {
+  usuario: string;
+  publicados: Array<{ slot: string; post_id: string; hash: string; id: string; url: string; em: string }>;
+};
+
+async function lerPublicados(): Promise<Publicados> {
+  const f = Bun.file(PUBLICADOS);
+  if (!(await f.exists())) return { usuario: "", publicados: [] };
+  return (await f.json()) as Publicados;
+}
+
+/** Gera o pool inteiro a partir do banco e imprime o relatório de revisão. */
+async function cmdGerarPool(): Promise<void> {
+  const db = openDb();
+  let pool: Pool;
+  try {
+    pool = gerarPool(db.raw);
+  } finally {
+    db.close();
+  }
+
+  const porTemplate = new Map<string, number>();
+  for (const p of pool.posts) porTemplate.set(p.template, (porTemplate.get(p.template) ?? 0) + 1);
+
+  console.log(`pool: ${pool.posts.length} posts aprovados, ${pool.descartes.length} descartados`);
+  for (const [t, n] of [...porTemplate].sort((a, b) => b[1] - a[1])) console.log(`  ${String(n).padStart(4)}  ${t}`);
+
+  if (pool.descartes.length > 0) {
+    console.log("\ndescartes (revise antes de agendar):");
+    for (const d of pool.descartes) console.log(`  [${d.regra}] ${d.id}: ${d.detalhe.slice(0, 160)}`);
+  }
+
+  const pesos = pool.posts.map((p) => p.peso);
+  console.log(`\npeso: ${Math.min(...pesos)}–${Math.max(...pesos)}/280`);
+
+  await Bun.write(
+    POOL,
+    `${JSON.stringify(
+      {
+        nota: "Gerado por 'bun run gerar:pool'. Não editar à mão — regere.",
+        gerado_em: new Date().toISOString(),
+        posts: pool.posts,
+        descartes: pool.descartes,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  console.log(`escrito ${POOL}`);
+}
+
+/** Casa os slots do período com os posts do pool. */
+async function cmdAgendar(values: Record<string, unknown>): Promise<void> {
+  const pool = await lerPool();
+  const inicio = typeof values.inicio === "string" ? values.inicio : hojeLocal();
+  const fim = typeof values.fim === "string" ? values.fim : FIM_SERIE;
+  const horas =
+    typeof values.horas === "string"
+      ? values.horas.split(",").map((h) => Number(h.trim())).filter((h) => Number.isInteger(h) && h >= 0 && h < 24)
+      : [...HORAS_PADRAO];
+
+  const anterior = (await Bun.file(FILA).exists()) ? await lerFila() : null;
+  const todos = slotsEntre(inicio, fim, horas);
+
+  // O que já foi ao ar é imutável: a X não deixa editar post publicado. Um
+  // reagendamento que ignorasse isso ou republicaria (barrado pelo ledger,
+  // deixando o slot vazio em silêncio) ou reembaralharia o histórico e o
+  // resumo diário passaria a mentir sobre o que saiu.
+  const publicados = await lerPublicados();
+  const idsPublicados = new Set(publicados.publicados.map((p) => p.post_id));
+  const slotsPublicados = new Map(publicados.publicados.map((p) => [p.slot, p.post_id]));
+
+  const livres = todos.filter((s) => !slotsPublicados.has(s));
+  const disponiveis = pool.posts.filter((p) => !idsPublicados.has(p.id));
+  const { slots: novos, faltas } = distribuir(livres, disponiveis, horas);
+
+  // Slots já publicados voltam com o id que de fato saiu, em ordem.
+  const mapa: Record<string, string> = {};
+  for (const s of todos) {
+    const fixado = slotsPublicados.get(s);
+    if (fixado) mapa[s] = fixado;
+    else if (novos[s]) mapa[s] = novos[s];
+  }
+
+  console.log(`${todos.length} slots de ${inicio} a ${fim}, horas ${horas.join(",")}`);
+  if (slotsPublicados.size > 0) console.log(`${slotsPublicados.size} já publicados, preservados como saíram`);
+  console.log(`preenchidos: ${Object.keys(mapa).length}`);
+  // Cap silencioso é o que faz um plano parecer completo quando não é.
+  for (const f of faltas) console.log(`  ATENÇÃO eixo "${f.eixo}": ${f.pedidos} slots pedidos, ${f.disponiveis} posts disponíveis`);
+
+  const fila: Fila = {
+    nota: "slot local (America/Recife) -> id do post no pool. 'fixos' sobrepõe 'slots'.",
+    fuso: FUSO,
+    inicio,
+    fim,
+    horas,
+    slots: mapa,
+    fixos: anterior?.fixos ?? {},
+  };
+  await Bun.write(FILA, `${JSON.stringify(fila, null, 2)}\n`);
+  console.log(`escrito ${FILA}`);
+}
+
+function hojeLocal(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: FUSO });
+}
+
+/**
+ * Verifica TODOS os slots contra o banco de agora, sem rede e sem publicar.
+ * É o que responde "a fila inteira ainda é verdade?" depois de uma recoleta.
+ */
+async function cmdEnsaiarFila(values: Record<string, unknown>): Promise<void> {
+  const pool = await lerPool();
+  const fila = await lerFila();
+  const porId = new Map(pool.posts.map((p) => [p.id, p]));
+
+  const db = openDb();
+  let falhas = 0;
+  let conferidos = 0;
+  try {
+    const fatos = indiceDeFatos(db.raw);
+    const entradas = Object.entries({ ...fila.slots, ...fila.fixos }).sort(([a], [b]) => (a < b ? -1 : 1));
+    for (const [slotChave, postId] of entradas) {
+      const post = porId.get(postId);
+      if (!post) {
+        console.log(`FALHA ${slotChave}  id "${postId}" não existe no pool`);
+        falhas++;
+        continue;
+      }
+      const v = verificarPost(post.texto, db.raw, {
+        fatos,
+        permitirLink: false,
+        tom: "afirmativo",
+        rotulosEsperados: post.fatos.map((f) => f.rotulo),
+      });
+      conferidos++;
+      if (!v.ok) {
+        falhas++;
+        console.log(`FALHA ${slotChave}  ${postId}`);
+        for (const a of v.achados.filter((x) => x.severidade === "erro")) console.log(`         ${a.regra}: ${a.detalhe.slice(0, 160)}`);
+      } else if (values.tudo === true) {
+        console.log(`ok    ${slotChave}  peso ${String(post.peso).padStart(3)}  ${postId}`);
+      }
+    }
+  } finally {
+    db.close();
+  }
+
+  console.log(`\n${conferidos} slots conferidos contra o banco, ${falhas} reprovados.`);
+  if (falhas > 0) process.exitCode = 1;
+}
+
+/**
+ * Publica o post do slot corrente. É o entrypoint do cron de 3 em 3 horas.
+ *
+ * Roda sem ninguém olhando, então falha fechada: cada trava abaixo já falhou
+ * de verdade neste projeto. A ordem importa — o verificador vem ANTES da
+ * checagem de data porque um número errado é pior que um post atrasado.
+ */
+async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
+  if (values.resumo === true) return await cmdResumoDia(values);
+
+  const fila = await lerFila();
+  const agora = new Date();
+  const alvo = typeof values.slot === "string" ? values.slot : slotAgora(agora, fila.horas);
+
+  // 1. Disparo muito atrasado não republica um slot vencido horas atrás.
+  const tolerancia = typeof values.tolerancia === "string" ? Number(values.tolerancia) : 90;
+  if (typeof values.slot !== "string") {
+    const atraso = atrasoNoSlot(agora, alvo);
+    if (atraso > tolerancia) {
+      console.log(`fora de slot: ${alvo} venceu há ${Math.round(atraso)} min (tolerância ${tolerancia}).`);
+      return;
+    }
+  }
+
+  // 2. A fila manda. Fora dela, silêncio — o job não incomoda.
+  const postId = fila.fixos[alvo] ?? fila.slots[alvo];
+  if (!postId) {
+    console.log(`${alvo}: nada agendado.`);
+    return;
+  }
+
+  const pool = await lerPool();
+  const post = pool.posts.find((p) => p.id === postId);
+  if (!post) {
+    console.error(`${alvo}: post "${postId}" está na fila mas não existe no pool.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  // 3. Idempotência tripla: slot, recorte e texto. Reexecução não duplica.
+  const publicados = await lerPublicados();
+  const repetido = publicados.publicados.find(
+    (p) => p.slot === alvo || p.post_id === postId || p.hash === post.hash,
+  );
+  if (repetido) {
+    console.log(`${alvo}: já publicado (${repetido.url}) — nada a fazer.`);
+    return;
+  }
+
+  // 4. O texto foi escrito num dia; o dado pode ter mudado. Confere agora.
+  const db = openDb();
+  let veredito;
+  try {
+    veredito = verificarPost(post.texto, db.raw, {
+      permitirLink: false,
+      tom: "afirmativo",
+      rotulosEsperados: post.fatos.map((f) => f.rotulo),
+    });
+  } finally {
+    db.close();
+  }
+
+  if (!veredito.ok) {
+    console.log(`${alvo} · ${postId} · peso ${veredito.peso}/280`);
+    console.log("NÃO PUBLICADO — o verificador reprovou:");
+    for (const a of veredito.achados.filter((x) => x.severidade === "erro")) console.log(`  ${a.regra}: ${a.detalhe}`);
+    console.log("Os números mudaram desde que o pool foi gerado. Rode 'gerar:pool' e 'agendar'.");
+    process.exitCode = 1;
+    return;
+  }
+
+  // 5. Propaganda eleitoral só a partir de 16/08 (calendário do TSE).
+  if (alvo.slice(0, 10) < INICIO_PROPAGANDA) {
+    console.log(`NÃO PUBLICADO — ${alvo} é anterior a ${INICIO_PROPAGANDA}, quando começa a propaganda eleitoral.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (values.confirmar !== true) {
+    console.log(`ENSAIO ${alvo} · ${postId} · peso ${veredito.peso}/280\n`);
+    console.log(post.texto);
+    console.log("\naprovado, mas nada publicado. Use --confirmar.");
+    return;
+  }
+
+  const cred = lerCredenciais();
+  const usuario = await usuarioAtual(cred);
+  const id = await publicarAvulso(cred, post.texto);
+  const url = `https://x.com/${usuario}/status/${id}`;
+
+  publicados.usuario = usuario;
+  publicados.publicados.push({ slot: alvo, post_id: postId, hash: post.hash, id, url, em: new Date().toISOString() });
+  await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
+  await appendJsonl(LOG_POSTS, { slot: alvo, post_id: postId, url, peso: post.peso, em: new Date().toISOString() });
+
+  // Sucesso é silencioso: a 8 posts/dia, avisar a cada acerto vira ruído e o
+  // alerta perde valor. O que interessa está no log e no resumo das 21:30.
+}
+
+async function appendJsonl(caminho: string, linha: unknown): Promise<void> {
+  const anterior = (await Bun.file(caminho).exists()) ? await Bun.file(caminho).text() : "";
+  await Bun.write(caminho, `${anterior}${JSON.stringify(linha)}\n`);
+}
+
+/** Digest do dia: os 8 slots, com url ou o motivo de não ter saído. */
+async function cmdResumoDia(values: Record<string, unknown>): Promise<void> {
+  const fila = await lerFila();
+  const dia = typeof values.data === "string" ? values.data : hojeLocal();
+  const publicados = await lerPublicados();
+  const porSlot = new Map(publicados.publicados.map((p) => [p.slot, p]));
+
+  const doDia = Object.keys({ ...fila.slots, ...fila.fixos })
+    .filter((s) => s.startsWith(dia))
+    .sort();
+
+  console.log(`Emendas PE — ${dia}`);
+  let ok = 0;
+  for (const s of doDia) {
+    const p = porSlot.get(s);
+    if (p) {
+      ok++;
+      console.log(`  ${s.slice(11)}  ${p.url}`);
+    } else {
+      console.log(`  ${s.slice(11)}  NÃO PUBLICADO (${fila.fixos[s] ?? fila.slots[s]})`);
+    }
+  }
+  console.log(`\n${ok}/${doDia.length} publicados.`);
+  if (ok < doDia.length) process.exitCode = 1;
 }
 
 async function cmdVerificarPost(values: Record<string, unknown>): Promise<void> {

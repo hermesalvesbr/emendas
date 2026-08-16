@@ -7,7 +7,7 @@
 // 100% nos casos negativos e 0% nos positivos; por isso os dois tipos entram.
 
 import { Database } from "bun:sqlite";
-import { verificarPost } from "../../src/verificar-post.ts";
+import { indiceDeFatos, verificarPost } from "../../src/verificar-post.ts";
 import type { Fato } from "../../src/verificar-post.ts";
 
 type Caso = {
@@ -16,6 +16,10 @@ type Caso = {
   regra?: string;
   texto: string;
   fatosExternos?: Fato[];
+  /** Tom exigido. Ausente = "afirmativo", o padrão da série de 3 em 3 horas. */
+  tom?: "afirmativo" | "pergunta";
+  /** Quando presente, casar por valor não basta: o rótulo tem de ser um destes. */
+  rotulosEsperados?: string[];
   nota?: string;
 };
 
@@ -25,12 +29,20 @@ const casos = (await Bun.file(new URL("posts.jsonl", import.meta.url)).text())
   .map((l) => JSON.parse(l) as Caso);
 
 const db = new Database("data/emendas.sqlite", { readonly: true });
+// Construído UMA vez: reconstruir o índice por caso custava ~300 ms cada e
+// fazia a suíte inteira levar segundos para nada.
+const fatos = indiceDeFatos(db);
 const inicio = Bun.nanoseconds();
 let passou = 0;
 const falhas: string[] = [];
 
 for (const c of casos) {
-  const v = verificarPost(c.texto, db, { fatosExternos: c.fatosExternos });
+  const v = verificarPost(c.texto, db, {
+    fatos,
+    fatosExternos: c.fatosExternos,
+    tom: c.tom,
+    rotulosEsperados: c.rotulosEsperados,
+  });
   const veredito = v.ok ? "aprovar" : "reprovar";
   const regras = v.achados.map((a) => a.regra);
 

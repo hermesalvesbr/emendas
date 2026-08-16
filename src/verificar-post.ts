@@ -10,6 +10,17 @@
 // é apontado — não silenciosamente aceito.
 
 import { Database } from "bun:sqlite";
+import {
+  agregadoPorAutorEstadual,
+  agregadoPorAutorFederal,
+  agregadoPorFuncao,
+  agregadoPorFuncaoAno,
+  agregadoPorMunicipio,
+  agregadoPorRegiao,
+  agregadoPorSubfuncao,
+  globais,
+  liderPorMunicipio,
+} from "./agregados.ts";
 import { pesoX } from "./post-x.ts";
 import { POPULACAO_PE, POPULACAO_PE_TOTAL } from "./populacao-pe.ts";
 import { MUNICIPIO_REGIAO } from "./regioes-pe.ts";
@@ -44,6 +55,13 @@ export type NumeroCitado = {
 // 85 milhões — erro de mil vezes, silencioso se o valor acaso batesse.
 const RE_NUMERO = /(R\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(mil(?:hões|hão)?|bilhões|bilhão|bi|mi|%)?/gi;
 
+/**
+ * Marcador de citação legal imediatamente antes do número: "EC 86/2015",
+ * "art. 166-A", "Lei 9.504/97", "§ 5º". Também cobre a continuação depois da
+ * barra ("/97"), que sozinha não casa com o padrão de ano.
+ */
+const RE_CITACAO_LEGAL = /(?:\b(?:ECs?|emendas?\s+constitucionais?|arts?|artigos?|leis?|LCs?|res|resolu[çc][ãa]o|s[úu]mula|incisos?|MPs?)\.?\s*|§\s*|\d\/)$/i;
+
 export function extrairNumeros(texto: string): NumeroCitado[] {
   const out: NumeroCitado[] = [];
   for (const m of texto.matchAll(RE_NUMERO)) {
@@ -52,6 +70,19 @@ export function extrairNumeros(texto: string): NumeroCitado[] {
 
     // Ano solto (2023-2026) não é grandeza a conferir.
     if (!cifrao && !sufixo && /^(19|20)\d{2}$/.test(corpo)) continue;
+
+    // Ordinal não é grandeza: o índice não tem como confirmá-lo, e ele casa
+    // por acidente com qualquer fato pequeno — "2º Suplente" casava com as
+    // emendas de Afrânio. Em contrapartida, template da série é proibido de
+    // citar posição de ranking em número (usa "o maior de Pernambuco").
+    if (!cifrao && !sufixo && /^[ºª°]/.test(texto.slice((m.index ?? 0) + bruto.length))) continue;
+
+    // Citação legal é identificador, não medida — mesma natureza do ano solto
+    // acima. Sem isto, "EC 86/2015" fazia o 86 casar com o per capita de Santa
+    // Cruz da Baixa Verde, e "art. 166-A" ficava sem lastro: as duas ressalvas
+    // que a lei OBRIGA a escrever reprovavam o post que as escrevia.
+    // A conferência do texto da lei é trabalho do skill fonte-oficial.
+    if (!cifrao && !sufixo && RE_CITACAO_LEGAL.test(texto.slice(0, m.index ?? 0))) continue;
 
     let valor = Number(corpo.replace(/\./g, "").replace(",", "."));
     if (!Number.isFinite(valor)) continue;
@@ -224,6 +255,66 @@ export function indiceDeFatos(db: Database): Fato[] {
   add(new Set(MUNICIPIO_REGIAO.values()).size, "regiões de PE no agrupamento do projeto");
   add(MUNICIPIO_REGIAO.size, "municípios de PE");
 
+  // ------------------------------------------------------------- derivados
+  //
+  // Estes são calculados, não lidos — e por isso a tentação era declará-los
+  // como `fatosExternos` no momento da geração. Seria tautologia: o gerador
+  // calcularia X, declararia X como conferido e pediria ao verificador para
+  // confirmar X. O verificador viraria carimbo, e um erro de universo no
+  // gerador entraria no ar assinado como "conferido".
+  //
+  // Vindo daqui, eles são REDERIVADOS do banco no instante da publicação —
+  // que é justamente a trava que importa quando o texto foi escrito num dia
+  // e o dado mudou no outro.
+  for (const m of agregadoPorMunicipio(db)) {
+    if (m.porHabitante > 0) add(m.porHabitante, `R$ por habitante em ${m.municipio}`);
+    add(m.n, `nº de emendas de ${m.municipio}`);
+  }
+  for (const r of agregadoPorRegiao(db)) {
+    if (r.porHabitante > 0) add(r.porHabitante, `R$ por habitante na região ${r.regiao}`);
+  }
+  for (const a of agregadoPorAutorEstadual(db)) {
+    add(a.v, `emendas estaduais de ${a.nome}`);
+    add(a.n, `nº de emendas estaduais de ${a.nome}`);
+    add(a.municipios, `municípios atendidos por ${a.nome}`);
+  }
+  for (const a of agregadoPorAutorFederal(db)) {
+    add(a.v, `emendas federais de ${a.nome}`);
+    add(a.n, `nº de emendas federais de ${a.nome}`);
+  }
+  for (const f of agregadoPorFuncao(db)) {
+    add(f.n, `nº de emendas federais em ${f.funcao}`);
+    add(f.autores, `autores de emendas federais em ${f.funcao}`);
+  }
+  for (const f of agregadoPorFuncaoAno(db)) {
+    add(f.v, `emendas federais em ${f.funcao} em ${f.ano}`);
+    add(f.n, `nº de emendas federais em ${f.funcao} em ${f.ano}`);
+  }
+  for (const s of agregadoPorSubfuncao(db)) {
+    add(s.v, `emendas federais em ${s.subfuncao}`);
+    add(s.n, `nº de emendas federais em ${s.subfuncao}`);
+  }
+  for (const l of liderPorMunicipio(db)) {
+    add(l.v, `emendas de ${l.autorNome} em ${l.municipio}`);
+    add(l.n, `nº de emendas de ${l.autorNome} em ${l.municipio}`);
+  }
+
+  const g = globais(db);
+  add(g.municipiosComEmenda, "municípios com emenda (estadual ou federal)");
+  add(g.municipiosSemEmenda, "municípios de PE sem nenhuma emenda no painel");
+
+  // Número de urna da chapa majoritária. Sem isto, TODO post que assina "300"
+  // é reprovado por numero-sem-lastro e a série de campanha cai em bloco.
+  // Restrito ao cargo_codigo 5 (Senado e chapa de governo): incluir os 333
+  // deputados federais despejaria 333 inteiros de 4 dígitos no índice e
+  // arruinaria a regra numero-sem-lastro para essa faixa.
+  for (const c of db
+    .query(`SELECT nome_urna, numero, cargo FROM candidato_2026
+            WHERE numero IS NOT NULL AND cargo_codigo = 5`)
+    .all() as Array<{ nome_urna: string; numero: number; cargo: string }>) {
+    add(c.numero, `número de urna de ${c.nome_urna} (${c.cargo})`);
+  }
+
   return fatos;
 }
 
@@ -239,7 +330,42 @@ export type OpcoesVerificacao = {
   fatosExternos?: Fato[];
   /** Post de abertura/fecho pode levar link; os do meio da série, não. */
   permitirLink?: boolean;
+  /**
+   * Índice pré-construído. `indiceDeFatos` custa ~300 ms e devolve ~2 mil
+   * fatos; verificar 392 posts reconstruindo a cada chamada seriam minutos
+   * de rebuild puro.
+   */
+  fatos?: Fato[];
+  /**
+   * Tom exigido no fecho. "afirmativo" é o padrão desde que a série passou a
+   * 8 posts por dia: pergunta só rende quando há alguém para responder nos 30
+   * minutos seguintes, e com essa cadência não há.
+   */
+  tom?: "afirmativo" | "pergunta";
+  /**
+   * Rótulos dos fatos que o post AFIRMA citar. Quando presente, casar por
+   * valor não basta — o fato que casou precisa ser um destes.
+   */
+  rotulosEsperados?: string[];
 };
+
+/**
+ * Frases que a lei ou o dado não sustentam, mecanizando a seção "Nunca" do
+ * skill post-do-dia. Erro, não aviso: nenhuma delas tem uso legítimo.
+ */
+const FRASES_PROIBIDAS: ReadonlyArray<{ re: RegExp; motivo: string }> = [
+  {
+    re: /\bn[ãa]o\s+(?:é|e|s[ãa]o)\s+candidat[oa]s?\b/i,
+    motivo: "o marcador do TSE só sustenta o positivo; ausência na lista não prova nada (NOTAS 29)",
+  },
+  {
+    re: /\brepresent[oa]\s+(?:a|o)\s+regi[ãa]o\b/i,
+    motivo: "não existe distrito eleitoral no Brasil; ninguém representa uma região específica",
+  },
+];
+
+/** Piso legal apresentado como escolha política — o erro do NOTAS 31. */
+const RE_PISO_COMO_ESCOLHA = /\b(prioriz|escolh|optou|preferiu|elegeu)\w*\b[^.!?]{0,60}\bsa[úu]de\b/i;
 
 export function verificarPost(texto: string, db: Database, opts: OpcoesVerificacao = {}): Veredito {
   const achados: Achado[] = [];
@@ -258,7 +384,15 @@ export function verificarPost(texto: string, db: Database, opts: OpcoesVerificac
     });
   }
 
-  if (!/\?/.test(texto)) {
+  const tom = opts.tom ?? "afirmativo";
+  const ultimaLinha = texto.trim().split("\n").at(-1) ?? "";
+  if (tom === "afirmativo" && /\?/.test(ultimaLinha)) {
+    achados.push({
+      severidade: "aviso",
+      regra: "pergunta-no-final",
+      detalhe: "a série é afirmativa e informativa; fecho em pergunta não é o tom",
+    });
+  } else if (tom === "pergunta" && !/\?/.test(texto)) {
     achados.push({
       severidade: "aviso",
       regra: "sem-pergunta",
@@ -266,11 +400,25 @@ export function verificarPost(texto: string, db: Database, opts: OpcoesVerificac
     });
   }
 
-  const fatos = [...indiceDeFatos(db), ...(opts.fatosExternos ?? [])];
+  for (const { re, motivo } of FRASES_PROIBIDAS) {
+    const m = texto.match(re);
+    if (m) achados.push({ severidade: "erro", regra: "frase-proibida", detalhe: `"${m[0]}" — ${motivo}` });
+  }
+
+  const piso = texto.match(RE_PISO_COMO_ESCOLHA);
+  if (piso) {
+    achados.push({
+      severidade: "aviso",
+      regra: "piso-como-escolha",
+      detalhe: `"${piso[0]}" — saúde lidera por piso de 50% (EC 86/2015 e EC 126/2022), não por decisão da bancada`,
+    });
+  }
+
+  const fatos = [...(opts.fatos ?? indiceDeFatos(db)), ...(opts.fatosExternos ?? [])];
   for (const n of extrairNumeros(texto)) {
     if (n.unidade === "percentual") continue; // percentual é derivado, não consta do índice
-    const bate = fatos.find((f) => casa(n, f.valor));
-    if (!bate) {
+    const candidatos = fatos.filter((f) => casa(n, f.valor));
+    if (candidatos.length === 0) {
       achados.push({
         severidade: "erro",
         regra: "numero-sem-lastro",
@@ -278,8 +426,23 @@ export function verificarPost(texto: string, db: Database, opts: OpcoesVerificac
       });
       continue;
     }
-    // Casar por valor não garante que seja o MESMO assunto: "R$ 47,9 mi" já
-    // casou com um fato sem relação. O rótulo vai no aviso para leitura humana.
+
+    // Casar por valor NÃO garante casar por assunto. Medido: "Caruaru recebeu
+    // R$ 45 por habitante" era aprovado porque 45 é o NÚMERO DE EMENDAS de
+    // Caruaru. Num regime de 8 posts/dia sem revisão humana essa é a falha
+    // dominante — silenciosa, com número plausível e cidade certa.
+    const esperados = opts.rotulosEsperados;
+    const bate = esperados ? candidatos.find((f) => esperados.includes(f.rotulo)) : candidatos[0];
+    if (!bate) {
+      achados.push({
+        severidade: "erro",
+        regra: "numero-rotulo-divergente",
+        detalhe:
+          `"${n.bruto}" casou com ${candidatos.map((c) => `"${c.rotulo}"`).join(", ")}, ` +
+          `mas o post afirma ${esperados?.map((r) => `"${r}"`).join(" / ")}`,
+      });
+      continue;
+    }
     achados.push({
       severidade: "aviso",
       regra: "numero-conferido",

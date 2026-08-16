@@ -268,12 +268,77 @@ export async function verificarCredenciais(cred: Credenciais): Promise<string> {
   return username;
 }
 
+export type ContaCache = { usuario: string; verificado_em: string };
+
+export type OpcoesUsuario = {
+  cachePath?: string;
+  ttlMs?: number;
+  env?: Record<string, string | undefined>;
+  /** Injetável para o teste: o que consultar quando o cache não serve. */
+  buscar?: (cred: Credenciais) => Promise<string>;
+  agora?: Date;
+};
+
+const TTL_CONTA_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Devolve o @usuário sem gastar um GET /users/me quando já se sabe quem é.
+ *
+ * A X migrou para pay-per-use em fevereiro de 2026: um lookup custa cerca de
+ * US$ 0,010. A 8 posts por dia até a eleição são ~390 lookups para confirmar
+ * um dado que não muda — e o @ só serve para montar a URL de exibição, não é
+ * checagem de segurança. Credencial ruim já falha claro no POST /2/tweets
+ * (401/403 viram HarvestError("parse"), sem retry).
+ *
+ * Ordem: X_USUARIO no ambiente > cache em disco dentro do TTL > /users/me.
+ */
+export async function usuarioAtual(cred: Credenciais, opts: OpcoesUsuario = {}): Promise<string> {
+  const env = opts.env ?? Bun.env;
+  const doAmbiente = env.X_USUARIO?.trim();
+  if (doAmbiente) return doAmbiente;
+
+  const cachePath = opts.cachePath ?? "data/x-conta.json";
+  const ttlMs = opts.ttlMs ?? TTL_CONTA_MS;
+  const agora = opts.agora ?? new Date();
+
+  const arquivo = Bun.file(cachePath);
+  if (await arquivo.exists()) {
+    try {
+      const cache = (await arquivo.json()) as ContaCache;
+      const idade = agora.getTime() - new Date(cache.verificado_em).getTime();
+      if (cache.usuario && Number.isFinite(idade) && idade >= 0 && idade < ttlMs) return cache.usuario;
+    } catch {
+      // Cache corrompido não é motivo para não publicar: cai para a consulta.
+    }
+  }
+
+  const buscar = opts.buscar ?? verificarCredenciais;
+  const usuario = await buscar(cred);
+  await Bun.write(cachePath, JSON.stringify({ usuario, verificado_em: agora.toISOString() } satisfies ContaCache, null, 2));
+  return usuario;
+}
+
+/** Corpo do POST /2/tweets. Puro, para o teste distinguir avulso de thread sem rede. */
+export function corpoDoPost(texto: string, responderA: string | null): Record<string, unknown> {
+  return responderA === null ? { text: texto } : { text: texto, reply: { in_reply_to_tweet_id: responderA } };
+}
+
 async function publicarUm(cred: Credenciais, texto: string, responderA: string | null): Promise<string> {
-  const corpo = responderA === null ? { text: texto } : { text: texto, reply: { in_reply_to_tweet_id: responderA } };
-  const r = await chamar("POST", "/tweets", cred, corpo);
+  const r = await chamar("POST", "/tweets", cred, corpoDoPost(texto, responderA));
   const id = r.data?.id;
   if (!id) throw new Error(`post aceito mas sem id na resposta: ${JSON.stringify(r).slice(0, 200)}`);
   return id;
+}
+
+/**
+ * Post avulso, no feed — sem `reply`.
+ *
+ * É o que distingue a série de 3 em 3 horas da thread original: encadeado, o
+ * post vira resposta e o X o esconde da aba "Posts" do perfil. A thread de
+ * agosto tinha 3 posts publicados e só 1 aparecia para quem visitava o perfil.
+ */
+export async function publicarAvulso(cred: Credenciais, texto: string): Promise<string> {
+  return await publicarUm(cred, texto, null);
 }
 
 // ------------------------------------------------------------------- thread

@@ -266,6 +266,8 @@ type DetalheCru = {
   ocupacao?: string | null;
   grauInstrucao?: string | null;
   descricaoSexo?: string | null;
+  cpf?: string | null;
+  dataDeNascimento?: string | null;
 };
 
 /**
@@ -287,6 +289,11 @@ export function parseDetalhe(json: unknown): DetalheCandidato {
     ocupacao: d.ocupacao?.trim() || null,
     grau_instrucao: d.grauInstrucao?.trim() || null,
     sexo: d.descricaoSexo?.trim() || null,
+    // Só dígitos: o TSE devolve o CPF sem máscara em 2026 e com zeros à
+    // esquerda em consulta_cand_2022. Comparar as duas pontas exige o mesmo
+    // formato, e um zero perdido silenciaria o casamento do candidato.
+    cpf: d.cpf?.replace(/\D/g, "") || null,
+    data_nascimento: d.dataDeNascimento?.trim() || null,
   };
 }
 

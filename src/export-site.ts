@@ -9,6 +9,7 @@
 // chars criava a pseudo-subação "EMEN" e atribuiu R$ 177 mi à emenda errada;
 // ver NOTAS.md item 26). Somas por chave, sem dupla contagem.
 
+import { baseEleitoral, origemPorMunicipio, origemPorRegiao } from "./agregados.ts";
 import type { Db } from "./db.ts";
 import type { CargoAtual } from "./harvest-candidatos.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
@@ -364,4 +365,81 @@ export function exportarSiteBens(db: Db): SiteDataBens {
     semDetalhe: todos.length - detalhados.length,
     linhas,
   };
+}
+
+// ----------------------------------------------- origem dos candidatos
+
+/**
+ * Tela "de onde são os candidatos": naturalidade, base eleitoral de 2022 e
+ * concentração de voto.
+ *
+ * O motivo de existir é corrigir um limite do próprio painel. O modo de bens
+ * já filtra por região de NASCIMENTO, e NOTAS 30 avisa que isso não é a região
+ * que o candidato representa — em PE a circunscrição é única. Naturalidade é
+ * um proxy inválido de base territorial; votação por município é o dado real.
+ * Aqui os dois aparecem lado a lado, para que a diferença seja visível.
+ *
+ * CPF NÃO SAI DAQUI. Ele é a chave de junção com o histórico do TSE e fica só
+ * no banco local; o JSON público leva o `id` do TSE, que já é publicado hoje.
+ */
+export async function exportarSiteOrigem(db: Db, destino = "docs/candidatos-origem.json"): Promise<number> {
+  const municipios = origemPorMunicipio(db.raw);
+  const regioes = origemPorRegiao(db.raw);
+  const base = baseEleitoral(db.raw);
+
+  const totalVotosBanco = (
+    db.raw.query("SELECT SUM(votos) AS v FROM votacao_2022 WHERE nr_turno = 1 AND votos > 0").get() as { v: number | null }
+  ).v ?? 0;
+  const totalVotosSite = base.reduce((s, b) => s + b.totalVotos, 0);
+  // Mesmo guard dos exports de emenda: se a soma divergir, o dado mudou e o
+  // JSON não pode ir ao ar mentindo. Os exports de bens e candidatos não têm
+  // este invariante, e é uma lacuna — aqui não se repete.
+  if (totalVotosSite !== totalVotosBanco) {
+    throw new Error(`export de origem inconsistente: site ${totalVotosSite} votos != banco ${totalVotosBanco}`);
+  }
+
+  const totalCandidatos = (db.raw.query("SELECT COUNT(*) AS n FROM candidato_2026").get() as { n: number }).n;
+  const nascidosEmPE = municipios.reduce((s, m) => s + m.candidatos, 0);
+
+  const payload = {
+    geradoEm: new Date().toISOString(),
+    fonte: "Naturalidade: TSE/DivulgaCandContas 2026 · Votação: TSE, votação nominal por município e zona, 2022 (1º turno)",
+    ressalvaRegiao:
+      "A região de nascimento NÃO é a região que o candidato representa. Deputado estadual, federal, senador e governador são eleitos em circunscrição única — o estado inteiro. Não existe distrito eleitoral no Brasil.",
+    ressalvaVazio:
+      "Município sem candidato nativo significa que ninguém NASCIDO ali concorre em 2026 — não que ninguém dispute votos lá.",
+    ressalvaBase:
+      "A votação de 2022 só existe para quem também concorreu naquele ano. Ausência aqui é 'não estava na urna em 2022', nunca 'teve zero voto'.",
+    totalCandidatos,
+    nascidosEmPE,
+    nascidosForaDePE: totalCandidatos - nascidosEmPE,
+    municipiosComNativoCandidato: municipios.filter((m) => m.candidatos > 0).length,
+    municipiosSemNativoCandidato: municipios.filter((m) => m.candidatos === 0).length,
+    candidatosComVotacao2022: base.length,
+    totalVotos2022: totalVotosSite,
+    municipios,
+    regioes,
+    base,
+  };
+
+  await Bun.write(destino, `${JSON.stringify(payload)}\n`);
+  return base.length;
+}
+
+/**
+ * Malha municipal de PE para o mapa. Qualidade "minima" (85 KB) porque o
+ * painel desenha o estado inteiro numa tela — a "maxima" tem 2 MB e nenhum
+ * detalhe visível nessa escala. Chave `codarea` = código IBGE de 7 dígitos.
+ */
+export async function exportarMalhaPE(destino = "docs/malha-pe.json"): Promise<number> {
+  const url =
+    "https://servicodados.ibge.gov.br/api/v3/malhas/estados/26?formato=application/vnd.geo+json&intrarregiao=municipio&qualidade=minima";
+  const res = await fetch(url, { headers: { "User-Agent": "emendas-pe (hermes@softagon.com.br)" } });
+  if (!res.ok) throw new Error(`malha IBGE: HTTP ${res.status}`);
+  const geo = (await res.json()) as { type: string; features: unknown[] };
+  if (geo.type !== "FeatureCollection" || geo.features.length !== 185) {
+    throw new Error(`malha IBGE inesperada: ${geo.type} com ${geo.features?.length} feições (esperado 185)`);
+  }
+  await Bun.write(destino, JSON.stringify(geo));
+  return geo.features.length;
 }

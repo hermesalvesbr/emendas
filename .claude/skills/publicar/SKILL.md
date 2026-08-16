@@ -33,6 +33,16 @@ Abra `http://localhost:4173/`, percorra **os cinco modos** (estadual, dep.
 federais, senadores, bancada, bens) e confira: zero erro de console além do
 favicon, KPIs preenchidos, gráficos desenhados, tabela com as colunas do modo.
 
+Depois abra **`/candidatos.html`**, que é página própria e não um modo — o
+`eFederal()` do index.html é um catch-all (`modo !== "estadual" && modo !==
+"bens"`), então um 6º modo seria renderizado como federal até 14 pontos serem
+editados. Nela, confira as três vistas (por município, por 100 mil habitantes,
+base eleitoral de 2022), que o mapa desenha os 185 municípios, e que clicar
+numa linha da tabela troca o mapa para a votação daquele candidato. Dois erros
+já nasceram aqui: `symbolSize` do scatter recebe `(valor, params)` e ler o
+objeto direto derrubava o render inteiro; e a escala linear do mapa apagava o
+estado, porque o Recife tem 387 candidatos e o segundo colocado tem 31.
+
 ## 3. Commit e push
 
 Mensagem em português, explicando **por que** e não o quê. Se a mudança nasceu

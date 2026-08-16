@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cabecalhoOAuth, lerCredenciais, parsePostsMarkdown, percentEncode, pesoX } from "../src/post-x.ts";
+import { cabecalhoOAuth, corpoDoPost, lerCredenciais, parsePostsMarkdown, percentEncode, pesoX, usuarioAtual } from "../src/post-x.ts";
 
 // Nenhum teste toca a rede nem publica nada.
 
@@ -136,5 +136,67 @@ describe("parse de POSTS-X.md", () => {
 
   test("markdown sem blocos falha alto em vez de publicar nada silenciosamente", () => {
     expect(() => parsePostsMarkdown("# só um título\n\nsem posts")).toThrow(/nenhum post encontrado/);
+  });
+});
+
+describe("post avulso vs thread", () => {
+  /**
+   * A diferença que motivou a série de 3 em 3 horas. Encadeado, o post vira
+   * resposta e o X o esconde da aba "Posts" do perfil: a thread de agosto
+   * tinha 3 posts no ar e só 1 aparecia para quem visitava @hermes_alves.
+   */
+  test("sem responderA, o corpo não leva `reply` — é o que o põe no feed", () => {
+    expect(corpoDoPost("oi", null)).toEqual({ text: "oi" });
+    expect(corpoDoPost("oi", null)).not.toHaveProperty("reply");
+  });
+
+  test("com responderA, encadeia na thread", () => {
+    expect(corpoDoPost("oi", "123")).toEqual({ text: "oi", reply: { in_reply_to_tweet_id: "123" } });
+  });
+});
+
+describe("cache do @usuário", () => {
+  const cred = { consumerKey: "a", consumerSecret: "b", accessToken: "c", accessTokenSecret: "d" };
+  const tmp = () => `${import.meta.dir}/../data/.teste-x-conta-${Math.random().toString(36).slice(2)}.json`;
+
+  test("X_USUARIO no ambiente vence tudo e não consulta nada", async () => {
+    let chamou = false;
+    const u = await usuarioAtual(cred, {
+      env: { X_USUARIO: "hermes_alves" },
+      buscar: async () => {
+        chamou = true;
+        return "outro";
+      },
+    });
+    expect(u).toBe("hermes_alves");
+    expect(chamou).toBe(false);
+  });
+
+  test("cache dentro do TTL não gasta a consulta paga", async () => {
+    const cachePath = tmp();
+    const agora = new Date("2026-08-16T12:00:00Z");
+    let chamadas = 0;
+    const buscar = async (): Promise<string> => {
+      chamadas++;
+      return "hermes_alves";
+    };
+
+    await usuarioAtual(cred, { cachePath, env: {}, buscar, agora });
+    await usuarioAtual(cred, { cachePath, env: {}, buscar, agora: new Date("2026-08-18T12:00:00Z") });
+    expect(chamadas).toBe(1);
+
+    // Vencido o TTL de 7 dias, consulta de novo.
+    await usuarioAtual(cred, { cachePath, env: {}, buscar, agora: new Date("2026-08-26T12:00:00Z") });
+    expect(chamadas).toBe(2);
+
+    await Bun.file(cachePath).delete();
+  });
+
+  test("cache corrompido não impede publicar: cai para a consulta", async () => {
+    const cachePath = tmp();
+    await Bun.write(cachePath, "{ isto não é json");
+    const u = await usuarioAtual(cred, { cachePath, env: {}, buscar: async () => "hermes_alves" });
+    expect(u).toBe("hermes_alves");
+    await Bun.file(cachePath).delete();
   });
 });
