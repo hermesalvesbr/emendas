@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { beforeEach, describe, expect, test } from "bun:test";
 import {
+  todosCandidatos,
   baseEleitoral,
   origemPorMunicipio,
   origemPorRegiao,
@@ -323,5 +324,42 @@ describe("base eleitoral e concentração", () => {
     // Ausência é "não estava na urna", nunca "teve zero voto" (NOTAS 29).
     db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo) VALUES (9, 'NOVATO', 'Deputado Estadual', 7)`);
     expect(baseEleitoral(db).find((b) => b.candidatoId === 9)).toBeUndefined();
+  });
+});
+
+
+describe("nenhuma candidatura pode sumir da tela", () => {
+  /**
+   * Regressão do defeito relatado pelo próprio usuário: a tela listava só quem
+   * tinha votação de 2022 e, com isso, sumia com 595 das 836 candidaturas —
+   * inclusive a dele. Num painel de transparência, o estreante é exatamente
+   * quem mais precisa aparecer: é de quem menos se sabe.
+   */
+  test("candidato sem votação de 2022 continua na lista", () => {
+    db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo, partido, municipio_nascimento, uf_nascimento, regiao)
+            VALUES (1, 'HERMES ALVES', '2º Suplente', 5, 'NOVO', 'ARARIPINA', 'PE', 'Sertão do Araripe')`);
+    const todos = todosCandidatos(db);
+    expect(todos).toHaveLength(1);
+    expect(todos[0]?.nome).toBe("HERMES ALVES");
+    // FALSE é "não estava na urna em 2022", nunca "teve zero voto" (NOTAS 29).
+    expect(todos[0]?.temVotacao2022).toBe(false);
+  });
+
+  test("quem concorreu em 2022 vem marcado", () => {
+    db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo) VALUES (2, 'VETERANO', 'Deputado Federal', 6)`);
+    db.run(`INSERT INTO votacao_2022 (sq_candidato, cpf, candidato_2026_id, cd_municipio, municipio, nr_turno, votos, coletado_em)
+            VALUES ('sq2', '1', 2, 'RECIFE', 'RECIFE', 1, 500, '2026-08-16')`);
+    expect(todosCandidatos(db).find((c) => c.id === 2)?.temVotacao2022).toBe(true);
+  });
+
+  test("naturalidade leva código IBGE só quando o nascimento foi em PE", () => {
+    db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo, municipio_nascimento, uf_nascimento, regiao)
+            VALUES (3, 'DAQUI', 'Deputado Estadual', 7, 'ARARIPINA', 'PE', 'Sertão do Araripe')`);
+    db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo, municipio_nascimento, uf_nascimento, regiao)
+            VALUES (4, 'DE FORA', 'Deputado Estadual', 7, 'SAO PAULO', 'SP', NULL)`);
+    const todos = todosCandidatos(db);
+    expect(todos.find((c) => c.id === 3)?.codIbgeNascimento).toBe("2601102");
+    // Sem código: o mapa é de PE e acender um município daqui seria mentira.
+    expect(todos.find((c) => c.id === 4)?.codIbgeNascimento).toBeNull();
   });
 });

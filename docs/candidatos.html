@@ -220,7 +220,10 @@
   }
 
   let dados = null, charts = {}, vista = "absoluto";
-  let selecionado = null;   // candidato escolhido na tabela ou no filtro
+  /** Votação de 2022 indexada por id de candidato — nem todos têm. */
+  let porId = new Map();
+  let selecionado = null;   // votação de 2022 do escolhido (null se estreante)
+  let selecionadoId = null; // id do candidato escolhido, tenha voto ou não
   let municipioFoco = null; // município clicado no mapa
 
   const fRegiao = document.getElementById("fRegiao");
@@ -243,6 +246,7 @@
       f.properties.name = nomePorCod.get(String(f.properties.codarea)) ?? String(f.properties.codarea);
     }
     echarts.registerMap("PE", malha);
+    porId = new Map(origem.base.map((b) => [b.candidatoId, b]));
     return origem;
   }
 
@@ -261,31 +265,38 @@
 
   function preencherOpcoes() {
     encher(fRegiao, dados.regioes.map((r) => r.rotulo));
-    encher(fCargo, [...new Set(dados.base.map((b) => b.cargo2026))].sort());
-    encher(fPartido, [...new Set(dados.base.map((b) => b.partido).filter(Boolean))].sort());
+    encher(fCargo, [...new Set(dados.candidatos.map((c) => c.cargo))].sort());
+    encher(fPartido, [...new Set(dados.candidatos.map((c) => c.partido).filter(Boolean))].sort());
     const dl = document.getElementById("dlNome");
     dl.innerHTML = "";
-    for (const b of dados.base) {
+    for (const b of dados.candidatos) {
       const o = document.createElement("option");
       o.value = b.nome;
       dl.appendChild(o);
     }
   }
 
-  /** Linhas da tabela: sempre os que têm votação de 2022 (é o universo medível). */
+  /**
+   * Linhas da tabela: TODAS as candidaturas, com a votação de 2022 anexada
+   * quando existe. Listar só quem tem histórico sumiria com 595 estreantes —
+   * e ausência de voto em 2022 é "não estava na urna", nunca "teve zero".
+   */
   function filtrar() {
     const vr = fRegiao.value, vc = fCargo.value, vp = fPartido.value;
     const vn = fNome.value.trim().toUpperCase();
-    return dados.base.filter((b) => {
-      const rot = b.regiaoNascimento ?? "(nascido fora de PE)";
+    return dados.candidatos.filter((c) => {
+      const rot = c.regiaoNascimento ?? "(nascido fora de PE)";
       if (vr && rot !== vr) return false;
-      if (vc && b.cargo2026 !== vc) return false;
-      if (vp && b.partido !== vp) return false;
-      if (vn && !b.nome.toUpperCase().includes(vn)) return false;
-      if (municipioFoco && b.municipioNascimento !== municipioFoco) return false;
+      if (vc && c.cargo !== vc) return false;
+      if (vp && c.partido !== vp) return false;
+      if (vn && !c.nome.toUpperCase().includes(vn)) return false;
+      if (municipioFoco && c.municipioNascimento !== municipioFoco) return false;
       return true;
-    });
+    }).map((c) => ({ ...c, v: porId.get(c.id) ?? null }));
   }
+
+  /** Só quem tem votação medida — o universo dos gráficos de base eleitoral. */
+  const comVoto = (fl) => fl.filter((c) => c.v);
 
   // --------------------------------------------------------------- KPIs
 
@@ -294,6 +305,17 @@
     // Com um candidato escolhido, os KPIs falam DELE. Mostrar o agregado ao
     // lado de um mapa individual faz o leitor atribuir 12 milhões de votos a
     // uma pessoa só.
+    const cand = selecionadoId ? dados.candidatos.find((c) => c.id === selecionadoId) : null;
+    if (cand && !selecionado) {
+      // Estreante: mostrar o que existe dele, sem inventar votação.
+      document.getElementById("kpis").innerHTML = [
+        [cand.nome, `${cand.cargo}${cand.partido ? " · " + cand.partido : ""}`],
+        [cand.municipioNascimento ?? "—", "município de nascimento"],
+        [cand.regiaoNascimento ?? "(fora de PE)", "região de nascimento"],
+        ["não concorreu", "sem votação em 2022 — não estava na urna"],
+      ].map(([v, l]) => `<div class="tile"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
+      return;
+    }
     if (selecionado) {
       const b = selecionado;
       const tilesCand = [
@@ -308,17 +330,18 @@
         .join("");
       return;
     }
+    const cv = comVoto(fl).map((c) => c.v);
     const tiles = vista === "votos"
       ? [
-          [num.format(d.candidatosComVotacao2022), "candidatos com votação em 2022"],
-          [num.format(fl.reduce((s, b) => s + b.totalVotos, 0)), "votos somados no recorte"],
-          [fl.length ? pct1.format(mediana(fl.map((b) => b.pctNaRegiaoNatal).filter((v) => v !== null))) + "%" : "—",
+          [num.format(cv.length), "com votação medida em 2022, no recorte"],
+          [num.format(cv.reduce((s, b) => s + b.totalVotos, 0)), "votos somados"],
+          [cv.length ? pct1.format(mediana(cv.map((b) => b.pctNaRegiaoNatal).filter((v) => v !== null))) + "%" : "—",
            "mediana dos votos na região natal"],
-          [fl.length ? pct1.format(100 * mediana(fl.map((b) => b.concentracao))) + "%" : "—",
+          [cv.length ? pct1.format(100 * mediana(cv.map((b) => b.concentracao))) + "%" : "—",
            "concentração mediana (HHI)"],
         ]
       : [
-          [num.format(d.totalCandidatos), "candidaturas em PE"],
+          [num.format(fl.length), fl.length === d.totalCandidatos ? "candidaturas em PE" : "candidaturas no recorte"],
           [num.format(d.nascidosForaDePE), "nasceram fora de Pernambuco"],
           [num.format(d.municipiosComNativoCandidato) + " de 185", "municípios com algum nativo candidato"],
           [num.format(d.municipiosSemNativoCandidato), "municípios sem nenhum nativo candidato"],
@@ -339,6 +362,9 @@
 
   function renderMapa(fl) {
     let valores, titulo, sub, formatter;
+    // Destaque binário (um município aceso) não tem escala: uma legenda
+    // "nenhum | 1–1 | 2+" só confunde.
+    let semEscala = false;
     // A legenda mostra contagem inteira nas vistas absoluta/votos e uma casa
     // decimal no per capita, onde os valores são fracionários.
     // Math.ceil no piso da faixa: as fatias começam em corte+1e-9, e arredondar
@@ -361,10 +387,10 @@
       // Sem candidato escolhido: soma dos votos de todos os filtrados. Mostra
       // onde está o voto do grupo, não de uma pessoa.
       const soma = new Map();
-      for (const b of fl) for (const [cod, v] of b.votosPorMunicipio) soma.set(cod, (soma.get(cod) ?? 0) + v);
+      for (const c of comVoto(fl)) for (const [cod, v] of c.v.votosPorMunicipio) soma.set(cod, (soma.get(cod) ?? 0) + v);
       valores = dados.municipios.map((m) => ({ name: m.nome, value: (m.codIbge && soma.get(m.codIbge)) || 0 }));
       titulo = "Votos de 2022 dos candidatos filtrados";
-      sub = `${fl.length} candidato(s) · escolha um na tabela para ver só a base dele`;
+      sub = `${comVoto(fl).length} de ${fl.length} candidato(s) do recorte concorreram em 2022 · escolha um na tabela para ver só a base dele`;
       formatter = (p) => `<b>${esc(p.name)}</b><br>${num.format(p.value || 0)} voto(s)`;
     } else if (vista === "percapita") {
       valores = dados.municipios.map((m) => ({ name: m.nome, value: m.por100Mil }));
@@ -374,6 +400,21 @@
         const m = dados.municipios.find((x) => x.nome === p.name);
         return `<b>${esc(p.name)}</b><br>${pct1.format(p.value || 0)} por 100 mil<br>${num.format(m?.candidatos ?? 0)} candidato(s) · ${num.format(m?.populacao ?? 0)} hab.`;
       };
+    } else if (selecionadoId && !selecionado) {
+      // Estreante escolhido: não há votação para mapear, mas há naturalidade.
+      // Mostrar o mapa geral cheio aqui esconderia a única informação
+      // geográfica que existe sobre essa candidatura.
+      const cand = dados.candidatos.find((c) => c.id === selecionadoId);
+      valores = dados.municipios.map((m) => ({
+        name: m.nome,
+        value: cand && m.codIbge && m.codIbge === cand.codIbgeNascimento ? 1 : 0,
+      }));
+      titulo = `Onde ${cand ? cand.nome : "o candidato"} nasceu`;
+      sub = cand && cand.ufNascimento === "PE"
+        ? `${cand.municipioNascimento} · ${cand.regiaoNascimento} · não concorreu em 2022, então não há base eleitoral a medir`
+        : `nasceu em ${cand ? cand.municipioNascimento + "/" + cand.ufNascimento : "—"}, fora de PE · não aparece no mapa do estado`;
+      formatter = (p) => `<b>${esc(p.name)}</b>${p.value ? "<br>município de nascimento" : ""}`;
+      semEscala = true;
     } else {
       valores = dados.municipios.map((m) => ({ name: m.nome, value: m.candidatos }));
       titulo = "Município de nascimento dos candidatos";
@@ -408,7 +449,7 @@
     charts.mapa.setOption({
       ...baseOption(),
       tooltip: { ...baseOption().tooltip, trigger: "item", formatter },
-      visualMap: {
+      visualMap: semEscala ? undefined : {
         type: "piecewise",
         left: 8, bottom: 8, orient: "horizontal",
         itemGap: 4, itemWidth: 16, itemHeight: 11,
@@ -424,7 +465,9 @@
         emphasis: { label: { show: false }, itemStyle: { areaColor: css("--s2") } },
         select: { itemStyle: { areaColor: css("--s2") } },
         itemStyle: { borderColor: css("--grid"), borderWidth: 0.5 },
-        data: valores,
+        data: semEscala
+          ? valores.map((v) => ({ ...v, itemStyle: { areaColor: v.value ? css("--s2") : css("--mapa-0") } }))
+          : valores,
       }],
     }, true);
   }
@@ -475,7 +518,7 @@
   // ---------------------------------------------------------- dispersão
 
   function renderDispersao(fl) {
-    const pontos = fl.filter((b) => b.pctNaRegiaoNatal !== null);
+    const pontos = comVoto(fl).map((c) => c.v).filter((b) => b.pctNaRegiaoNatal !== null);
     document.getElementById("sDispersao").textContent =
       `${pontos.length} candidato(s) · eixo X: % dos votos na região onde nasceu · eixo Y: concentração`;
 
@@ -524,11 +567,16 @@
   let ordem = { k: "votos", dir: -1 };
 
   function renderTabela(fl) {
-    const val = (b, k) => ({
-      nome: b.nome, cargo: b.cargo2026, partido: b.partido ?? "",
-      nasc: b.municipioNascimento ?? "", regiao: b.regiaoNascimento ?? "",
-      votos: b.totalVotos, top: b.nomeMunicipioTop ?? "",
-      pctNatal: b.pctNaRegiaoNatal ?? -1, conc: b.concentracao, muns: b.municipiosComVoto,
+    // Sem votação de 2022 os campos ordenáveis viram -1 para cair no fim de
+    // qualquer ordenação decrescente, sem fingir que valem zero.
+    const val = (c, k) => ({
+      nome: c.nome, cargo: c.cargo, partido: c.partido ?? "",
+      nasc: c.municipioNascimento ?? "", regiao: c.regiaoNascimento ?? "",
+      votos: c.v ? c.v.totalVotos : -1,
+      top: c.v ? (c.v.nomeMunicipioTop ?? "") : "",
+      pctNatal: c.v && c.v.pctNaRegiaoNatal !== null ? c.v.pctNaRegiaoNatal : -1,
+      conc: c.v ? c.v.concentracao : -1,
+      muns: c.v ? c.v.municipiosComVoto : -1,
     })[k];
 
     const linhas = [...fl].sort((a, b) => {
@@ -537,29 +585,40 @@
       return c * ordem.dir;
     });
 
+    const nEstreantes = linhas.filter((c) => !c.v).length;
     document.getElementById("sTabela").textContent =
-      `${linhas.length} candidato(s) com votação em 2022 · clique numa linha para ver a base dela no mapa`;
+      `${num.format(linhas.length)} candidatura(s)` +
+      (nEstreantes ? ` · ${num.format(nEstreantes)} sem votação em 2022 (não estavam na urna naquele ano)` : "") +
+      " · clique numa linha para ver no mapa";
 
-    document.getElementById("tbody").innerHTML = linhas.map((b) => `
-      <tr data-id="${b.candidatoId}" class="${selecionado && selecionado.candidatoId === b.candidatoId ? "sel" : ""}">
-        <td>${esc(b.nome)}</td>
-        <td>${esc(b.cargo2026)}</td>
-        <td>${esc(b.partido ?? "—")}</td>
-        <td>${esc(b.municipioNascimento ?? "—")}${b.ufNascimento && b.ufNascimento !== "PE" ? "/" + esc(b.ufNascimento) : ""}</td>
-        <td>${esc(b.regiaoNascimento ?? "(nascido fora de PE)")}</td>
-        <td class="num">${num.format(b.totalVotos)}</td>
-        <td>${esc(b.nomeMunicipioTop ?? "—")}</td>
-        <td class="num">${b.pctNaRegiaoNatal === null ? "—" : pct1.format(b.pctNaRegiaoNatal) + "%"}</td>
-        <td class="num">${pct1.format(100 * b.concentracao)}%</td>
-        <td class="num">${num.format(b.municipiosComVoto)}</td>
-      </tr>`).join("");
+    document.getElementById("tbody").innerHTML = linhas.map((c) => {
+      const v = c.v;
+      // "não concorreu" e não "0": a diferença entre não ter disputado e ter
+      // perdido é a informação mais fácil de destruir aqui (NOTAS 29).
+      const semUrna = '<span title="não concorreu em 2022">não concorreu</span>';
+      return `
+      <tr data-id="${c.id}" class="${selecionadoId === c.id ? "sel" : ""}">
+        <td>${esc(c.nome)}</td>
+        <td>${esc(c.cargo)}</td>
+        <td>${esc(c.partido ?? "—")}</td>
+        <td>${esc(c.municipioNascimento ?? "—")}${c.ufNascimento && c.ufNascimento !== "PE" ? "/" + esc(c.ufNascimento) : ""}</td>
+        <td>${esc(c.regiaoNascimento ?? "(nascido fora de PE)")}</td>
+        <td class="num">${v ? num.format(v.totalVotos) : semUrna}</td>
+        <td>${v ? esc(v.nomeMunicipioTop ?? "—") : "—"}</td>
+        <td class="num">${v && v.pctNaRegiaoNatal !== null ? pct1.format(v.pctNaRegiaoNatal) + "%" : "—"}</td>
+        <td class="num">${v ? pct1.format(100 * v.concentracao) + "%" : "—"}</td>
+        <td class="num">${v ? num.format(v.municipiosComVoto) : "—"}</td>
+      </tr>`;
+    }).join("");
 
     for (const tr of document.querySelectorAll("#tbody tr")) {
       tr.addEventListener("click", () => {
         const id = Number(tr.dataset.id);
-        selecionado = selecionado && selecionado.candidatoId === id ? null : dados.base.find((b) => b.candidatoId === id);
-        if (selecionado) trocarVista("votos");
-        else render();
+        if (selecionadoId === id) { selecionadoId = null; selecionado = null; render(); return; }
+        selecionadoId = id;
+        selecionado = porId.get(id) ?? null;
+        // Estreante não tem mapa de votos; a vista útil é a de nascimento.
+        trocarVista(selecionado ? "votos" : "absoluto");
       });
     }
   }
@@ -615,14 +674,16 @@
     }
     for (const el of [fRegiao, fCargo, fPartido]) el.addEventListener("change", render);
     fNome.addEventListener("input", () => {
-      const achado = dados.base.find((b) => b.nome.toUpperCase() === fNome.value.trim().toUpperCase());
-      selecionado = achado ?? null;
-      if (achado) trocarVista("votos");
+      const alvo = fNome.value.trim().toUpperCase();
+      const cand = dados.candidatos.find((c) => c.nome.toUpperCase() === alvo);
+      selecionadoId = cand ? cand.id : null;
+      selecionado = cand ? (porId.get(cand.id) ?? null) : null;
+      if (cand) trocarVista(selecionado ? "votos" : "absoluto");
       else render();
     });
     document.getElementById("btnLimpar").addEventListener("click", () => {
       fRegiao.value = ""; fCargo.value = ""; fPartido.value = ""; fNome.value = "";
-      selecionado = null; municipioFoco = null;
+      selecionado = null; selecionadoId = null; municipioFoco = null;
       render();
     });
     document.querySelectorAll("#tbl th").forEach((th) => th.addEventListener("click", () => {

@@ -558,3 +558,57 @@ export function baseEleitoral(db: Database): BaseEleitoral[] {
   }
   return out.sort((a, b) => b.totalVotos - a.totalVotos);
 }
+
+export type CandidatoOrigem = {
+  id: number;
+  nome: string;
+  cargo: string;
+  partido: string | null;
+  municipioNascimento: string | null;
+  ufNascimento: string | null;
+  regiaoNascimento: RegiaoPE | null;
+  codIbgeNascimento: string | null;
+  /**
+   * Se existe votação de 2022 para ele. FALSE significa "não estava na urna em
+   * 2022" — nunca "teve zero voto". A maioria (595 de 836) é estreante ou
+   * disputou outro pleito; tratá-los como zero seria inventar uma derrota.
+   */
+  temVotacao2022: boolean;
+};
+
+/**
+ * TODOS os candidatos de 2026, com naturalidade.
+ *
+ * Existe porque a primeira versão da tela listava só quem tinha votação de
+ * 2022 e, com isso, sumia com 595 candidaturas — inclusive as de estreantes,
+ * que são justamente quem mais precisa aparecer num painel de transparência.
+ */
+export function todosCandidatos(db: Database): CandidatoOrigem[] {
+  const comVoto = new Set(
+    (db.query("SELECT DISTINCT candidato_2026_id AS id FROM votacao_2022 WHERE candidato_2026_id IS NOT NULL").all() as Array<{ id: number }>)
+      .map((r) => r.id),
+  );
+
+  return (
+    db
+      .query(`SELECT id, nome_urna, cargo, partido, municipio_nascimento, uf_nascimento, regiao
+              FROM candidato_2026 ORDER BY nome_urna`)
+      .all() as Array<{
+      id: number; nome_urna: string; cargo: string; partido: string | null;
+      municipio_nascimento: string | null; uf_nascimento: string | null; regiao: RegiaoPE | null;
+    }>
+  ).map((c) => {
+    const chave = c.municipio_nascimento ? normalizarAutor(c.municipio_nascimento) : null;
+    return {
+      id: c.id,
+      nome: c.nome_urna,
+      cargo: c.cargo,
+      partido: c.partido,
+      municipioNascimento: chave,
+      ufNascimento: c.uf_nascimento,
+      regiaoNascimento: c.regiao,
+      codIbgeNascimento: c.uf_nascimento === "PE" && chave ? (COD_IBGE.get(chave) ?? null) : null,
+      temVotacao2022: comVoto.has(c.id),
+    };
+  });
+}

@@ -9,7 +9,7 @@
 // chars criava a pseudo-subação "EMEN" e atribuiu R$ 177 mi à emenda errada;
 // ver NOTAS.md item 26). Somas por chave, sem dupla contagem.
 
-import { baseEleitoral, origemPorMunicipio, origemPorRegiao } from "./agregados.ts";
+import { baseEleitoral, origemPorMunicipio, origemPorRegiao, todosCandidatos } from "./agregados.ts";
 import type { Db } from "./db.ts";
 import type { CargoAtual } from "./harvest-candidatos.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
@@ -386,6 +386,7 @@ export async function exportarSiteOrigem(db: Db, destino = "docs/candidatos-orig
   const municipios = origemPorMunicipio(db.raw);
   const regioes = origemPorRegiao(db.raw);
   const base = baseEleitoral(db.raw);
+  const candidatos = todosCandidatos(db.raw);
 
   const totalVotosBanco = (
     db.raw.query("SELECT SUM(votos) AS v FROM votacao_2022 WHERE nr_turno = 1 AND votos > 0").get() as { v: number | null }
@@ -419,6 +420,10 @@ export async function exportarSiteOrigem(db: Db, destino = "docs/candidatos-orig
     totalVotos2022: totalVotosSite,
     municipios,
     regioes,
+    // TODOS os 836. A tela lista candidatura, não só quem tem histórico de
+    // voto — sumir com 595 estreantes num painel de transparência é o oposto
+    // do que ele existe para fazer.
+    candidatos,
     base,
   };
 
