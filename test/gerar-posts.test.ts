@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { artigoDaRegiao, cidadeCom, contagem, formatarInteiro, formatarReais, montar, varianteDe, valorAfirmado } from "../src/gerar-posts.ts";
+import { artigoDaRegiao, cidadeCom, contagem, formatarInteiro, formatarReais, limparPontuacao, montar, varianteDe, valorAfirmado } from "../src/gerar-posts.ts";
 import { pesoX } from "../src/post-x.ts";
 import { extrairNumeros } from "../src/verificar-post.ts";
 
@@ -145,5 +145,38 @@ describe("concordância", () => {
 
   test("zero é plural", () => {
     expect(contagem(0, "emenda", "emendas")).toBe("São 0 emendas");
+  });
+});
+
+describe("pontuação da composição", () => {
+  /**
+   * cidadeCom() fecha com vírgula porque quase sempre há oração depois. Quando
+   * a cidade encerra a frase, a junção produzia "no Agreste Setentrional,." —
+   * pequeno, mas num texto que se propõe conferível a desatenção visível custa
+   * credibilidade.
+   */
+  test("vírgula antes de ponto final some", () => {
+    expect(limparPontuacao("nasceram em Recife (PE), na Região Metropolitana do Recife,.")).toBe(
+      "nasceram em Recife (PE), na Região Metropolitana do Recife.",
+    );
+  });
+
+  test("vírgula dupla vira uma só", () => {
+    expect(limparPontuacao("no Sertão do Pajeú,, 172 candidatos")).toBe("no Sertão do Pajeú, 172 candidatos");
+  });
+
+  test("espaço antes de vírgula some", () => {
+    expect(limparPontuacao("Recife (PE) , no Agreste")).toBe("Recife (PE), no Agreste");
+  });
+
+  test("vírgula legítima no meio da frase é preservada", () => {
+    expect(limparPontuacao("Araripina (PE), no Sertão do Araripe, recebeu R$ 2,7 mi.")).toBe(
+      "Araripina (PE), no Sertão do Araripe, recebeu R$ 2,7 mi.",
+    );
+  });
+
+  test("montar aplica a limpeza no texto final", () => {
+    const t = montar([{ texto: "Nasceram em Araripina (PE), no Sertão do Araripe,.", prioridade: 100 }]);
+    expect(t).not.toContain(",.");
   });
 });

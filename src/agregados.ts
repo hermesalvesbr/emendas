@@ -612,3 +612,87 @@ export function todosCandidatos(db: Database): CandidatoOrigem[] {
     };
   });
 }
+
+export type CuriosidadeMunicipio = {
+  municipio: string;
+  nome: string;
+  regiao: RegiaoPE | null;
+  populacao: number;
+  /** Candidatos de 2026 nascidos ali. */
+  nascidos: number;
+  por100Mil: number;
+  /**
+   * Mais votado do município em 2022, POR CARGO — universo completo daquele ano.
+   *
+   * Por cargo e não geral: senador e governador disputam o estado inteiro e
+   * levam centenas de milhares de votos, então o "mais votado" solto seria
+   * quase sempre o mesmo nome em todo município. Quem revela base local é o
+   * deputado, estadual e federal.
+   */
+  top: Partial<Record<string, { nome: string; partido: string; votos: number }>>;
+  /** Candidatos distintos que receberam ao menos um voto ali em 2022. */
+  candidatos2022: number;
+  totalVotos2022: number;
+};
+
+/**
+ * Um retrato por município, para os posts de curiosidade.
+ *
+ * O "mais votado" sai de `votacao_2022_municipio`, que tem TODOS os candidatos
+ * de 2022 — não da tabela dos 254 que voltaram em 2026. A diferença não é
+ * sutil: usar a tabela errada transformaria "o mais votado da cidade" em "o
+ * mais votado entre os que concorrem de novo", que é outra frase.
+ */
+export function curiosidadesPorMunicipio(db: Database): CuriosidadeMunicipio[] {
+  const nascidos = new Map<string, number>();
+  for (const r of db
+    .query(`SELECT municipio_nascimento AS m, COUNT(*) AS n FROM candidato_2026
+            WHERE uf_nascimento = 'PE' AND municipio_nascimento IS NOT NULL
+            GROUP BY municipio_nascimento`)
+    .all() as Array<{ m: string; n: number }>) {
+    nascidos.set(normalizarAutor(r.m), r.n);
+  }
+
+  const topo = new Map<string, Partial<Record<string, { nome: string; partido: string; votos: number }>>>();
+  for (const r of db
+    .query(`SELECT municipio, nome_urna, cargo, partido, votos FROM votacao_2022_municipio
+            ORDER BY municipio, cargo, votos DESC`)
+    .all() as Array<{ municipio: string; nome_urna: string; cargo: string; partido: string; votos: number }>) {
+    const porCargo = topo.get(r.municipio) ?? {};
+    // Já vem ordenado por votos desc dentro de (município, cargo): o primeiro
+    // que chega é o maior. O TSE às vezes traz o nome de urna com espaço
+    // sobrando — publicar "SOCORRO PIMENTEL " deixaria a marca do descuido.
+    if (!porCargo[r.cargo]) {
+      porCargo[r.cargo] = { nome: r.nome_urna.trim(), partido: (r.partido ?? "").trim(), votos: r.votos };
+      topo.set(r.municipio, porCargo);
+    }
+  }
+
+  const resumo = new Map<string, { n: number; v: number }>();
+  for (const r of db
+    .query(`SELECT municipio, COUNT(DISTINCT sq_candidato) AS n, SUM(votos) AS v
+            FROM votacao_2022_municipio GROUP BY municipio`)
+    .all() as Array<{ municipio: string; n: number; v: number }>) {
+    resumo.set(r.municipio, { n: r.n, v: r.v ?? 0 });
+  }
+
+  const out: CuriosidadeMunicipio[] = [];
+  for (const [municipio, regiao] of MUNICIPIO_REGIAO) {
+    const populacao = POPULACAO_PE.get(municipio) ?? 0;
+    const n = nascidos.get(municipio) ?? 0;
+    const t = topo.get(municipio) ?? {};
+    const r = resumo.get(municipio);
+    out.push({
+      municipio,
+      nome: nomeMunicipio(municipio),
+      regiao,
+      populacao,
+      nascidos: n,
+      por100Mil: populacao > 0 ? (n / populacao) * 1e5 : 0,
+      top: t,
+      candidatos2022: r?.n ?? 0,
+      totalVotos2022: r?.v ?? 0,
+    });
+  }
+  return out.sort((a, b) => b.nascidos - a.nascidos);
+}

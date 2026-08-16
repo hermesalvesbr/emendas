@@ -337,6 +337,7 @@ async function cmdColetarVotacao(): Promise<void> {
     console.log(`${r.casadosEm2022} de ${r.candidatosComCpf} candidatos de 2026 também concorreram em 2022`);
     console.log(`  ${r.linhasGravadas} linhas (candidato x município x turno) em ${r.municipiosComVoto} municípios`);
     console.log(`  ${r.totalVotos.toLocaleString("pt-BR")} votos nominais somados`);
+    console.log(`universo completo de 2022: ${r.candidatosDe2022} candidatos, ${r.linhasTodos2022} linhas candidato x município`);
   } finally {
     db.close();
   }
@@ -974,6 +975,7 @@ async function cmdEnsaiarFila(values: Record<string, unknown>): Promise<void> {
         permitirLink: false,
         tom: "afirmativo",
         rotulosEsperados: post.fatos.map((f) => f.rotulo),
+        dominios: post.dominios,
       });
       conferidos++;
       if (!v.ok) {
@@ -1049,6 +1051,7 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
       permitirLink: false,
       tom: "afirmativo",
       rotulosEsperados: post.fatos.map((f) => f.rotulo),
+      dominios: post.dominios,
     });
   } finally {
     db.close();

@@ -18,6 +18,7 @@ import {
   agregadoPorMunicipio,
   agregadoPorRegiao,
   agregadoPorSubfuncao,
+  curiosidadesPorMunicipio,
   globais,
   liderPorMunicipio,
 } from "./agregados.ts";
@@ -84,6 +85,18 @@ export function extrairNumeros(texto: string): NumeroCitado[] {
     // A conferência do texto da lei é trabalho do skill fonte-oficial.
     if (!cifrao && !sufixo && RE_CITACAO_LEGAL.test(texto.slice(0, m.index ?? 0))) continue;
 
+    // Denominador de taxa é UNIDADE, não medida: em "7,1 candidatos por 100
+    // mil habitantes", o 100 mil não afirma nada — quem afirma é o 7,1. Sem
+    // esta regra, todo post per capita exigia um fato de valor 100.000 e
+    // casava com qualquer emenda desse tamanho, em qualquer cidade.
+    if (
+      !cifrao &&
+      /\bpor\s*$/i.test(texto.slice(0, m.index ?? 0)) &&
+      /^\s*(habitantes?|moradores?|pessoas?|eleitores?)\b/i.test(texto.slice((m.index ?? 0) + bruto.length))
+    ) {
+      continue;
+    }
+
     let valor = Number(corpo.replace(/\./g, "").replace(",", "."));
     if (!Number.isFinite(valor)) continue;
 
@@ -110,8 +123,19 @@ export function extrairNumeros(texto: string): NumeroCitado[] {
 
 // -------------------------------------------------------------------- fatos
 
+/**
+ * De onde o fato vem. Existe porque o índice cresceu de ~1,7 mil para ~4,4 mil
+ * fatos ao ganhar candidaturas e votação, e a diluição REABRIU dois erros que
+ * já tinham sido publicados: "235 emendas" (contagem inflada) voltou a passar
+ * casando com "candidatos que receberam voto em VERDEJANTE em 2022".
+ *
+ * Um post sobre emendas não pode ser validado por um fato de urna. "geo" é
+ * transversal (população, malha) e entra em qualquer recorte.
+ */
+export type DominioFato = "emendas" | "candidaturas" | "votacao" | "geo";
+
 /** Um número que o banco confirma, com a frase que o descreve. */
-export type Fato = { valor: number; rotulo: string };
+export type Fato = { valor: number; rotulo: string; dominio?: DominioFato };
 
 /**
  * Constrói o índice de valores verificáveis a partir do banco: totais por
@@ -120,8 +144,9 @@ export type Fato = { valor: number; rotulo: string };
  */
 export function indiceDeFatos(db: Database): Fato[] {
   const fatos: Fato[] = [];
-  const add = (valor: number, rotulo: string): void => {
-    if (Number.isFinite(valor) && valor > 0) fatos.push({ valor, rotulo });
+  let dominioAtual: DominioFato = "emendas";
+  const add = (valor: number, rotulo: string, dominio: DominioFato = dominioAtual): void => {
+    if (Number.isFinite(valor) && valor > 0) fatos.push({ valor, rotulo, dominio });
   };
 
   const porMunicipio = new Map<string, number>();
@@ -198,19 +223,19 @@ export function indiceDeFatos(db: Database): Fato[] {
   }
 
   for (const r of db.query(`SELECT cargo, COUNT(*) n FROM candidato_2026 GROUP BY cargo`).all() as Array<{ cargo: string; n: number }>) {
-    add(r.n, `candidatos a ${r.cargo}`);
+    add(r.n, `candidatos a ${r.cargo}`, "candidaturas");
   }
   for (const r of db.query(`SELECT regiao, COUNT(*) n FROM candidato_2026
                             WHERE regiao IS NOT NULL GROUP BY regiao`).all() as Array<{ regiao: string; n: number }>) {
-    add(r.n, `candidatos nascidos em ${r.regiao}`);
+    add(r.n, `candidatos nascidos em ${r.regiao}`, "candidaturas");
   }
   const tot = db.query(`SELECT COUNT(*) n, SUM(total_bens) b FROM candidato_2026 WHERE detalhado = 1`).get() as { n: number; b: number };
-  add(tot.n, "candidaturas detalhadas");
-  add(tot.b, "patrimônio declarado total");
-  add((db.query(`SELECT COUNT(*) n FROM candidato_2026 WHERE detalhado = 1 AND total_bens = 0`).get() as { n: number }).n, "candidatos que declararam zero");
+  add(tot.n, "candidaturas detalhadas", "candidaturas");
+  add(tot.b, "patrimônio declarado total", "candidaturas");
+  add((db.query(`SELECT COUNT(*) n FROM candidato_2026 WHERE detalhado = 1 AND total_bens = 0`).get() as { n: number }).n, "candidatos que declararam zero", "candidaturas");
   for (const r of db.query(`SELECT nome_urna, total_bens b FROM candidato_2026
                             WHERE detalhado = 1 ORDER BY total_bens DESC LIMIT 20`).all() as Array<{ nome_urna: string; b: number }>) {
-    add(r.b, `patrimônio de ${r.nome_urna}`);
+    add(r.b, `patrimônio de ${r.nome_urna}`, "candidaturas");
   }
   for (const r of db.query(`SELECT funcao, SUM(vlrempenhado) v FROM emenda_federal GROUP BY funcao`).all() as Array<{ funcao: string; v: number }>) {
     add(r.v, `emendas federais em ${r.funcao ?? "?"}`);
@@ -244,16 +269,16 @@ export function indiceDeFatos(db: Database): Fato[] {
 
   // População (Censo 2022). Fato externo, mas versionado no projeto — já foi
   // escrita de memória duas vezes e publicada errada nas duas.
-  for (const [m, p] of POPULACAO_PE) add(p, `população de ${m}`);
-  add(POPULACAO_PE_TOTAL, "população de Pernambuco");
+  for (const [m, p] of POPULACAO_PE) add(p, `população de ${m}`, "geo");
+  add(POPULACAO_PE_TOTAL, "população de Pernambuco", "geo");
   const porRegiaoPop = new Map<string, number>();
   for (const [m, g] of MUNICIPIO_REGIAO) porRegiaoPop.set(g, (porRegiaoPop.get(g) ?? 0) + (POPULACAO_PE.get(m) ?? 0));
-  for (const [g, p] of porRegiaoPop) add(p, `população da região ${g}`);
+  for (const [g, p] of porRegiaoPop) add(p, `população da região ${g}`, "geo");
 
   // As 12 regiões vêm do mapa do IBGE agrupado, não de uma consulta — mas são
   // fato do projeto e aparecem em quase todo post da série.
-  add(new Set(MUNICIPIO_REGIAO.values()).size, "regiões de PE no agrupamento do projeto");
-  add(MUNICIPIO_REGIAO.size, "municípios de PE");
+  add(new Set(MUNICIPIO_REGIAO.values()).size, "regiões de PE no agrupamento do projeto", "geo");
+  add(MUNICIPIO_REGIAO.size, "municípios de PE", "geo");
 
   // ------------------------------------------------------------- derivados
   //
@@ -299,6 +324,27 @@ export function indiceDeFatos(db: Database): Fato[] {
     add(l.n, `nº de emendas de ${l.autorNome} em ${l.municipio}`);
   }
 
+  // ---- candidaturas e votação de 2022, por município
+  //
+  // Sem estes, todo post de curiosidade (quantos candidatos nasceram na
+  // cidade, quem foi o mais votado ali em 2022) seria reprovado por
+  // numero-sem-lastro — o mesmo que aconteceu com o per capita.
+  dominioAtual = "candidaturas";
+  let semNativo = 0;
+  for (const c of curiosidadesPorMunicipio(db)) {
+    if (c.nascidos > 0) {
+      add(c.nascidos, `candidatos de 2026 nascidos em ${c.municipio}`);
+      if (c.por100Mil > 0) add(c.por100Mil, `candidatos por 100 mil habitantes em ${c.municipio}`);
+    } else semNativo++;
+    add(c.candidatos2022, `candidatos que receberam voto em ${c.municipio} em 2022`, "votacao");
+    add(c.totalVotos2022, `votos nominais em ${c.municipio} em 2022`, "votacao");
+    for (const [cargo, t] of Object.entries(c.top)) {
+      if (t) add(t.votos, `votos de ${t.nome} para ${cargo} em ${c.municipio} em 2022`, "votacao");
+    }
+  }
+  add(semNativo, "municípios de PE sem nenhum candidato nativo em 2026");
+  dominioAtual = "emendas";
+
   const g = globais(db);
   add(g.municipiosComEmenda, "municípios com emenda (estadual ou federal)");
   add(g.municipiosSemEmenda, "municípios de PE sem nenhuma emenda no painel");
@@ -312,7 +358,7 @@ export function indiceDeFatos(db: Database): Fato[] {
     .query(`SELECT nome_urna, numero, cargo FROM candidato_2026
             WHERE numero IS NOT NULL AND cargo_codigo = 5`)
     .all() as Array<{ nome_urna: string; numero: number; cargo: string }>) {
-    add(c.numero, `número de urna de ${c.nome_urna} (${c.cargo})`);
+    add(c.numero, `número de urna de ${c.nome_urna} (${c.cargo})`, "candidaturas");
   }
 
   return fatos;
@@ -347,6 +393,13 @@ export type OpcoesVerificacao = {
    * valor não basta — o fato que casou precisa ser um destes.
    */
   rotulosEsperados?: string[];
+  /**
+   * Domínios que o texto pode citar. Sem isto, um post sobre emendas é
+   * validado por um fato de urna — foi o que reabriu dois erros já
+   * publicados quando o índice ganhou candidaturas e votação. "geo" entra
+   * sempre: população e malha são transversais.
+   */
+  dominios?: DominioFato[];
 };
 
 /**
@@ -414,7 +467,11 @@ export function verificarPost(texto: string, db: Database, opts: OpcoesVerificac
     });
   }
 
-  const fatos = [...(opts.fatos ?? indiceDeFatos(db)), ...(opts.fatosExternos ?? [])];
+  const todosFatos = [...(opts.fatos ?? indiceDeFatos(db)), ...(opts.fatosExternos ?? [])];
+  const permitidos = opts.dominios ? new Set<DominioFato>([...opts.dominios, "geo"]) : null;
+  // Fato externo declarado à mão não tem domínio e vale sempre: declarar é o
+  // ato de assumir que se conferiu.
+  const fatos = permitidos ? todosFatos.filter((f) => !f.dominio || permitidos.has(f.dominio)) : todosFatos;
   for (const n of extrairNumeros(texto)) {
     if (n.unidade === "percentual") continue; // percentual é derivado, não consta do índice
     const candidatos = fatos.filter((f) => casa(n, f.valor));

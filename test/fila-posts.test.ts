@@ -27,6 +27,7 @@ function fake(id: string, eixo: PostGerado["eixo"], postura: PostGerado["postura
     fatos: [],
     chave: municipio ? { municipio } : {},
     peso_editorial: v,
+    dominios: ["emendas"],
   };
 }
 
@@ -90,6 +91,7 @@ describe("slot corrente", () => {
 describe("distribuição", () => {
   const posts = [
     ...Array.from({ length: 300 }, (_, i) => fake(`cidade:C${i}:total`, "cidade", "dado", `C${i}`, 300 - i)),
+    ...Array.from({ length: 200 }, (_, i) => fake(`curiosidade:K${i}:berco`, "curiosidade", "dado", `K${i}`, 200 - i)),
     ...Array.from({ length: 120 }, (_, i) => fake(`autor:A${i}:total`, "autor", "dado", undefined, 120 - i)),
     ...Array.from({ length: 80 }, (_, i) => fake(`funcao:F${i}:total`, "funcao", "dado", undefined, 80 - i)),
     ...Array.from({ length: 200 }, (_, i) => fake(`cidade:D${i}:total:campanha`, "cidade", "campanha", `D${i}`, 200 - i)),
@@ -103,16 +105,23 @@ describe("distribuição", () => {
     expect(faltas).toEqual([]);
   });
 
-  test("respeita o ciclo: metade cidade, um quarto autor, um oitavo função e um oitavo campanha", () => {
+  /**
+   * Ciclo de 8 = um dia: 3 cidade, 2 curiosidade, 1 autor, 1 função, 1
+   * campanha. Curiosidade entrou porque naturalidade e votação de 2022 falam
+   * de gente e lugar, não de rubrica — é o eixo que o leitor local reconhece.
+   */
+  test("respeita o ciclo do dia", () => {
     const { slots: mapa } = distribuir(slotsEntre("2026-08-16", "2026-10-03"), posts);
-    const conta = { cidade: 0, autor: 0, funcao: 0, campanha: 0 };
+    const conta = { cidade: 0, curiosidade: 0, autor: 0, funcao: 0, campanha: 0 };
     for (const id of Object.values(mapa)) {
       if (id.endsWith(":campanha")) conta.campanha++;
       else if (id.startsWith("cidade:")) conta.cidade++;
+      else if (id.startsWith("curiosidade:")) conta.curiosidade++;
       else if (id.startsWith("autor:")) conta.autor++;
       else conta.funcao++;
     }
-    expect(conta).toEqual({ cidade: 196, autor: 98, funcao: 49, campanha: 49 });
+    expect(conta).toEqual({ cidade: 147, curiosidade: 98, autor: 49, funcao: 49, campanha: 49 });
+    expect(Object.values(conta).reduce((a, b) => a + b, 0)).toBe(392);
   });
 
   test("nunca publica o mesmo recorte duas vezes, nem como dado e depois como campanha", () => {

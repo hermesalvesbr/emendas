@@ -20,6 +20,8 @@ type Caso = {
   tom?: "afirmativo" | "pergunta";
   /** Quando presente, casar por valor não basta: o rótulo tem de ser um destes. */
   rotulosEsperados?: string[];
+  /** Domínios que o texto cita. Sem isto, um post de emenda casa com voto. */
+  dominios?: Array<"emendas" | "candidaturas" | "votacao" | "geo">;
   nota?: string;
 };
 
@@ -42,6 +44,7 @@ for (const c of casos) {
     fatosExternos: c.fatosExternos,
     tom: c.tom,
     rotulosEsperados: c.rotulosEsperados,
+    dominios: c.dominios,
   });
   const veredito = v.ok ? "aprovar" : "reprovar";
   const regras = v.achados.map((a) => a.regra);

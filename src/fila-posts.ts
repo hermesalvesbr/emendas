@@ -131,11 +131,11 @@ export function ordenarIntercalado(posts: PostGerado[]): PostGerado[] {
  */
 export const CICLO: ReadonlyArray<Eixo | "campanha"> = [
   "cidade",
+  "curiosidade",
   "autor",
-  "cidade",
   "funcao",
   "cidade",
-  "autor",
+  "curiosidade",
   "cidade",
   "campanha",
 ];
@@ -162,6 +162,7 @@ export function distribuir(slots: string[], posts: PostGerado[], horas: readonly
 
   const filas = new Map<string, PostGerado[]>([
     ["cidade", porEixo("cidade", "dado")],
+    ["curiosidade", porEixo("curiosidade", "dado")],
     ["autor", porEixo("autor", "dado")],
     ["funcao", porEixo("funcao", "dado")],
     ["campanha", ordenarIntercalado(posts.filter((p) => p.postura === "campanha"))],
@@ -193,7 +194,7 @@ export function distribuir(slots: string[], posts: PostGerado[], horas: readonly
     pedidos.set(alvo, (pedidos.get(alvo) ?? 0) + 1);
 
     let escolhido: PostGerado | undefined;
-    for (const tentativa of [alvo, "cidade", "autor", "funcao", "campanha"]) {
+    for (const tentativa of [alvo, "curiosidade", "cidade", "autor", "funcao", "campanha"]) {
       const fila = filas.get(tentativa);
       const devolver: PostGerado[] = [];
       while (fila && fila.length > 0) {

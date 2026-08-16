@@ -118,6 +118,9 @@ async function baixar(db: Db, url: string, destino: string): Promise<string> {
 // -------------------------------------------------------------- pipeline
 
 export type RelatorioVotacao = {
+  /** Linhas do universo COMPLETO de 2022 (todos os candidatos de PE). */
+  linhasTodos2022: number;
+  candidatosDe2022: number;
   candidatosComCpf: number;
   casadosEm2022: number;
   municipiosComVoto: number;
@@ -166,21 +169,51 @@ export async function harvestVotacao(db: Db, opts?: { zipRegistro?: string; zipV
   //    qualquer ranking sairia errado.
   type Acc = { cpfInvertido: number; municipio: string; cd: string; cargo: string; turno: number; votos: number };
   const acc = new Map<string, Acc>();
+
+  // Universo COMPLETO de 2022, independente de quem voltou em 2026. É o que
+  // sustenta a frase "o mais votado em X"; a tabela acima sustenta apenas
+  // "o mais votado entre os que concorrem de novo".
+  type AccTodos = { sq: string; nome: string; nomeCompleto: string; cargo: string; partido: string; municipio: string; votos: number };
+  const todos = new Map<string, AccTodos>();
   let cabecalhoVot: string | null = null;
   let idxVot: Record<string, number> = {};
 
   for await (const linha of linhasDoZip(zipVotacao, FONTES.votacao.membro)) {
     if (cabecalhoVot === null) {
       cabecalhoVot = linha;
-      idxVot = indices(linha, ["NR_TURNO", "CD_MUNICIPIO", "NM_MUNICIPIO", "DS_CARGO", "SQ_CANDIDATO", "QT_VOTOS_NOMINAIS"]);
+      idxVot = indices(linha, [
+        "NR_TURNO", "CD_MUNICIPIO", "NM_MUNICIPIO", "DS_CARGO", "SQ_CANDIDATO", "QT_VOTOS_NOMINAIS",
+        "NM_URNA_CANDIDATO", "NM_CANDIDATO", "SG_PARTIDO",
+      ]);
       continue;
     }
     const c = campos(linha);
     const sq = c[idxVot.SQ_CANDIDATO as number] ?? "";
+    const turnoLinha = Number(c[idxVot.NR_TURNO as number] ?? 1);
+    const munLinha = normalizarAutor(c[idxVot.NM_MUNICIPIO as number] ?? "");
+    const votosLinha = Number(c[idxVot.QT_VOTOS_NOMINAIS as number] ?? 0);
+
+    if (turnoLinha === 1 && sq && munLinha && Number.isFinite(votosLinha) && votosLinha > 0) {
+      const k = `${sq}|${munLinha}`;
+      const cur = todos.get(k);
+      if (cur) cur.votos += votosLinha;
+      else {
+        todos.set(k, {
+          sq,
+          nome: c[idxVot.NM_URNA_CANDIDATO as number] ?? "",
+          nomeCompleto: c[idxVot.NM_CANDIDATO as number] ?? "",
+          cargo: c[idxVot.DS_CARGO as number] ?? "",
+          partido: c[idxVot.SG_PARTIDO as number] ?? "",
+          municipio: munLinha,
+          votos: votosLinha,
+        });
+      }
+    }
+
     const idCand = sqDoCandidato.get(sq);
     if (idCand === undefined) continue;
 
-    const turno = Number(c[idxVot.NR_TURNO as number] ?? 1);
+    const turno = turnoLinha;
     const cd = c[idxVot.CD_MUNICIPIO as number] ?? "";
     const municipio = normalizarAutor(c[idxVot.NM_MUNICIPIO as number] ?? "");
     const votos = Number(c[idxVot.QT_VOTOS_NOMINAIS as number] ?? 0);
@@ -206,6 +239,12 @@ export async function harvestVotacao(db: Db, opts?: { zipRegistro?: string; zipV
   let totalVotos = 0;
   let linhasGravadas = 0;
 
+  const inserirTodos = db.raw.query(`
+    INSERT OR REPLACE INTO votacao_2022_municipio
+      (sq_candidato, nome_urna, nome_completo, cargo, partido, municipio, votos, coletado_em)
+    VALUES ($sq, $nome, $nomeCompleto, $cargo, $partido, $municipio, $votos, $coletado_em)
+  `);
+
   const inserir = db.raw.query(`
     INSERT OR REPLACE INTO votacao_2022
       (sq_candidato, cpf, candidato_2026_id, cd_municipio, municipio, cargo, nr_turno, votos, coletado_em)
@@ -213,6 +252,9 @@ export async function harvestVotacao(db: Db, opts?: { zipRegistro?: string; zipV
   `);
 
   db.raw.transaction(() => {
+    db.raw.run("DELETE FROM votacao_2022_municipio");
+    for (const t of todos.values()) inserirTodos.run({ ...t, coletado_em: agora });
+
     db.raw.run("DELETE FROM votacao_2022");
     for (const [chave, a] of acc) {
       const sq = chave.split("|")[0] as string;
@@ -234,6 +276,8 @@ export async function harvestVotacao(db: Db, opts?: { zipRegistro?: string; zipV
   });
 
   return {
+    linhasTodos2022: todos.size,
+    candidatosDe2022: new Set([...todos.values()].map((t) => t.sq)).size,
     candidatosComCpf: porCpf.size,
     casadosEm2022: new Set(sqDoCandidato.values()).size,
     municipiosComVoto: municipios.size,

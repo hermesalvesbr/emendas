@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 import { beforeEach, describe, expect, test } from "bun:test";
 import {
+  curiosidadesPorMunicipio,
   todosCandidatos,
   baseEleitoral,
   origemPorMunicipio,
@@ -43,6 +44,11 @@ CREATE TABLE candidato_2026 (
 CREATE TABLE votacao_2022 (
   sq_candidato TEXT, cpf TEXT, candidato_2026_id INTEGER, cd_municipio TEXT,
   municipio TEXT, cargo TEXT, nr_turno INTEGER, votos INTEGER, coletado_em TEXT
+);
+CREATE TABLE votacao_2022_municipio (
+  sq_candidato TEXT, nome_urna TEXT, nome_completo TEXT, cargo TEXT,
+  partido TEXT, municipio TEXT, votos INTEGER, coletado_em TEXT,
+  PRIMARY KEY (sq_candidato, municipio)
 );
 `;
 
@@ -361,5 +367,66 @@ describe("nenhuma candidatura pode sumir da tela", () => {
     expect(todos.find((c) => c.id === 3)?.codIbgeNascimento).toBe("2601102");
     // Sem código: o mapa é de PE e acender um município daqui seria mentira.
     expect(todos.find((c) => c.id === 4)?.codIbgeNascimento).toBeNull();
+  });
+});
+
+
+describe("curiosidades por município", () => {
+  function voto(sq: string, nome: string, cargo: string, partido: string, municipio: string, votos: number): void {
+    db.run(
+      `INSERT INTO votacao_2022_municipio (sq_candidato, nome_urna, nome_completo, cargo, partido, municipio, votos, coletado_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, '2026-08-16')`,
+      [sq, nome, nome, cargo, partido, municipio, votos],
+    );
+  }
+
+  /**
+   * Senador e governador disputam o estado inteiro e levam centenas de
+   * milhares de votos. Um "mais votado" solto seria quase sempre o mesmo nome
+   * em todos os 185 municípios — quem revela base local é o deputado.
+   */
+  test("o mais votado é apurado POR CARGO", () => {
+    voto("s1", "SENADOR FAMOSO", "Senador", "PT", "ARARIPINA", 100000);
+    voto("d1", "DEPUTADO LOCAL", "Deputado Estadual", "PP", "ARARIPINA", 9000);
+    voto("d2", "OUTRO DEPUTADO", "Deputado Estadual", "PL", "ARARIPINA", 8000);
+
+    const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
+    expect(c?.top["Deputado Estadual"]?.nome).toBe("DEPUTADO LOCAL");
+    expect(c?.top["Deputado Estadual"]?.votos).toBe(9000);
+    expect(c?.top.Senador?.nome).toBe("SENADOR FAMOSO");
+  });
+
+  test("nome de urna do TSE vem com espaço sobrando e é aparado", () => {
+    // "SOCORRO PIMENTEL " no arquivo real. Publicar assim deixa a marca do
+    // descuido num texto que se propõe a ser conferível.
+    voto("d1", "SOCORRO PIMENTEL ", "Deputado Estadual", "UNIÃO ", "ARARIPINA", 19290);
+    const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
+    expect(c?.top["Deputado Estadual"]?.nome).toBe("SOCORRO PIMENTEL");
+    expect(c?.top["Deputado Estadual"]?.partido).toBe("UNIÃO");
+  });
+
+  test("conta candidatos distintos e soma os votos do município", () => {
+    voto("d1", "A", "Deputado Estadual", "PP", "ARARIPINA", 100);
+    voto("d2", "B", "Deputado Estadual", "PL", "ARARIPINA", 200);
+    voto("d3", "C", "Deputado Federal", "PT", "ARARIPINA", 300);
+    const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
+    expect(c?.candidatos2022).toBe(3);
+    expect(c?.totalVotos2022).toBe(600);
+  });
+
+  test("devolve os 185 municípios, com zero para quem não tem nativo candidato", () => {
+    const cs = curiosidadesPorMunicipio(db);
+    expect(cs).toHaveLength(185);
+    expect(cs.every((c) => c.nascidos === 0)).toBe(true);
+  });
+
+  test("nascidos e per capita saem da mesma cidade, com o nome acentuado", () => {
+    db.run(`INSERT INTO candidato_2026 (id, nome_urna, cargo, cargo_codigo, municipio_nascimento, uf_nascimento, regiao)
+            VALUES (1, 'A', 'Deputado Estadual', 7, 'ARARIPINA', 'PE', 'Sertão do Araripe')`);
+    const c = curiosidadesPorMunicipio(db).find((x) => x.municipio === "ARARIPINA");
+    expect(c?.nascidos).toBe(1);
+    expect(c?.nome).toBe("Araripina");
+    // 1 candidato / 85.088 habitantes * 100 mil
+    expect(c?.por100Mil).toBeCloseTo((1 / (c?.populacao ?? 1)) * 1e5, 6);
   });
 });

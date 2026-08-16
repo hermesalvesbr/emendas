@@ -103,6 +103,23 @@ describe("números que não são grandeza", () => {
     expect(achado("São 86 emendas.", []).ok).toBe(false);
   });
 
+  /**
+   * "7,1 candidatos por 100 mil habitantes": o 100 mil é o denominador da
+   * taxa, não uma afirmação. Sem esta regra, todo post per capita exigia um
+   * fato de valor 100.000 e casava com qualquer emenda desse tamanho, em
+   * qualquer cidade — 98 posts foram descartados por isso.
+   */
+  test("denominador de taxa é unidade, não medida", () => {
+    expect(extrairNumeros("São 7,1 candidatos por 100 mil habitantes").map((n) => n.bruto)).toEqual(["7,1"]);
+    expect(extrairNumeros("R$ 45 por 100 mil moradores").map((n) => n.bruto)).toEqual(["R$ 45"]);
+    expect(achado("São 7,1 candidatos por 100 mil habitantes.", [{ valor: 7.1, rotulo: "x" }]).ok).toBe(true);
+  });
+
+  test("mas '100 mil habitantes' sem 'por' continua sendo medida", () => {
+    // "a cidade tem 100 mil habitantes" AFIRMA a população e precisa de lastro.
+    expect(extrairNumeros("A cidade tem 100 mil habitantes").map((n) => n.bruto)).toEqual(["100 mil"]);
+  });
+
   test("percentual segue fora do índice", () => {
     expect(achado("Representa 57,7% do total.", []).ok).toBe(true);
   });

@@ -144,6 +144,28 @@ CREATE TABLE IF NOT EXISTS votacao_2022 (
   PRIMARY KEY (sq_candidato, cd_municipio, nr_turno)
 );
 
+-- Votação de 2022 de TODOS os candidatos de PE, não só dos que voltam em 2026.
+--
+-- Existe porque "o mais votado em Araripina em 2022" não pode ser respondido
+-- pela tabela acima: lá só estão os 254 que concorrem de novo, e o topo dela
+-- seria "o mais votado ENTRE OS QUE VOLTARAM". Casar essa contagem com a
+-- frase "o mais votado" é o mesmo erro de universo que já foi publicado.
+-- Uma linha por (candidato, município), 1º turno, zonas já somadas.
+CREATE TABLE IF NOT EXISTS votacao_2022_municipio (
+  sq_candidato TEXT NOT NULL,
+  nome_urna TEXT NOT NULL,
+  nome_completo TEXT,
+  cargo TEXT NOT NULL,
+  partido TEXT,
+  municipio TEXT NOT NULL,
+  votos INTEGER NOT NULL,
+  coletado_em TEXT NOT NULL,
+  PRIMARY KEY (sq_candidato, municipio)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vm_municipio ON votacao_2022_municipio(municipio);
+CREATE INDEX IF NOT EXISTS idx_vm_cargo ON votacao_2022_municipio(cargo);
+
 CREATE INDEX IF NOT EXISTS idx_vot_cpf ON votacao_2022(cpf);
 CREATE INDEX IF NOT EXISTS idx_vot_cand ON votacao_2022(candidato_2026_id);
 CREATE INDEX IF NOT EXISTS idx_vot_mun ON votacao_2022(municipio);

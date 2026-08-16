@@ -24,12 +24,14 @@ import {
   agregadoPorFuncaoAno,
   agregadoPorMunicipio,
   agregadoPorSubfuncao,
+  type CuriosidadeMunicipio,
+  curiosidadesPorMunicipio,
   liderPorMunicipio,
 } from "./agregados.ts";
 import { pesoX } from "./post-x.ts";
-import { type Fato, indiceDeFatos, verificarPost } from "./verificar-post.ts";
+import { type DominioFato, type Fato, indiceDeFatos, verificarPost } from "./verificar-post.ts";
 
-export type Eixo = "cidade" | "autor" | "funcao";
+export type Eixo = "cidade" | "autor" | "funcao" | "curiosidade";
 export type Postura = "dado" | "campanha";
 
 export type PostGerado = {
@@ -48,9 +50,23 @@ export type PostGerado = {
   chave: Record<string, string | number>;
   /** Valor de referência para ordenar o eixo (R$ do recorte). */
   peso_editorial: number;
+  /** Domínios que este texto pode citar, conferidos de novo na publicação. */
+  dominios: DominioFato[];
 };
 
 export type Descarte = { id: string; regra: string; detalhe: string };
+
+/**
+ * Domínio de fatos que cada eixo pode citar. Impede que um post de emenda seja
+ * validado por um número de urna e vice-versa — a diluição do índice já
+ * reabriu erros que estavam travados por eval.
+ */
+const DOMINIO_DO_EIXO: Record<Eixo, DominioFato[]> = {
+  cidade: ["emendas"],
+  autor: ["emendas"],
+  funcao: ["emendas"],
+  curiosidade: ["candidaturas", "votacao"],
+};
 
 // ------------------------------------------------------------- formatação
 
@@ -80,6 +96,16 @@ export function valorAfirmado(v: number): number {
 
 export function formatarInteiro(n: number): string {
   return n.toLocaleString("pt-BR");
+}
+
+/** Número decimal com uma casa, em pt-BR ("7,1"). */
+export function pct(v: number): string {
+  return v.toFixed(1).replace(".", ",");
+}
+
+/** O valor que `pct()` de fato afirma — o fato tem de acompanhar o arredondamento. */
+export function valorAfirmadoDecimal(v: number): number {
+  return Number(v.toFixed(1));
 }
 
 /**
@@ -126,10 +152,12 @@ export type Camada = { texto: string; prioridade: number };
 export function montar(camadas: Camada[]): string {
   const vivas = [...camadas];
   const render = (): string =>
-    vivas
-      .map((c) => c.texto.trim())
-      .filter((t) => t.length > 0)
-      .join("\n\n");
+    limparPontuacao(
+      vivas
+        .map((c) => c.texto.trim())
+        .filter((t) => t.length > 0)
+        .join("\n\n"),
+    );
 
   while (vivas.length > 1 && pesoX(render()) > 280) {
     let piorIdx = 0;
@@ -139,6 +167,22 @@ export function montar(camadas: Camada[]): string {
     vivas.splice(piorIdx, 1);
   }
   return render();
+}
+
+/**
+ * Conserta a pontuação que a composição produz.
+ *
+ * `cidadeCom()` fecha com vírgula porque quase sempre há oração depois; quando
+ * a cidade encerra a frase, sai "no Agreste Setentrional,." — pequeno, mas num
+ * texto que se propõe conferível a desatenção visível custa credibilidade.
+ * Fica na montagem, e não em cada template, porque o problema nasce da junção.
+ */
+export function limparPontuacao(texto: string): string {
+  return texto
+    .replace(/,\s*([.!?])/g, "$1")
+    .replace(/,{2,}/g, ",")
+    .replace(/\s+,/g, ",")
+    .replace(/[ \t]{2,}/g, " ");
 }
 
 /** Variante determinística: mesmo recorte → mesma redação, sempre. */
@@ -376,6 +420,96 @@ function templateSubfuncao(s: AgregadoSubfuncao): { camadas: Camada[]; fatos: Fa
   };
 }
 
+// ------------------------------------------------------ eixo: curiosidade
+
+/**
+ * O eixo que o leitor local reconhece. Naturalidade e votação de 2022 são
+ * dados públicos e verificáveis, e falam de gente e lugar em vez de rubrica
+ * orçamentária — é o que faz alguém parar no feed.
+ *
+ * Regra que atravessa os quatro templates: nunca afirmar nada sobre a
+ * candidatura de 2026 de quem aparece na votação de 2022. O dado citado é do
+ * passado, e dizer que fulano "é candidato" exigiria o marcador do TSE
+ * (NOTAS 29). Aqui só se diz o que aconteceu na urna de 2022.
+ */
+
+const ABERTURA_BERCO = [
+  (c: CuriosidadeMunicipio) => `Curiosidade: o município de ${cidadeCom(c.nome, c.regiao)} é berço de ${formatarInteiro(c.nascidos)} ${c.nascidos === 1 ? "candidato" : "candidatos"} nas eleições de 2026.`,
+  (c: CuriosidadeMunicipio) => `${formatarInteiro(c.nascidos)} ${c.nascidos === 1 ? "pessoa nascida" : "pessoas nascidas"} no município de ${cidadeCom(c.nome, c.regiao)} ${c.nascidos === 1 ? "disputa" : "disputam"} as eleições de 2026.`,
+  (c: CuriosidadeMunicipio) => `De onde vêm os candidatos: ${formatarInteiro(c.nascidos)} ${c.nascidos === 1 ? "nasceu" : "nasceram"} no município de ${cidadeCom(c.nome, c.regiao)}.`,
+] as const;
+
+function templateCuriosidadeBerco(c: CuriosidadeMunicipio): { camadas: Camada[]; fatos: Fato[] } | null {
+  if (c.nascidos < 1 || c.populacao <= 0) return null;
+  const variante = varianteDe(`curiosidade:${c.municipio}:berco`, ABERTURA_BERCO.length);
+  const abertura = ABERTURA_BERCO[variante] ?? ABERTURA_BERCO[0];
+
+  return {
+    camadas: [
+      { texto: abertura(c), prioridade: 100 },
+      {
+        texto: `São ${pct(c.por100Mil)} candidatos por 100 mil habitantes — a cidade tem ${formatarInteiro(c.populacao)} moradores (Censo 2022).`,
+        prioridade: 70,
+      },
+      { texto: "Naturalidade não é a região que alguém representa: em Pernambuco a eleição é em circunscrição única, o estado inteiro.", prioridade: 40 },
+    ],
+    fatos: [
+      { valor: c.nascidos, rotulo: `candidatos de 2026 nascidos em ${c.municipio}` },
+      { valor: valorAfirmadoDecimal(c.por100Mil), rotulo: `candidatos por 100 mil habitantes em ${c.municipio}` },
+      { valor: c.populacao, rotulo: `população de ${c.municipio}` },
+    ],
+  };
+}
+
+const CARGOS_LOCAIS = ["Deputado Estadual", "Deputado Federal"] as const;
+
+function templateCuriosidadeMaisVotado(
+  c: CuriosidadeMunicipio,
+  cargo: (typeof CARGOS_LOCAIS)[number],
+): { camadas: Camada[]; fatos: Fato[] } | null {
+  const t = c.top[cargo];
+  if (!t || t.votos < 500) return null;
+  const artigo = cargo === "Deputado Estadual" ? "estadual" : "federal";
+
+  return {
+    camadas: [
+      {
+        texto: `Em 2022, quem mais recebeu votos para deputado ${artigo} no município de ${cidadeCom(c.nome, c.regiao)} foi ${t.nome}${t.partido ? ` (${t.partido})` : ""}: ${formatarInteiro(t.votos)} votos.`,
+        prioridade: 100,
+      },
+      {
+        texto: `Naquela eleição, ${formatarInteiro(c.candidatos2022)} candidatos receberam ao menos um voto na cidade.`,
+        prioridade: 70,
+      },
+      { texto: "Dado da apuração oficial do TSE, município por município.", prioridade: 30 },
+    ],
+    fatos: [
+      { valor: t.votos, rotulo: `votos de ${t.nome} para ${cargo} em ${c.municipio} em 2022` },
+      { valor: c.candidatos2022, rotulo: `candidatos que receberam voto em ${c.municipio} em 2022` },
+    ],
+  };
+}
+
+function templateCuriosidadeUrna(c: CuriosidadeMunicipio): { camadas: Camada[]; fatos: Fato[] } | null {
+  if (c.candidatos2022 < 50 || c.totalVotos2022 <= 0) return null;
+  return {
+    camadas: [
+      {
+        // cidadeCom() já fecha com vírgula quando traz a região — acrescentar
+        // outra produzia "no Sertão do Pajeú,, 172 candidatos".
+        texto: `No município de ${cidadeCom(c.nome, c.regiao)} ${formatarInteiro(c.candidatos2022)} candidatos diferentes receberam voto em 2022.`,
+        prioridade: 100,
+      },
+      { texto: `Foram ${formatarInteiro(c.totalVotos2022)} votos nominais somados na cidade.`, prioridade: 70 },
+      { texto: "A urna de uma cidade pequena distribui voto entre muito mais nomes do que parece.", prioridade: 30 },
+    ],
+    fatos: [
+      { valor: c.candidatos2022, rotulo: `candidatos que receberam voto em ${c.municipio} em 2022` },
+      { valor: c.totalVotos2022, rotulo: `votos nominais em ${c.municipio} em 2022` },
+    ],
+  };
+}
+
 // ----------------------------------------------------------- posicionamento
 
 /**
@@ -441,6 +575,23 @@ function candidatos(db: Database): Candidato[] {
   for (const s of agregadoPorSubfuncao(db)) {
     push(`funcao:sub:${s.subfuncao}`, "funcao", "funcao-subfuncao", { subfuncao: s.subfuncao }, s.v, templateSubfuncao(s));
   }
+  for (const c of curiosidadesPorMunicipio(db)) {
+    // Peso editorial = população: cidade grande nos horários de pico, cauda
+    // longa na madrugada. Mesmo critério dos outros eixos, outro campo.
+    push(`curiosidade:${c.municipio}:berco`, "curiosidade", "curiosidade-berco", { municipio: c.municipio }, c.populacao, templateCuriosidadeBerco(c));
+    for (const cargo of CARGOS_LOCAIS) {
+      const suf = cargo === "Deputado Estadual" ? "est" : "fed";
+      push(
+        `curiosidade:${c.municipio}:votado-${suf}`,
+        "curiosidade",
+        `curiosidade-mais-votado-${suf}`,
+        { municipio: c.municipio, cargo },
+        c.populacao,
+        templateCuriosidadeMaisVotado(c, cargo),
+      );
+    }
+    push(`curiosidade:${c.municipio}:urna`, "curiosidade", "curiosidade-urna", { municipio: c.municipio }, c.populacao, templateCuriosidadeUrna(c));
+  }
   return out;
 }
 
@@ -483,6 +634,11 @@ export function gerarPool(db: Database): Pool {
         permitirLink: false,
         tom: "afirmativo",
         rotulosEsperados: postFatos.map((f) => f.rotulo),
+        // O post de campanha assina com o número de urna, que é do domínio
+        // das candidaturas — some com ele e a assinatura fica sem lastro.
+        dominios: postura === "campanha"
+          ? [...new Set([...DOMINIO_DO_EIXO[c.eixo], "candidaturas" as DominioFato])]
+          : DOMINIO_DO_EIXO[c.eixo],
       });
 
       const bloqueio =
@@ -513,6 +669,9 @@ export function gerarPool(db: Database): Pool {
         fatos: postFatos,
         chave: c.chave,
         peso_editorial: c.peso_editorial,
+        dominios: postura === "campanha"
+          ? [...new Set([...DOMINIO_DO_EIXO[c.eixo], "candidaturas" as DominioFato])]
+          : DOMINIO_DO_EIXO[c.eixo],
       });
     }
   }

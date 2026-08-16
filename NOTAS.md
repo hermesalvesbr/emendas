@@ -956,3 +956,77 @@ municípios de fato produzem quadros políticos, e não só quais são grandes.
 
 Caso que ilustra a tese: **Waldemar Oliveira nasceu no Recife, mas teve mais
 votos em Custódia** e só 14,0% da votação na região onde nasceu.
+
+## 35. Eixo de curiosidade — e a diluição do índice, que reabriu dois erros
+
+Pedido do usuário em 16/08/2026: usar naturalidade e votação de 2022 como
+curiosidade nos posts do X. Virou um eixo novo, `curiosidade`, com quatro
+templates (berço, mais votado para deputado estadual, mais votado para
+deputado federal, e quantos candidatos receberam voto na cidade). No ciclo do
+dia são 2 de 8 slots — 98 dos 392 posts da série.
+
+### Universo: "o mais votado" exigiu recoletar 2022 inteiro
+
+`votacao_2022` só tem os 254 candidatos de 2026 que também concorreram em
+2022. Perguntar a ela quem foi "o mais votado em Araripina" devolveria "o mais
+votado ENTRE OS QUE VOLTARAM" — outra frase. Foi criada
+`votacao_2022_municipio` com o universo COMPLETO: **979 candidatos, 71.478
+linhas** candidato×município de PE.
+
+E o recorte é **por cargo**, não geral: senador e governador disputam o estado
+inteiro e levam centenas de milhares de votos, então "o mais votado" solto
+seria quase sempre o mesmo nome nos 185 municípios. Quem revela base local é o
+deputado.
+
+### O achado que mais importa: mais fatos = verificador mais fraco
+
+Ao ganhar candidaturas e votação, `indiceDeFatos` foi de ~1,7 mil para ~4,4
+mil fatos. E **dois evals que guardavam erros já publicados voltaram a
+passar**:
+
+```
+"235" confere com candidatos que receberam voto em VERDEJANTE em 2022
+```
+
+O 235 é a contagem inflada do Agreste Setentrional, que foi ao ar em 13/08 e
+estava travada por eval desde então. Com o índice inchado, encontrou lastro
+num fato de urna — número certo, assunto sem nenhuma relação.
+
+Isto é uma propriedade estrutural, não um bug pontual: **cada fato novo
+enfraquece `numero-sem-lastro` para todos os outros**. `rotulosEsperados`
+protege os posts gerados, mas não o texto escrito à mão.
+
+A correção foi escopar por domínio: cada fato nasce com
+`emendas | candidaturas | votacao | geo`, e `verificarPost` aceita
+`dominios`. Um post de emenda não pode mais ser validado por um número de
+urna. "geo" (população, malha, nº de municípios) é transversal e entra
+sempre; fato externo declarado à mão não tem domínio e vale sempre, porque
+declarar já é assumir que se conferiu. Dois evals novos travam exatamente
+esta regressão.
+
+### Outras armadilhas medidas
+
+- **Denominador de taxa é unidade.** "7,1 candidatos por 100 mil habitantes"
+  fazia o verificador exigir um fato de valor 100.000, que casava com qualquer
+  emenda desse tamanho em qualquer cidade — **98 posts descartados**. Números
+  precedidos de "por" e seguidos de "habitantes/moradores/eleitores" passaram
+  a ser ignorados, como ano solto, ordinal e citação legal. "A cidade tem 100
+  mil habitantes", sem o "por", continua sendo medida e exige lastro.
+- **`cidadeCom()` fecha com vírgula** porque quase sempre há oração depois.
+  Quando a cidade encerra a frase saía "no Agreste Setentrional,." e, no
+  template de urna, "no Sertão do Pajeú,, 172 candidatos". Virou
+  `limparPontuacao()` na montagem — o problema nasce da junção, não do
+  template.
+- **Nome de urna do TSE vem com espaço sobrando** ("SOCORRO PIMENTEL "). Num
+  texto que se propõe conferível, a desatenção visível custa credibilidade.
+- **Um `replace` de âncora errada não falha, só não faz nada.** A primeira
+  tentativa de registrar o eixo novo mirou `for (const f of
+  agregadoPorSubfuncao(db))` quando a variável do laço é `s`; o gerador seguiu
+  produzindo os mesmos 1.334 posts e só a conferência da contagem denunciou.
+
+### Regra editorial do eixo
+
+Nenhum template afirma nada sobre a candidatura de 2026 de quem aparece na
+votação de 2022. O dado citado é do passado; dizer que fulano "é candidato"
+exigiria o marcador do TSE (item 29). Os posts de berço repetem a ressalva do
+item 30: naturalidade não é a região que alguém representa.
