@@ -235,6 +235,10 @@
         r: e ? (e.posicaoValor + "º de " + n + " · " + brl(e.vpago) + " pago") : "—",
       },
       {
+        v: PE.moeda.format(p.gabinete.custoMensal), l: "custo mensal estimado do gabinete",
+        r: p.gabinete.posicaoCusto + "º de " + n + " em custo, " + p.gabinete.posicao + "º em nº de pessoas",
+      },
+      {
         v: p.votacao2022 ? num.format(p.votacao2022.totalVotos) : "—", l: "votos em 2022",
         r: p.votacao2022
           ? p.votacao2022.municipiosComVoto + " municípios · reduto: " + p.votacao2022.nomeMunicipioTop
@@ -323,7 +327,9 @@
 
     // --- composição do gabinete
     $("#subGab").textContent =
-      p.gabinete.total + " pessoas · " + p.gabinete.admitidosNaLegislatura + " admitidas nesta legislatura (2023+)";
+      p.gabinete.total + " pessoas · " + p.gabinete.admitidosNaLegislatura + " admitidas nesta legislatura (2023+)" +
+      " · " + PE.moeda.format(p.gabinete.custoMensal) + "/mês estimado" +
+      (p.gabinete.pessoasSemCusto > 0 ? " (" + p.gabinete.pessoasSemCusto + " fora da conta)" : "");
     const cargos = [...p.gabinete.cargos].reverse();
     init("chCargos").setOption({
       ...baseOption(),
@@ -336,7 +342,8 @@
         label: { show: true, position: "right", color: css("--ink-2"), fontSize: 11 },
       }],
     });
-    $("#fGab1").textContent = "Fonte — " + DADOS.fontes.gabinete + ". " + DADOS.ressalvas.gabinete;
+    $("#fGab1").textContent =
+      "Fontes — " + DADOS.fontes.gabinete + " · " + DADOS.fontes.custo + ". " + DADOS.ressalvas.custo;
 
     // --- admissões por ano
     const adm = p.gabinete.admissoesPorAno;
@@ -425,6 +432,7 @@
       ["Votação de 2022", DADOS.fontes.votacao2022, DADOS.ressalvas.votacao],
       ["Candidatura em 2026", DADOS.fontes.candidatura2026, DADOS.ressalvas.candidatura],
       ["Bens declarados", DADOS.fontes.bens, "Patrimônio declarado pelo próprio candidato, ainda sujeito a julgamento."],
+      ["Custo do gabinete", DADOS.fontes.custo, DADOS.ressalvas.custo],
       ["Rankings", "Calculados sobre os 49 gabinetes da 20ª legislatura.", DADOS.ressalvas.ranking],
     ].map(([t, f, r]) => "<dt>" + esc(t) + "</dt><dd>" + esc(f) + "</dd><dd><em>" + esc(r) + "</em></dd>").join("");
 

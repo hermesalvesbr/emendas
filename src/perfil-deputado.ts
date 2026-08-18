@@ -16,6 +16,8 @@
 
 import type { Database } from "bun:sqlite";
 import { nomeProprioSuave } from "./agregados.ts";
+import { custoDoGabinete, indexarRemuneracao } from "./custo-pessoal.ts";
+import type { TabelaRemuneracao } from "./custo-pessoal.ts";
 import type { Db, GabineteRow } from "./db.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
 import type { CandidatoRow } from "./db.ts";
@@ -50,6 +52,14 @@ export type PerfilGabinete = {
   admitidosNaLegislatura: number;
   totalLegado: number | null;
   demissionarios: number | null;
+  /**
+   * Custo mensal estimado: soma do vencimento DE TABELA dos cargos ocupados.
+   * Não é folha de pagamento — a Alepe não publica remuneração individual.
+   */
+  custoMensal: number;
+  /** posição no ranking de custo entre os 49 — NÃO acompanha a de headcount */
+  posicaoCusto: number;
+  pessoasSemCusto: number;
 };
 
 export type PerfilVotacao2022 = {
@@ -109,7 +119,17 @@ export function perfisDeputados(db: Db): PerfilDeputado[] {
   );
 
   // Rankings calculados sobre os 49, uma vez só — cada perfil só lê a posição.
+  const tabela = indexarRemuneracao(db.remuneracaoCargos());
+  const snapshotPessoal = db.ultimoSnapshotPessoal();
+  const custoPorChave = new Map(
+    gabinetes.map((g) => [
+      g.deputado_normalizado,
+      custoDoGabinete(snapshotPessoal ? db.assessoresDoGabinete(g.chave, snapshotPessoal) : [], tabela),
+    ]),
+  );
+
   const rankAssessores = ranquear(gabinetes.map((g) => [g.deputado_normalizado, g.total] as const));
+  const rankCusto = ranquear(gabinetes.map((g) => [g.deputado_normalizado, custoPorChave.get(g.deputado_normalizado)?.mensal ?? 0] as const));
   const rankValor = ranquear(gabinetes.map((g) => [g.deputado_normalizado, emendasPorChave.get(g.deputado_normalizado)?.vemp ?? 0] as const));
 
   const snapshot = db.ultimoSnapshotPessoal();
@@ -150,7 +170,7 @@ export function perfisDeputados(db: Db): PerfilDeputado[] {
         nomeCivil: g.deputado_nome_civil,
         partido: g.partido,
         matricula: g.deputado_matricula,
-        gabinete: perfilGabinete(db, g, rankAssessores.get(chave) ?? 0, snapshot),
+        gabinete: perfilGabinete(db, g, rankAssessores.get(chave) ?? 0, snapshot, tabela, rankCusto.get(chave) ?? 0),
         emendas: em ? { ...em, posicaoValor: rankValor.get(chave) ?? null } : null,
         candidatura2026: cand ? { cargo: cand.cargo, partido: cand.partido, reeleicao: cand.reeleicao } : null,
         bens,
@@ -163,9 +183,17 @@ export function perfisDeputados(db: Db): PerfilDeputado[] {
 
 // ------------------------------------------------------------------ gabinete
 
-function perfilGabinete(db: Db, g: GabineteRow, posicao: number, snapshot: string | null): PerfilGabinete {
+function perfilGabinete(
+  db: Db,
+  g: GabineteRow,
+  posicao: number,
+  snapshot: string | null,
+  tabela: TabelaRemuneracao,
+  posicaoCusto: number,
+): PerfilGabinete {
   const pessoas = snapshot ? db.assessoresDoGabinete(g.chave, snapshot) : [];
 
+  const custo = custoDoGabinete(pessoas, tabela);
   const porCargo = new Map<string, number>();
   const porAno = new Map<number, number>();
   for (const p of pessoas) {
@@ -187,6 +215,9 @@ function perfilGabinete(db: Db, g: GabineteRow, posicao: number, snapshot: strin
     admitidosNaLegislatura: pessoas.filter((p) => (p.data_admissao ?? "") >= "2023-02-01").length,
     totalLegado: g.total_legado,
     demissionarios: g.demissionarios,
+    custoMensal: custo.mensal,
+    posicaoCusto,
+    pessoasSemCusto: custo.semValor,
   };
 }
 

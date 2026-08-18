@@ -77,8 +77,12 @@ Ver NOTAS.md item 30.
   desatualizados (dos 101 admitidos desde 01/06/2026, só 18 aparecem lá), e as
   diferenças ficam gravadas em `pessoal_divergencia` e publicadas no painel.
 
-A Alepe **não publica remuneração individual** — `/api/v1/remuneracao/` traz
-tabela por cargo, não por pessoa. Ver NOTAS.md item 37.
+A Alepe **não publica remuneração individual** — `/api/v1/remuneracao/` traz o
+vencimento **por cargo**. O painel cruza cargo × lotação para estimar o **custo
+mensal do gabinete** (R$ 10,0 mi/mês nos 49), sempre rotulado como vencimento
+de tabela: valor bruto, sem 13º, férias, gratificação ou encargo, e sem quem
+está à disposição. Contar cabeças engana — o maior gabinete em pessoas é o 38º
+em custo. Ver NOTAS.md itens 37 e 40.
 
 ### Perfil por deputado
 

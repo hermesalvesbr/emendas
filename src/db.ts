@@ -1,6 +1,7 @@
 import { Database, type Statement } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import type { RemuneracaoCargo } from "./custo-pessoal.ts";
 import type { AutorTipo, Confianca, EmendaRow, EmpenhoRow, HarvestLogRow, HarvestSource, HarvestStatus } from "./types.ts";
 
 const SCHEMA = `
@@ -231,6 +232,22 @@ CREATE TABLE IF NOT EXISTS pessoal_divergencia (
 
 CREATE INDEX IF NOT EXISTS idx_pdiv_snapshot ON pessoal_divergencia(snapshot);
 
+-- Vencimento POR CARGO, da tabela oficial da Alepe. NÃO é contracheque: a
+-- Alepe não publica remuneração individual, só o valor do cargo. Cruzar com
+-- servidor_alepe dá o vencimento do cargo que a pessoa ocupa, que é valor
+-- bruto, sem 13º, férias, gratificação ou encargo. Ver NOTAS.md item 40.
+--
+-- A API devolve só a competência corrente, então a chave carrega o mês e o
+-- histórico nasce do acúmulo — mesma lógica do snapshot de lotação.
+CREATE TABLE IF NOT EXISTS remuneracao_cargo (
+  competencia TEXT NOT NULL,            -- YYYY-MM
+  cargo TEXT NOT NULL,
+  cargo_normalizado TEXT NOT NULL,      -- junta com servidor_alepe.cargo
+  tipo_cargo TEXT,
+  remuneracao REAL NOT NULL,
+  PRIMARY KEY (competencia, cargo_normalizado)
+);
+
 CREATE INDEX IF NOT EXISTS idx_vot_cpf ON votacao_2022(cpf);
 CREATE INDEX IF NOT EXISTS idx_vot_cand ON votacao_2022(candidato_2026_id);
 CREATE INDEX IF NOT EXISTS idx_vot_mun ON votacao_2022(municipio);
@@ -443,6 +460,10 @@ export type Db = {
   /** Mesma coisa, mas partindo do nome normalizado do deputado (junta com autoria). */
   assessoresDoDeputado(nomeNormalizado: string, snapshot?: string): ServidorAlepeRow[];
   divergenciasPessoal(snapshot?: string): PessoalDivergenciaRow[];
+  upsertRemuneracaoCargo(linhas: readonly RemuneracaoCargo[]): void;
+  /** Tabela de vencimento da competência indicada (padrão: a mais recente). */
+  remuneracaoCargos(competencia?: string): RemuneracaoCargo[];
+  ultimaCompetenciaRemuneracao(): string | null;
   close(): void;
 };
 
@@ -466,6 +487,11 @@ export function openDb(path = "data/emendas.sqlite"): Db {
   for (const [nome, tipo] of COLUNAS_CANDIDATO_FASE2) {
     if (!colunasExistentes.has(nome)) raw.exec(`ALTER TABLE candidato_2026 ADD COLUMN ${nome} ${tipo}`);
   }
+
+  const ultimaCompetenciaRemuneracao = (): string | null => {
+    const r = raw.query("SELECT MAX(competencia) as c FROM remuneracao_cargo").get() as { c: string | null } | null;
+    return r?.c ?? null;
+  };
 
   const ultimoSnapshotPessoal = (): string | null => {
     const r = raw.query("SELECT MAX(snapshot) as s FROM servidor_alepe").get() as { s: string | null } | null;
@@ -869,6 +895,28 @@ export function openDb(path = "data/emendas.sqlite"): Db {
         .query("SELECT * FROM pessoal_divergencia WHERE snapshot = $snapshot ORDER BY escopo, tipo, chave")
         .all({ snapshot: alvo }) as PessoalDivergenciaRow[];
     },
+
+    upsertRemuneracaoCargo(linhas) {
+      const st = raw.query(`
+        INSERT INTO remuneracao_cargo (competencia, cargo, cargo_normalizado, tipo_cargo, remuneracao)
+        VALUES ($competencia, $cargo, $cargo_normalizado, $tipo_cargo, $remuneracao)
+        ON CONFLICT (competencia, cargo_normalizado) DO UPDATE SET
+          cargo = excluded.cargo, tipo_cargo = excluded.tipo_cargo, remuneracao = excluded.remuneracao
+      `);
+      raw.transaction(() => {
+        for (const l of linhas) st.run({ ...l });
+      })();
+    },
+
+    remuneracaoCargos(competencia) {
+      const alvo = competencia ?? ultimaCompetenciaRemuneracao();
+      if (!alvo) return [];
+      return raw
+        .query("SELECT * FROM remuneracao_cargo WHERE competencia = $c ORDER BY remuneracao DESC")
+        .all({ c: alvo }) as RemuneracaoCargo[];
+    },
+
+    ultimaCompetenciaRemuneracao,
 
     close() {
       raw.close();

@@ -1323,3 +1323,76 @@ byte idênticas**. Refatoração de CSS sem prova visual é aposta.
    Correção em `tema.css`: `.cards > * { min-width: 0; }`. Uma linha, vale para
    as quatro telas, e é invisível no desktop — `min-width: 0` só age quando o
    conteúdo excederia a coluna. Depois: overflow 0 nas quatro páginas em 390px.
+
+---
+
+## 40. Salário de assessor: a Alepe não publica — e o que ela publica é melhor
+
+A pergunta era listar nome e salário de cada assessor, com ranking. Metade tem
+resposta e metade não, e a metade que não tem é a que importa dizer em voz alta.
+
+### O que a Alepe publica e o que não publica
+
+`/api/v1/remuneracao/` devolve **50 linhas: o vencimento de cada CARGO**, não de
+cada pessoa. Competência única (08/2026 na coleta). Não existe contracheque
+nominal em lugar nenhum do portal — o SPA de `transparencia.alepe.pe.gov.br`
+consome exatamente esse endpoint na rota `/pessoal/servidores-remuneracao`.
+
+Então **"o assessor Fulano ganha R$ X" não é afirmável**. O que é afirmável:
+*"Fulano ocupa o cargo Y, cujo vencimento de tabela é R$ X"*. A tela escreve
+assim, e a distinção não é preciosismo — o valor de tabela é bruto, sem IR,
+sem previdência, sem 13º, sem férias, sem gratificação e sem encargo patronal,
+e quem entrou no dia 20 não recebeu o mês inteiro.
+
+Cobertura do cruzamento em 18/08/2026, nos 1.292 lotados em gabinete:
+
+| Cargo | Pessoas | Vencimento de tabela |
+|---|---:|---:|
+| Chefe de Gabinete | 49 | R$ 11.685,70 |
+| Assessor Especial | 817 | R$ 10.363,58 |
+| Assessor Especial Adjunto | 218 | R$ 3.238,64 |
+| Coordenador de Expediente | 139 | R$ 2.267,01 |
+| (sem cargo informado) | 69 | — |
+
+Os 69 sem cargo são **exatamente** os "À Disposição" sem posto comissionado:
+cedidos de outros órgãos, pagos pela origem. Outros 6 estão à disposição *e*
+ocupam cargo de gabinete — cedido pode optar pela remuneração do órgão de
+origem e a Alepe não publica qual, então também ficam fora. Contar seria
+inventar despesa. A tela marca com `*` os gabinetes que têm gente fora da conta.
+
+### O ranking de assessores por salário é degenerado — o de gabinete não
+
+Ranquear 1.292 pessoas por vencimento produz **quatro blocos**, porque todo
+mundo no mesmo cargo tem o mesmo valor. Não é ranking, é a tabela de cargos
+repetida 1.292 vezes.
+
+O ranking útil é o de **custo mensal do gabinete**, e ele contradiz o de
+headcount, que era o que a tela mostrava antes:
+
+| Deputado | Pessoas | Custo mensal estimado |
+|---|---|---|
+| France Hacker | 32 — **1º** | R$ 193.372 — **38º** |
+| Dani Portela | 24 — **47º** | R$ 228.673 — **5º** |
+| Rodrigo Farias | 29 — **5º** | R$ 170.054 — **48º** |
+| João de Nadegi | 25 — **43º** | R$ 245.190 — **3º** |
+
+A causa é a composição: um Assessor Especial custa **4,6×** um Coordenador de
+Expediente. Quem monta o gabinete com muitos cargos altos gasta mais com menos
+gente. A amplitude sobe de 1,39× (cabeças) para 1,48× (custo).
+
+Total: **R$ 10.008.884,11/mês** nos 49 gabinetes, R$ 120,1 mi em 12 meses —
+sem 13º, férias e encargos, que a estimativa não cobre.
+
+**Contar cabeças engana.** Foi por isso que a coluna de custo entrou, com o
+ranking de headcount ao lado no perfil ("5º de 49 em custo, 47º em nº de
+pessoas") em vez de substituí-lo.
+
+### Detalhes de formato
+
+- `remuneracao` vem como **string** (`"11685.70"`) numa API que devolve
+  `mesCompetencia` e `anoCompetencia` como número.
+- A junção cargo↔cargo é por nome normalizado: a tabela escreve
+  `COORDENADOR CHEFE` em caixa alta e `Assessor Especial` em caixa mista, no
+  mesmo array.
+- Cargo fora da tabela **não** é estimado por semelhança. Fica sem valor, com o
+  motivo gravado — mesma regra do casamento de nomes (NOTAS 37/38).

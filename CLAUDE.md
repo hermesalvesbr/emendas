@@ -44,6 +44,8 @@ memória (NOTAS 31, e a errata no topo de `POSTS-X.md`).
 | Autoria | `confianca='alta'` tem `"APORTE FINANCEIRO"` e `": EDUI"` — sobras de regex. Cruze com `autoria_oficial` | `agregados.ts` |
 | Pessoal | A Alepe publica lotação em 4 endpoints; os 2 do portal legado estão defasados (só 18 dos 101 admitidos recentes). Contagem sai **só** dos dados abertos | NOTAS 37 |
 | Pessoal | Gabinete casa com deputado por **rótulo + alias explícito**, nunca por semelhança: sobreposição de nomes casou Antonio Coelho com Edson Vieira | `harvest-pessoal.ts` |
+| Pessoal | A Alepe publica vencimento **por cargo**, nunca por pessoa. Nada na tela pode dizer "salário do assessor" — é "vencimento do cargo", bruto, sem 13º/encargos, sem quem está à disposição | NOTAS 40 |
+| Pessoal | Ranking de headcount **contradiz** o de custo (France Hacker: 1º em pessoas, 38º em custo). Publicar só um dos dois engana | NOTAS 40 |
 | Perfil | Cada camada nomeia a pessoa de um jeito (parlamentar/civil/urna 2022). A junção é só em `perfil-deputado.ts`, e o export **lança** se o perfil divergir do agregado do painel | NOTAS 38 |
 | TSE | `votacao_2022_municipio.nome_urna` é o texto CRU do TSE — acento, cedilha e espaço à direita. Normalize os dois lados antes de casar por nome | NOTAS 38 |
 | docs/ | Paleta e helpers de JS moram em `docs/tema.css` e `docs/comum.js`. Não recriar `esc`/`css`/`baseOption` na página — uma cópia já divergiu | NOTAS 39 |
@@ -53,7 +55,7 @@ memória (NOTAS 31, e a errata no topo de `POSTS-X.md`).
 
 ## Verificar
 
-`bun run check` (tsc + 241 testes) antes de qualquer commit. Nenhum teste toca
+`bun run check` (tsc + 255 testes) antes de qualquer commit. Nenhum teste toca
 a rede: as fixtures são respostas reais capturadas, e é assim que devem
 continuar.
 

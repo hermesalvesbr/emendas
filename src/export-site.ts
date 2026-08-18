@@ -14,6 +14,7 @@ import type { Db } from "./db.ts";
 import type { CargoAtual } from "./harvest-candidatos.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
 import type { EmendaFederalRow } from "./db.ts";
+import { chaveCargo as chaveDeCargo, custoDaPessoa, custoDoGabinete, indexarRemuneracao } from "./custo-pessoal.ts";
 import { linhasPainel } from "./elo-painel.ts";
 import type { PerfilDeputado } from "./perfil-deputado.ts";
 import { perfisDeputados, slugDeputado } from "./perfil-deputado.ts";
@@ -402,8 +403,12 @@ export type LinhaGabinete = {
   total: number;
   /** contagem por cargo, ex. { "Assessor Especial": 17 } */
   cargos: Record<string, number>;
-  /** nomes, em ordem alfabética, com cargo e vínculo */
-  pessoas: Array<{ nome: string; cargo: string | null; vinculo: string; desde: string | null }>;
+  /** nomes, em ordem alfabética, com cargo, vínculo e o vencimento DO CARGO */
+  pessoas: Array<{ nome: string; cargo: string | null; vinculo: string; desde: string | null; venc: number | null }>;
+  /** custo mensal estimado: soma dos vencimentos de tabela dos comissionados */
+  custo: number;
+  /** pessoas sem estimativa de custo, e por quê */
+  semCusto: number;
   /** o que o sistema legado da ALEPE dizia, quando havia par lá */
   legado: number | null;
 };
@@ -412,9 +417,15 @@ export type SiteDataPessoal = {
   geradoEm: string;
   snapshot: string;
   fonte: string;
+  fonteCusto: string;
   ressalva: string;
+  ressalvaCusto: string;
+  competencia: string | null;
   totalGabinetes: number;
   totalEmGabinete: number;
+  custoMensalTotal: number;
+  /** vencimento de tabela por cargo, para a tela mostrar de onde vem a conta */
+  tabelaCargos: Array<{ cargo: string; venc: number; pessoas: number }>;
   linhas: LinhaGabinete[];
   divergencias: Array<{ escopo: string; chave: string; tipo: string; detalhe: string }>;
 };
@@ -423,21 +434,35 @@ export function exportarSitePessoal(db: Db): SiteDataPessoal {
   const snapshot = db.ultimoSnapshotPessoal();
   if (!snapshot) throw new Error("pessoal: nenhum snapshot no banco — rode `bun run coletar:pessoal` antes");
 
+  const competencia = db.ultimaCompetenciaRemuneracao();
+  const tabela = indexarRemuneracao(db.remuneracaoCargos());
+
   const gabinetes = db.listGabinetes();
+  const pessoasPorCargo = new Map<string, number>();
   const linhas: LinhaGabinete[] = gabinetes.map((g) => {
     const pessoas = db.assessoresDoGabinete(g.chave, snapshot);
     const cargos: Record<string, number> = {};
     for (const p of pessoas) {
       const c = p.cargo ?? "(sem cargo informado)";
       cargos[c] = (cargos[c] ?? 0) + 1;
+      pessoasPorCargo.set(c, (pessoasPorCargo.get(c) ?? 0) + 1);
     }
+    const custo = custoDoGabinete(pessoas, tabela);
     return {
       dep: g.deputado_nome,
       slug: slugDeputado(g.deputado_normalizado),
       partido: g.partido,
       total: g.total,
       cargos,
-      pessoas: pessoas.map((p) => ({ nome: p.nome, cargo: p.cargo, vinculo: p.vinculo, desde: p.data_admissao })),
+      pessoas: pessoas.map((p) => ({
+        nome: p.nome,
+        cargo: p.cargo,
+        vinculo: p.vinculo,
+        desde: p.data_admissao,
+        venc: custoDaPessoa(p, tabela).remuneracaoCargo,
+      })),
+      custo: custo.mensal,
+      semCusto: custo.semValor,
       legado: g.total_legado,
     };
   });
@@ -461,12 +486,22 @@ export function exportarSitePessoal(db: Db): SiteDataPessoal {
     geradoEm: new Date().toISOString(),
     snapshot,
     fonte: "Lotação de pessoal — Dados Abertos da Alepe (/api/v1/servidores e /api/v1/parlamentares)",
+    fonteCusto: `Vencimento por cargo — Dados Abertos da Alepe (/api/v1/remuneracao), competência ${competencia ?? "não coletada"}`,
+    ressalvaCusto:
+      "A Alepe NÃO publica remuneração individual: publica o vencimento de cada CARGO. O valor ao lado de cada nome é " +
+      "o do cargo que a pessoa ocupa, não o que ela recebe. É bruto — sem descontos, sem 13º, sem férias, sem " +
+      "gratificação e sem encargo patronal. Quem está à disposição é pago pelo órgão de origem e fica fora da conta.",
+    competencia,
     ressalva:
       `Foto do dia ${snapshot.split("-").reverse().join("/")}, do sistema de dados abertos da Alepe. ` +
       "O portal legado da Alepe (funcionarios.php) publica números diferentes porque está desatualizado — " +
-      "as diferenças estão listadas ao final. A Alepe não publica remuneração individual.",
+      "as diferenças estão listadas ao final.",
     totalGabinetes: gabinetes.length,
     totalEmGabinete,
+    custoMensalTotal: Math.round(linhas.reduce((s, l) => s + l.custo, 0) * 100) / 100,
+    tabelaCargos: [...pessoasPorCargo]
+      .map(([cargo, pessoas]) => ({ cargo, venc: tabela.get(chaveDeCargo(cargo))?.remuneracao ?? 0, pessoas }))
+      .sort((a, b) => b.venc - a.venc),
     linhas,
     divergencias: db.divergenciasPessoal(snapshot).map((d) => ({ escopo: d.escopo, chave: d.chave, tipo: d.tipo, detalhe: d.detalhe })),
   };
@@ -488,6 +523,7 @@ export type SiteDataDeputados = {
     votacao2022: string;
     candidatura2026: string;
     bens: string;
+    custo: string;
   };
   ressalvas: {
     gabinete: string;
@@ -495,6 +531,7 @@ export type SiteDataDeputados = {
     candidatura: string;
     votacao: string;
     ranking: string;
+    custo: string;
   };
   totais: {
     deputados: number;
@@ -502,6 +539,8 @@ export type SiteDataDeputados = {
     mediaAssessores: number;
     comEmendas: number;
     vempTotal: number;
+    custoMensalTotal: number;
+    custoMensalMedio: number;
   };
   perfis: PerfilDeputado[];
 };
@@ -564,6 +603,7 @@ export function exportarSiteDeputados(db: Db): SiteDataDeputados {
       votacao2022: "TSE — votação nominal por município e zona, Eleições Gerais 2022, 1º turno (cdn.tse.jus.br)",
       candidatura2026: "TSE/DivulgaCandContas — Eleições Gerais 2026, circunscrição PE",
       bens: "TSE/DivulgaCandContas — bens declarados no registro de candidatura de 2026",
+      custo: `Dados Abertos da Alepe — /api/v1/remuneracao, vencimento por cargo, competência ${db.ultimaCompetenciaRemuneracao() ?? "não coletada"}`,
     },
     ressalvas: {
       gabinete:
@@ -579,6 +619,10 @@ export function exportarSiteDeputados(db: Db): SiteDataDeputados {
       ranking:
         "O tamanho de gabinete varia pouco (23 a 32 pessoas): os cargos são fixados por ato da Mesa, não pela vontade de cada deputado. " +
         "A posição no ranking mede diferença pequena e não deve ser lida como excesso ou economia.",
+      custo:
+        "A Alepe NÃO publica remuneração individual — publica o vencimento de cada CARGO. O custo é a soma dos vencimentos " +
+        "de tabela dos cargos ocupados: valor bruto, sem descontos, 13º, férias, gratificação ou encargo patronal, e sem " +
+        "quem está à disposição (pago pelo órgão de origem). É estimativa de custo do gabinete, não folha de pagamento.",
     },
     totais: {
       deputados: perfis.length,
@@ -586,6 +630,10 @@ export function exportarSiteDeputados(db: Db): SiteDataDeputados {
       mediaAssessores: perfis.length ? Math.round((totalPessoas / perfis.length) * 10) / 10 : 0,
       comEmendas: perfis.filter((p) => p.emendas).length,
       vempTotal: Math.round(perfis.reduce((s, p) => s + (p.emendas?.vemp ?? 0), 0) * 100) / 100,
+      custoMensalTotal: Math.round(perfis.reduce((s, p) => s + p.gabinete.custoMensal, 0) * 100) / 100,
+      custoMensalMedio: perfis.length
+        ? Math.round((perfis.reduce((s, p) => s + p.gabinete.custoMensal, 0) / perfis.length) * 100) / 100
+        : 0,
     },
     perfis,
   };

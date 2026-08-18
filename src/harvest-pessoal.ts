@@ -13,6 +13,8 @@
 //   C  fun/mapaocupacaosetores   contagem oficial por setor + código do setor
 //                                (1110xxx) + demissionários. Mesmo sistema de B,
 //                                logo com a mesma defasagem.
+//   E  /api/v1/remuneracao/     vencimento POR CARGO (não por pessoa — a ALEPE
+//                                não publica contracheque). Ver NOTAS 40.
 //
 // Por isso a contagem de assessores sai SÓ de A. B e C entram como
 // enriquecimento (matrícula, código de setor) e como divergência registrada.
@@ -22,6 +24,8 @@
 // explícito e auditável; o que não casar fica registrado, não é chutado.
 
 import type { Db, NewGabinete, NewPessoalDivergencia, NewServidorAlepe } from "./db.ts";
+import type { RemuneracaoCargo } from "./custo-pessoal.ts";
+import { chaveCargo } from "./custo-pessoal.ts";
 import { parseCsv } from "./harvest-ckan.ts";
 import { normalizarAutor } from "./normalize.ts";
 import { HarvestError, insist } from "./retry.ts";
@@ -33,6 +37,7 @@ const API_SERVIDORES = "https://dadosabertos.alepe.pe.gov.br/api/v1/servidores/?
 const API_PARLAMENTARES = "https://dadosabertos.alepe.pe.gov.br/api/v1/parlamentares/?formato=json";
 const CSV_FUNCIONARIOS = "https://www.alepe.pe.gov.br/servicos/transparencia/fun/funcionarios.php?formato=csv";
 const MAPA_SETORES = "https://www.alepe.pe.gov.br/servicos/transparencia/fun/mapaocupacaosetores.php";
+const API_REMUNERACAO = "https://dadosabertos.alepe.pe.gov.br/api/v1/remuneracao/?formato=json";
 
 /** Rótulo de lotação de gabinete parlamentar. A grafa com espaço, B e C sem. */
 const PREFIXO_GABINETE = /^GAB\.\s*DEP\.?\s*/;
@@ -95,6 +100,9 @@ export type PessoalHarvestReport = {
   pessoasEmGabinete: number;
   totalServidores: number;
   divergencias: number;
+  /** Competência da tabela de vencimento coletada, ex. "2026-08". */
+  competenciaRemuneracao: string | null;
+  cargosComRemuneracao: number;
   fontesOk: string[];
   fontesFalhas: Array<{ fonte: string; motivo: string }>;
 };
@@ -226,6 +234,40 @@ export function parseParlamentares(json: string): ParlamentarAlepe[] {
     const row = r as Record<string, unknown>;
     return { nome: String(row.nomeParlamentar ?? "").trim(), partido: vazioParaNulo(row.partido) };
   });
+}
+
+/**
+ * E — tabela de vencimento por cargo. Uma competência por coleta (a API só
+ * devolve o mês corrente), então a chave carrega o mês: o histórico nasce do
+ * acúmulo, igual ao snapshot de lotação.
+ */
+export function parseRemuneracao(json: string): RemuneracaoCargo[] {
+  let bruto: unknown;
+  try {
+    bruto = JSON.parse(json);
+  } catch (err) {
+    throw new HarvestError("parse", "remuneracao: corpo não é JSON", { cause: err });
+  }
+  if (!Array.isArray(bruto)) throw new HarvestError("parse", "remuneracao: JSON não é lista");
+
+  const linhas: RemuneracaoCargo[] = [];
+  for (const r of bruto) {
+    const row = r as Record<string, unknown>;
+    const cargo = String(row.cargo ?? "").trim();
+    // A API manda "remuneracao" como STRING ("11685.70"), não número.
+    const valor = Number(row.remuneracao);
+    const ano = Number(row.anoCompetencia);
+    const mes = Number(row.mesCompetencia);
+    if (!cargo || !Number.isFinite(valor) || !Number.isInteger(ano) || !Number.isInteger(mes)) continue;
+    linhas.push({
+      competencia: `${ano}-${String(mes).padStart(2, "0")}`,
+      cargo,
+      cargo_normalizado: chaveCargo(cargo),
+      tipo_cargo: vazioParaNulo(row.tipoCargo),
+      remuneracao: valor,
+    });
+  }
+  return linhas;
 }
 
 // ------------------------------------------------------------- reconciliação
@@ -472,6 +514,11 @@ export async function harvestPessoal(db: Db, config: Config): Promise<PessoalHar
     fontesFalhas.push({ fonte: "pessoal:funcionarios-csv", motivo: attemptCsv.lastError.message });
   }
 
+  const brutoRemun = await texto("pessoal:remuneracao", API_REMUNERACAO);
+  if (brutoRemun !== null) await writeRawImmutable("remuneracao", "json", brutoRemun);
+  const remuneracao = brutoRemun === null ? [] : parseRemuneracao(brutoRemun);
+  if (remuneracao.length > 0) db.upsertRemuneracaoCargo(remuneracao);
+
   const { gabinetes, servidores, divergencias } = reconciliar(snapshot, api, csv, mapa, parlamentares);
 
   // Invariante no espírito de export-site: a soma dos gabinetes tem de ser
@@ -490,7 +537,7 @@ export async function harvestPessoal(db: Db, config: Config): Promise<PessoalHar
     tentativas: 1,
     http_status: 200,
     duracao_ms: null,
-    mensagem: `${gabinetes.length} gabinete(s), ${pessoasEmGabinete} em gabinete, ${servidores.length} servidores, ${divergencias.length} divergência(s)`,
+    mensagem: `${gabinetes.length} gabinete(s), ${pessoasEmGabinete} em gabinete, ${servidores.length} servidores, ${divergencias.length} divergência(s), ${remuneracao.length} cargo(s) com vencimento`,
   });
 
   return {
@@ -499,6 +546,8 @@ export async function harvestPessoal(db: Db, config: Config): Promise<PessoalHar
     pessoasEmGabinete,
     totalServidores: servidores.length,
     divergencias: divergencias.length,
+    competenciaRemuneracao: remuneracao[0]?.competencia ?? null,
+    cargosComRemuneracao: remuneracao.length,
     fontesOk,
     fontesFalhas,
   };

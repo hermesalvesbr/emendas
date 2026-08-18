@@ -30,6 +30,13 @@
   .pessoas li { margin-bottom: 3px; break-inside: avoid; }
   .pessoas .cargo { color: var(--ink-2); }
   .pessoas .desde { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .pessoas .venc { color: var(--s3); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .pessoas .semvenc { color: var(--ink-muted); font-style: italic; }
+  td .ressalva { color: var(--s2); cursor: help; font-weight: 700; }
+  .tabcargos { margin-top: 10px; font-size: .8rem; color: var(--ink-2); }
+  .tabcargos summary { cursor: pointer; color: var(--s1); }
+  .tabcargos li { margin-bottom: 3px; }
+  .tabcargos b { font-variant-numeric: tabular-nums; }
   th.bar, td.bar { width: 34%; min-width: 90px; }
   .barra { display: block; height: 9px; background: var(--s1); border-radius: 2px; }
   @media (max-width: 640px) { th.bar, td.bar { display: none; } }
@@ -47,6 +54,7 @@
   </header>
 
   <div class="aviso" id="aviso"></div>
+  <div class="aviso" id="avisoCusto" hidden></div>
 
   <div class="filters" role="search">
     <label>Deputado
@@ -76,11 +84,13 @@
           <th data-k="dep">Deputado</th>
           <th data-k="partido">Partido</th>
           <th class="num" data-k="total">Pessoas</th>
+          <th class="num" data-k="custo">Custo mensal estimado</th>
           <th class="bar"></th>
         </tr></thead>
         <tbody></tbody>
       </table>
     </div>
+    <details class="tabcargos" id="tabCargos"><summary>De onde vem a conta: vencimento de cada cargo</summary><ul></ul></details>
     <details class="div" id="divs"><summary></summary><ul></ul></details>
   </div>
 
@@ -95,6 +105,9 @@ const fmt = (n) => PE.num.format(n);
 
 let DADOS = null;
 let ordem = { k: "total", desc: true };
+// Derivado do cabeçalho: acrescentar coluna e esquecer o colspan já deixou a
+// linha de detalhe estreita uma vez.
+const COLUNAS = document.querySelectorAll("#tbl thead th").length;
 const abertas = new Set();
 
 fetch("dados-pessoal.json")
@@ -124,7 +137,7 @@ function iniciar() {
   for (const th of document.querySelectorAll("#tbl th[data-k]")) {
     th.addEventListener("click", () => {
       const k = th.dataset.k;
-      ordem = { k, desc: ordem.k === k ? !ordem.desc : k === "total" };
+      ordem = { k, desc: ordem.k === k ? !ordem.desc : k === "total" || k === "custo" };
       render();
     });
   }
@@ -138,6 +151,7 @@ function iniciar() {
     render();
   });
 
+  renderCusto();
   renderDivergencias();
   render();
 }
@@ -156,7 +170,11 @@ function filtrar() {
       let pessoas = l.pessoas;
       if (cargo) pessoas = pessoas.filter((p) => (p.cargo ?? "(sem cargo informado)") === cargo);
       if (pessoa) pessoas = pessoas.filter((p) => p.nome.toLowerCase().includes(pessoa));
-      return { ...l, pessoas, exibido: pessoas.length, recortado: cargo !== "" || pessoa !== "" };
+      const recortado = cargo !== "" || pessoa !== "";
+      // O custo segue a lista exibida: filtrar por cargo tem de mudar a conta,
+      // não deixar o total do gabinete ao lado de uma lista recortada.
+      const custo = recortado ? pessoas.reduce((soma, p) => soma + (p.venc ?? 0), 0) : l.custo;
+      return { ...l, pessoas, exibido: pessoas.length, custoExibido: custo, recortado };
     })
     .filter((l) => !l.recortado || l.exibido > 0);
 }
@@ -164,22 +182,28 @@ function filtrar() {
 function render() {
   const linhas = filtrar();
   const k = ordem.k;
+  const numerica = k === "total" || k === "custo";
   linhas.sort((a, b) => {
-    const va = k === "total" ? a.exibido : String(a[k] ?? "");
-    const vb = k === "total" ? b.exibido : String(b[k] ?? "");
-    const c = k === "total" ? va - vb : va.localeCompare(vb, "pt-BR");
+    const valor = (l) => (k === "total" ? l.exibido : k === "custo" ? l.custoExibido : String(l[k] ?? ""));
+    const va = valor(a), vb = valor(b);
+    const c = numerica ? va - vb : va.localeCompare(vb, "pt-BR");
     return ordem.desc ? -c : c;
   });
 
   const total = linhas.reduce((s, l) => s + l.exibido, 0);
-  const max = Math.max(1, ...linhas.map((l) => l.exibido));
+  const custoTotal = linhas.reduce((s, l) => s + l.custoExibido, 0);
+  // A barra acompanha a coluna ordenada: ordenar por custo e ver barra de
+  // headcount faria o gráfico contar uma história diferente da tabela.
+  const porCusto = ordem.k === "custo";
+  const max = Math.max(1, ...linhas.map((l) => (porCusto ? l.custoExibido : l.exibido)));
   const media = linhas.length ? total / linhas.length : 0;
 
   $("#kpis").innerHTML = [
     ["Gabinetes", fmt(linhas.length)],
     ["Pessoas", fmt(total)],
     ["Média por gabinete", media.toFixed(1).replace(".", ",")],
-    ["Maior gabinete", linhas.length ? fmt(max) : "—"],
+    ["Custo mensal estimado", PE.moeda.format(custoTotal)],
+    ["Por ano (12×, sem 13º)", PE.moeda.format(custoTotal * 12)],
   ].map(([l, v]) => '<div class="tile"><div class="v">' + v + '</div><div class="l">' + l + "</div></div>").join("");
 
   const recortado = linhas.some((l) => l.recortado);
@@ -189,24 +213,46 @@ function render() {
 
   $("#tbl tbody").innerHTML = linhas.map((l) => {
     const aberta = abertas.has(l.dep);
-    const larg = Math.round((l.exibido / max) * 90);
+    const larg = Math.round(((porCusto ? l.custoExibido : l.exibido) / max) * 90);
     const cabecalho =
       '<tr class="gab' + (aberta ? " aberta" : "") + '" data-dep="' + esc(l.dep) + '">' +
       '<td><a href="deputado.html?d=' + esc(l.slug) + '" title="Abrir o perfil completo">' + esc(l.dep) + "</a></td>" +
       "<td>" + esc(l.partido ?? "—") + "</td>" +
       '<td class="num">' + fmt(l.exibido) + "</td>" +
+      '<td class="num">' + PE.moeda.format(l.custoExibido) +
+        (l.semCusto > 0 && !l.recortado ? ' <span class="ressalva" title="' + l.semCusto + ' pessoa(s) à disposição ou sem cargo informado ficaram fora da conta">*</span>' : "") +
+        "</td>" +
       '<td class="bar"><span class="barra" style="width:' + larg + '%"></span></td>' +
       "</tr>";
     const nomes = l.pessoas.map((p) =>
       "<li>" + esc(p.nome) +
       ' <span class="cargo">· ' + esc(p.cargo ?? "sem cargo informado") + " · " + esc(p.vinculo) + "</span>" +
-      ' <span class="desde">desde ' + dataBR(p.desde) + "</span></li>",
+      ' <span class="desde">desde ' + dataBR(p.desde) + "</span>" +
+      (p.venc == null
+        ? ' <span class="semvenc">pago pelo órgão de origem</span>'
+        : ' <span class="venc" title="Vencimento do CARGO na tabela da Alepe, não o que a pessoa recebe">' +
+          PE.moeda.format(p.venc) + "</span>") +
+      "</li>",
     ).join("");
     const detalhe =
-      '<tr class="det"' + (aberta ? "" : " hidden") + '><td colspan="4"><div class="pessoas">' +
+      '<tr class="det"' + (aberta ? "" : " hidden") + '><td colspan="' + COLUNAS + '"><div class="pessoas">' +
       '<ol>' + nomes + "</ol></div></td></tr>";
     return cabecalho + detalhe;
   }).join("");
+}
+
+function renderCusto() {
+  if (!DADOS.competencia) return;
+  const av = $("#avisoCusto");
+  av.hidden = false;
+  av.innerHTML =
+    "<strong>Isto não é salário de assessor.</strong> " + esc(DADOS.ressalvaCusto) +
+    " Tabela da competência " + esc(DADOS.competencia.split("-").reverse().join("/")) + ".";
+
+  $("#tabCargos ul").innerHTML = DADOS.tabelaCargos.map((c) =>
+    "<li><b>" + (c.venc ? PE.moeda.format(c.venc) : "sem valor na tabela") + "</b> — " +
+    esc(c.cargo) + " · " + fmt(c.pessoas) + " pessoa(s)</li>",
+  ).join("");
 }
 
 function renderDivergencias() {
@@ -219,7 +265,7 @@ function renderDivergencias() {
     .map((x) => "<li><strong>" + esc(x.chave) + "</strong> [" + esc(x.tipo) + "] — " + esc(x.detalhe) + "</li>")
     .join("");
   $("#rodape").innerHTML =
-    esc(DADOS.fonte) + " · snapshot de " + dataBR(DADOS.snapshot) +
+    esc(DADOS.fonte) + " · " + esc(DADOS.fonteCusto) + " · snapshot de " + dataBR(DADOS.snapshot) +
     ' · <a href="https://dadosabertos.alepe.pe.gov.br/" rel="noopener">dadosabertos.alepe.pe.gov.br</a>' +
     " · gerado em " + dataBR((DADOS.geradoEm || "").slice(0, 10));
 }
