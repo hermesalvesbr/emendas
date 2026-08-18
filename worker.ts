@@ -23,6 +23,7 @@ import { discover } from "./src/discover.ts";
 import { harvestAlepe } from "./src/harvest-alepe.ts";
 import { harvestCkan } from "./src/harvest-ckan.ts";
 import { harvestPentaho } from "./src/harvest-pentaho.ts";
+import { harvestPessoal } from "./src/harvest-pessoal.ts";
 
 const AUTOR_VALIDACAO = "SOCORRO PIMENTEL";
 const STATUS_PATH = "data/PENTAHO_STATUS.md";
@@ -114,6 +115,26 @@ async function rodar(): Promise<void> {
       alepeStatus = `alepe: FALHOU (${errorMessage(err)})`;
     }
 
+    // Lotação de gabinete — uma vez por dia, não a cada 4h: a folha muda
+    // devagar e cada coleta grava um snapshot datado. O disparo é decidido
+    // pelo banco (já existe snapshot de hoje?), não por uma entrada de cron
+    // separada, para o agendamento continuar sendo um só.
+    let pessoalStatus: string;
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (db.ultimoSnapshotPessoal() === hoje) {
+      pessoalStatus = `pessoal: já coletado hoje (${hoje})`;
+      console.error(`[worker] ${pessoalStatus}`);
+    } else {
+      try {
+        const pessoal = await harvestPessoal(db, config);
+        pessoalStatus = `pessoal: OK ${pessoal.gabinetes} gabinete(s), ${pessoal.pessoasEmGabinete} pessoa(s), ${pessoal.divergencias} divergência(s)`;
+        console.error(`[worker] ${pessoalStatus}`);
+      } catch (err) {
+        pessoalStatus = `pessoal: FALHOU (${errorMessage(err)})`;
+        console.error("[worker] pessoal — erro inesperado (segue no próximo tick):", err);
+      }
+    }
+
     const validacao = validarSucesso(db);
     console.error(`[worker] validação (${AUTOR_VALIDACAO}): ${validacao.sucesso ? "SUCESSO" : "ainda não"} — ${validacao.detalhe}`);
     await escreverStatus({ resultadosPorPainel, validacao });
@@ -124,7 +145,9 @@ async function rodar(): Promise<void> {
     const alepeResumo = alepeStatus ?? "alepe: não rodou";
     const tudoOk =
       resultadosPorPainel.every((r) => r.totalLinhas > 0) && ckanStatus.includes("OK") && (alepeStatus?.includes("OK") ?? false);
-    logRodada(`${tudoOk ? "OK" : "PARCIAL"} | ${paineisResumo} | ${ckanStatus} | ${alepeResumo} | validação: ${validacao.sucesso ? "ok" : "pendente"}`);
+    logRodada(
+      `${tudoOk ? "OK" : "PARCIAL"} | ${paineisResumo} | ${ckanStatus} | ${alepeResumo} | ${pessoalStatus} | validação: ${validacao.sucesso ? "ok" : "pendente"}`,
+    );
   } finally {
     db.close();
   }

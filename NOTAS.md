@@ -1102,3 +1102,224 @@ foram REANCORADOS ao universo novo — os posts publicados sob o universo
 antigo ficam como estão (diferenças na casa de 1%, dentro do que a errata de
 POSTS-X.md já ensinou a tratar). A fila ganhou anti-monotonia (46 pares
 vizinhos de mesmo template → 0; mesma cidade 3× no dia → 1 caso de fallback).
+
+---
+
+## 37. Assessores por gabinete: a Alepe publica em quatro lugares e três deles mentem sobre hoje
+
+Pergunta: quantos assessores cada deputado estadual tem, e quais os nomes. A
+Alepe publica isso — mas em quatro endpoints que **não concordam entre si**, e
+o mais fácil de achar é o mais desatualizado. Tudo abaixo foi medido em
+18/08/2026 contra a fonte, não presumido.
+
+### As quatro fontes
+
+| | Endpoint | O que dá |
+|---|---|---|
+| **A** | `dadosabertos.alepe.pe.gov.br/api/v1/servidores/?formato=json` | 1.987 pessoas, **1.292 em 49 gabinetes**. Nome, lotação, cargo, vínculo, data de admissão |
+| **D** | `dadosabertos.alepe.pe.gov.br/api/v1/parlamentares/?formato=json` | os 49 titulares com partido |
+| **B** | `www.alepe.pe.gov.br/servicos/transparencia/fun/funcionarios.php?formato=csv` | 2.121 linhas com **matrícula**, código de cargo e código de setor; 51 linhas `PARLAMENTAR` com nome civil |
+| **C** | `www.alepe.pe.gov.br/servicos/transparencia/fun/mapaocupacaosetores.php` | 206 setores com contagem e **código de setor** (`1110xxx`), incluindo demissionários |
+
+O Portal da Transparência da Alepe (`transparencia.alepe.pe.gov.br`) é um SPA
+React que consome exatamente A e D — não é uma quinta fonte. Ele não publica
+**remuneração individual**: `/api/v1/remuneracao/` devolve tabela **por cargo**,
+não por pessoa. Custo de gabinete, portanto, só é estimável (nº de cargos ×
+tabela), nunca medido. A verba indenizatória por deputado/mês existe em
+`adm/verbaindenizatoria*.php` e continua não coletada.
+
+### O legado está defasado, e a defasagem é grande
+
+B e C vêm do mesmo sistema antigo e batem perfeitamente entre si (mesmos 49
+rótulos, mesmos códigos de setor). O que eles **não** batem é a realidade:
+
+- dos **101 admitidos desde 01/06/2026** que A lista, só **18** aparecem em B;
+- 626 pessoas só em A, 758 só em B;
+- **31 dos 45 gabinetes comparáveis têm contagem diferente**;
+- 4 gabinetes ainda estão em nome de quem saiu (Waldemar Borges, Roberta
+  Arraes, Lula Cabral, Cleber Chaparral), enquanto A e D já mostram os
+  substitutos (Antonio Coelho, Cayo Albino, Pastor Cleiton Collins, Wanderson
+  Florêncio).
+
+Por isso a regra do coletor: **a contagem sai só de A**. B e C entram como
+enriquecimento (matrícula, código de setor, código de cargo) e como
+divergência gravada em `pessoal_divergencia` — 41 linhas hoje, publicadas
+junto no painel. Nada é silenciado para o número fechar.
+
+### Casar por semelhança de conteúdo dá deputado errado
+
+Antes de assumir a defasagem, foi testado casar os gabinetes de A com os de B
+por **sobreposição dos nomes lotados** — parecia a solução data-driven. O
+resultado, medido:
+
+```
+ANTONIO COELHO       -> EDSON VIEIRA      overlap=18
+CAYO ALBINO          -> WALDEMAR BORGES   overlap= 5
+WANDERSON FLORENCIO  -> (nenhum)          overlap= 0
+```
+
+Gente circula entre gabinetes, então sobreposição alta não prova identidade.
+O casamento ficou sendo por **rótulo, com alias explícito e auditável** —
+`ALIAS_PARLAMENTAR` (2 entradas) e `ALIAS_LEGADO` (4) em `harvest-pessoal.ts`.
+Listas curtas, revisáveis a olho. O que não casa vira divergência, não palpite:
+num painel assinado por um candidato, atribuir assessor ao deputado errado é o
+pior erro possível.
+
+Pela mesma razão a matrícula do deputado casa em só 30 dos 49: B guarda o
+**nome civil** ("FRANZ ARAUJO HACKER"), e nome de urna nem sempre deriva dele
+("France Hacker", "Socorro Pimentel"). A regra é tokens em ordem **com trava de
+unicidade** — "JOAO PAULO" casaria com dois deputados e por isso não casa com
+nenhum. Os 19 restantes ficam nulos de propósito; a junção de verdade é por
+`deputado_normalizado`, a matrícula é enfeite.
+
+### Armadilhas de formato (todas custaram uma rodada)
+
+- **A barra final é obrigatória.** `…/api/v1/servidores?formato=json` responde
+  **301** e o `fetch` entrega o HTML do redirect. Com `/` antes da query, 200.
+- **A doc do portal promete campos que não vêm.** `SEQ` e `SITUACAO` estão
+  documentados; nas 1.987 linhas, `SITUACAO` é `null` e `SEQ` não existe.
+- **`DATA_ADMISSAO` não é string ISO**, é objeto
+  `{ date, timezone_type, timezone }` (serialização de `DateTime` do PHP).
+- **O CSV de B diz `charset=UTF-8` no header e é ISO-8859-1** — mesmo engano do
+  arquivo da CGU (NOTAS 3). Sem o decoder certo, "CONCEIÇÃO" vira lixo.
+- **`CODIGO_LOTACAO` de A e `setor` de B são espaços de código diferentes**
+  (`256` × `1110270`); os de B e C são o mesmo. Casar por código entre A e B
+  não funciona.
+
+### Efeito colateral bom
+
+Isto criou a tabela `gabinete` — a **âncora de deputado estadual** que o
+projeto não tinha. Até aqui o parlamentar existia só como string em
+`emenda.autor_normalizado`; agora há nome oficial, partido e chave estável
+para cruzar tamanho de gabinete com autoria de emendas.
+
+---
+
+## 38. Perfil do deputado: cinco fontes, cinco nomes para a mesma pessoa
+
+A tela de perfil junta o que o projeto já sabia de cada deputado estadual —
+gabinete, emendas, votação de 2022, candidatura e bens. O trabalho não foi
+desenhar a página; foi descobrir que **cada camada chama a mesma pessoa de um
+jeito diferente**, e resolver isso num lugar só, com teste.
+
+| Camada | Como ela nomeia Sileno Guedes |
+|---|---|
+| Alepe, `/api/v1/parlamentares` | `Sileno Guedes` (nome parlamentar) |
+| Alepe, `funcionarios.php` | `SILENO SOUSA GUEDES` (nome civil) |
+| TSE, votação 2022 | `SILENO` (nome de urna daquele ano) |
+| PLOA da Alepe | `Sileno Guedes`, normalizado para `SILENO GUEDES` |
+
+A chave canônica é `gabinete.deputado_normalizado`, e a junção mora em
+`src/perfil-deputado.ts` — **não no navegador**. Fazer no cliente seria repetir
+a regra em quatro páginas e deixá-la sem teste; o painel já pagou esse preço
+uma vez (NOTAS 26: `agregados.ts` tinha reimplementado o elo e inflado 9,1%).
+
+### Cobertura medida (18/08/2026, 49 gabinetes)
+
+| Camada | Casam | O que fica de fora |
+|---|---|---|
+| Emendas (autoria oficial + execução) | **47/49** | Cayo Albino e João Paulo do PT — sem emenda executada no universo do painel |
+| Votação de 2022 | **47/49** | João Paulo do PT e Wanderson Florêncio |
+| Candidatura 2026 | **42/49** | marcador positivo-only (NOTAS 29) |
+| Bens declarados | 42/49 | depende da candidatura |
+
+Toda ausência vira uma frase na tela, no bloco "o que este perfil não sabe" —
+lacuna explicada não é lacuna escondida. "Sem emenda" ali significa *sem
+emenda executada com autoria confirmada*, não "não apresentou emendas", e a
+tela diz isso com todas as letras.
+
+### `votacao_2022_municipio.nome_urna` guarda o valor CRU do TSE
+
+Casar por nome de urna dava só **36 dos 49**. O motivo não é o dado ser
+incompleto: a coluna guarda o texto do TSE sem tratamento — `JEFERSON TIMÓTEO`
+com acento, `KAIO MANIÇOBA` com cedilha, `SOCORRO PIMENTEL ` com **espaço à
+direita**. Isso nunca apareceu antes porque `agregados.ts` junta por
+`candidato_2026_id`, não por nome.
+
+Normalizando os dois lados: 36 → 42. Usando o **nome civil** como segunda
+chave (que o CSV legado da Alepe fornece): 42 → **47**. Os dois que sobram
+mudaram de nome de urna entre 2022 e hoje e não têm nome civil no cadastro —
+ficam vazios. `WANDERSON` (2022) **não** vira `WANDERSON FLORENCIO` (hoje) por
+decreto: poderia ser outra pessoa.
+
+Ambos os casamentos exigem resultado **único**. Dois candidatos com o mesmo
+nome devolvem nada — atribuir a votação de outra pessoa a um deputado é
+exatamente o erro que este painel não pode cometer, e há teste para isso.
+
+### O invariante que segura a tela
+
+`exportarSiteDeputados` compara, deputado a deputado, o valor do perfil com o
+de `agregadoPorAutorEstadual` — o agregado que o painel publica — e **lança**
+se divergirem em mais de R$ 1 ou numa emenda. O perfil convida o leitor a
+"conferir no painel"; chegar lá e achar outro número seria pior do que não ter
+a tela. Mesmo espírito do invariante de soma de `export-site.ts`.
+
+Duas armadilhas de contagem resolvidas por esse invariante durante a
+implementação: a identidade da emenda é `numero/ano`, não a linha — uma emenda
+executada em três exercícios são **três linhas e uma emenda**; e o recorte tem
+de ser o mesmo do painel (`conf === "alta"` **e** presente em
+`autoria_oficial`), senão o perfil somaria as sobras de regex que a catraca do
+dicionário oficial existe para barrar.
+
+### Ranking com ressalva embutida
+
+O tamanho de gabinete varia de **23 a 32** — ±17% em torno de 26,4. Os cargos
+são fixados por ato da Mesa, não pela vontade de cada deputado. Publicar "5º
+maior gabinete" sem dizer isso convida a leitura de excesso onde há variação
+pequena, então a ressalva sai junto do número, no rodapé do próprio gráfico —
+não numa nota de fim de página.
+
+O gráfico de dispersão **assessores × valor empenhado** existe pela mesma
+razão: mostra que as duas grandezas não se explicam, o que é a informação
+honesta a dar.
+
+### Índice enxuto para os links
+
+`docs/dados-deputados.json` tem 210 KB. Fazer a tabela do painel virar link
+não pode custar isso, e derivar o slug no cliente linkaria autor federal e
+sobra de regex para perfis inexistentes. Daí `docs/deputados-indice.json`
+(5 KB): `autor_normalizado → slug` dos 49. Só quem está nele vira link.
+
+---
+
+## 39. Quatro cópias do mesmo CSS, e a que já tinha divergido
+
+Ao acrescentar `gabinetes.html` e `deputado.html`, o sistema de cores passou a
+existir em **quatro cópias**, cada uma com o comentário "duplicado de
+propósito: a página é autônoma". A autonomia era real; a duplicação já tinha
+cobrado o preço:
+
+- `--mapa-0` só existia em `candidatos.html`, `--s4` só em `deputado.html`;
+- o `esc()` de `gabinetes.html` **não escapava aspa simples** — as outras três
+  escapavam. Uma cópia divergida silenciosamente, exatamente o modo de falha
+  que "duplicado de propósito" não previne.
+
+Agora há `docs/tema.css` (paleta + 18 regras que eram byte a byte idênticas nas
+quatro páginas) e `docs/comum.js` (`esc`, `css`, `num`, `moeda`, `brlCurto`,
+`dataBR`, `baseOption`, `eixoTexto`, `linhaGrade`, `aoTrocarTema`). O que é
+específico de cada tela continua no `<style>` dela, carregado depois e vencendo
+no empate — a autonomia que importava era a de layout, não a da paleta.
+
+`brl` não foi unificado às cegas: em `index.html` era um `Intl.NumberFormat` e
+em `deputado.html` uma função de escala ("R$ 3,7 mi"). Mesmo nome, semânticas
+diferentes. Viraram `PE.moeda` e `PE.brlCurto`, com o nome dizendo qual é qual.
+
+**Como a refatoração foi validada:** screenshot de página inteira antes e
+depois, comparado por md5. `index.html` e `candidatos.html` ficaram **byte a
+byte idênticas**. Refatoração de CSS sem prova visual é aposta.
+
+### Dois defeitos achados no caminho
+
+1. **Console 404 em toda página.** Nenhuma declarava favicon, então o navegador
+   pedia `/favicon.ico` e registrava erro em todas as telas. `docs/favicon.svg`
+   + um `<link rel="icon">` por página: zero erro de console no site inteiro.
+
+2. **Rolagem horizontal no celular, só em `deputado.html`.** Medido em 390px:
+   a página estourava 374px. Causa: item de grid tem `min-width: auto`, que é
+   `min-content` — e o ECharts fixa a largura do canvas em pixel. O gráfico
+   virava o piso da coluna e arrastava o `<body>` junto. `candidatos.html`
+   escapava por acaso, pela altura fixa dos seus gráficos.
+
+   Correção em `tema.css`: `.cards > * { min-width: 0; }`. Uma linha, vale para
+   as quatro telas, e é invisível no desktop — `min-width: 0` só age quando o
+   conteúdo excederia a coluna. Depois: overflow 0 nas quatro páginas em 390px.

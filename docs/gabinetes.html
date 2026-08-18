@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gabinetes da Alepe — quantos assessores cada deputado tem</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tema.css">
+<style>
+  header h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  header p { margin: 0 0 10px; color: var(--ink-2); font-size: .85rem; }
+  .voltar { display: inline-block; margin-bottom: 14px; font-size: .82rem; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
+  .tile .l { color: var(--ink-2); font-size: .78rem; margin-top: 1px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 8px; margin-bottom: 12px; }
+  .card .sub { color: var(--ink-muted); font-size: .75rem; margin: 0 4px 8px; }
+  .tablewrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
+  th { background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+  tbody tr.gab { cursor: pointer; }
+  tbody tr.gab:hover td { background: color-mix(in srgb, var(--s1) 7%, transparent); }
+  tr.aberta td { background: color-mix(in srgb, var(--s1) 10%, transparent); font-weight: 600; }
+  /* A linha de detalhe é escondida por [hidden]; sem o !important o display de
+     tabela venceria o atributo — foi um bug real neste repo. */
+  tr[hidden] { display: none !important; }
+  .pessoas { padding: 0 10px 10px; }
+  .pessoas ol { margin: 6px 0 0; padding-left: 26px; columns: 2; column-gap: 24px; }
+  @media (max-width: 720px) { .pessoas ol { columns: 1; } }
+  .pessoas li { margin-bottom: 3px; break-inside: avoid; }
+  .pessoas .cargo { color: var(--ink-2); }
+  .pessoas .desde { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  th.bar, td.bar { width: 34%; min-width: 90px; }
+  .barra { display: block; height: 9px; background: var(--s1); border-radius: 2px; }
+  @media (max-width: 640px) { th.bar, td.bar { display: none; } }
+  details.div { margin-top: 10px; font-size: .8rem; color: var(--ink-2); }
+  details.div summary { cursor: pointer; color: var(--s1); }
+  details.div li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Gabinetes da Alepe</h1>
+    <p id="subtitulo">Quantas pessoas trabalham no gabinete de cada deputado estadual, e quem são</p>
+    <a class="voltar" href="./">← voltar ao painel de emendas</a>
+  </header>
+
+  <div class="aviso" id="aviso"></div>
+
+  <div class="filters" role="search">
+    <label>Deputado
+      <input id="fDep" list="dlDep" placeholder="todos" autocomplete="off">
+      <datalist id="dlDep"></datalist>
+    </label>
+    <label>Partido
+      <select id="fPartido"><option value="">todos</option></select>
+    </label>
+    <label>Cargo
+      <select id="fCargo"><option value="">todos</option></select>
+    </label>
+    <label>Pessoa
+      <input id="fPessoa" placeholder="nome ou parte" autocomplete="off">
+    </label>
+    <button type="button" id="btnLimpar">limpar</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>Gabinetes</h2>
+    <p class="sub" id="sub">clique no nome para o perfil completo, ou na linha para ver os assessores</p>
+    <div class="tablewrap">
+      <table id="tbl">
+        <thead><tr>
+          <th data-k="dep">Deputado</th>
+          <th data-k="partido">Partido</th>
+          <th class="num" data-k="total">Pessoas</th>
+          <th class="bar"></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <details class="div" id="divs"><summary></summary><ul></ul></details>
+  </div>
+
+  <footer id="rodape"></footer>
+</div>
+
+<script src="comum.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const { esc, dataBR } = PE;
+const fmt = (n) => PE.num.format(n);
+
+let DADOS = null;
+let ordem = { k: "total", desc: true };
+const abertas = new Set();
+
+fetch("dados-pessoal.json")
+  .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then((d) => { DADOS = d; iniciar(); })
+  .catch(() => { $("#aviso").textContent = "dados-pessoal.json não encontrado — rode `bun run coletar:pessoal` e `bun run site`."; });
+
+function iniciar() {
+  $("#aviso").innerHTML =
+    "<strong>Foto do dia " + dataBR(DADOS.snapshot) + ".</strong> " + esc(DADOS.ressalva.split(". ").slice(1).join(". "));
+  $("#subtitulo").textContent =
+    fmt(DADOS.totalEmGabinete) + " pessoas em " + DADOS.totalGabinetes + " gabinetes — situação em " + dataBR(DADOS.snapshot);
+
+  const partidos = [...new Set(DADOS.linhas.map((l) => l.partido).filter(Boolean))].sort();
+  for (const p of partidos) $("#fPartido").add(new Option(p, p));
+
+  const cargos = [...new Set(DADOS.linhas.flatMap((l) => Object.keys(l.cargos)))].sort();
+  for (const c of cargos) $("#fCargo").add(new Option(c, c));
+
+  $("#dlDep").innerHTML = DADOS.linhas.map((l) => '<option value="' + esc(l.dep) + '">').join("");
+
+  for (const el of ["#fDep", "#fPartido", "#fCargo", "#fPessoa"]) $(el).addEventListener("input", render);
+  $("#btnLimpar").addEventListener("click", () => {
+    for (const el of ["#fDep", "#fPartido", "#fCargo", "#fPessoa"]) $(el).value = "";
+    render();
+  });
+  for (const th of document.querySelectorAll("#tbl th[data-k]")) {
+    th.addEventListener("click", () => {
+      const k = th.dataset.k;
+      ordem = { k, desc: ordem.k === k ? !ordem.desc : k === "total" };
+      render();
+    });
+  }
+  $("#tbl tbody").addEventListener("click", (ev) => {
+    // O nome é link para o perfil; abrir/fechar a lista é o resto da linha.
+    if (ev.target.closest("a")) return;
+    const tr = ev.target.closest("tr.gab");
+    if (!tr) return;
+    const dep = tr.dataset.dep;
+    if (abertas.has(dep)) abertas.delete(dep); else abertas.add(dep);
+    render();
+  });
+
+  renderDivergencias();
+  render();
+}
+
+/** Filtro de pessoa e de cargo age sobre a LISTA, e o total exibido é o da
+    lista filtrada — nunca o total do gabinete com a lista recortada. */
+function filtrar() {
+  const dep = $("#fDep").value.trim().toLowerCase();
+  const part = $("#fPartido").value;
+  const cargo = $("#fCargo").value;
+  const pessoa = $("#fPessoa").value.trim().toLowerCase();
+
+  return DADOS.linhas
+    .filter((l) => (!dep || l.dep.toLowerCase().includes(dep)) && (!part || l.partido === part))
+    .map((l) => {
+      let pessoas = l.pessoas;
+      if (cargo) pessoas = pessoas.filter((p) => (p.cargo ?? "(sem cargo informado)") === cargo);
+      if (pessoa) pessoas = pessoas.filter((p) => p.nome.toLowerCase().includes(pessoa));
+      return { ...l, pessoas, exibido: pessoas.length, recortado: cargo !== "" || pessoa !== "" };
+    })
+    .filter((l) => !l.recortado || l.exibido > 0);
+}
+
+function render() {
+  const linhas = filtrar();
+  const k = ordem.k;
+  linhas.sort((a, b) => {
+    const va = k === "total" ? a.exibido : String(a[k] ?? "");
+    const vb = k === "total" ? b.exibido : String(b[k] ?? "");
+    const c = k === "total" ? va - vb : va.localeCompare(vb, "pt-BR");
+    return ordem.desc ? -c : c;
+  });
+
+  const total = linhas.reduce((s, l) => s + l.exibido, 0);
+  const max = Math.max(1, ...linhas.map((l) => l.exibido));
+  const media = linhas.length ? total / linhas.length : 0;
+
+  $("#kpis").innerHTML = [
+    ["Gabinetes", fmt(linhas.length)],
+    ["Pessoas", fmt(total)],
+    ["Média por gabinete", media.toFixed(1).replace(".", ",")],
+    ["Maior gabinete", linhas.length ? fmt(max) : "—"],
+  ].map(([l, v]) => '<div class="tile"><div class="v">' + v + '</div><div class="l">' + l + "</div></div>").join("");
+
+  const recortado = linhas.some((l) => l.recortado);
+  $("#sub").textContent = recortado
+    ? "contagem restrita ao filtro aplicado — não é o tamanho total do gabinete"
+    : "clique no nome para o perfil completo, ou na linha para ver os assessores";
+
+  $("#tbl tbody").innerHTML = linhas.map((l) => {
+    const aberta = abertas.has(l.dep);
+    const larg = Math.round((l.exibido / max) * 90);
+    const cabecalho =
+      '<tr class="gab' + (aberta ? " aberta" : "") + '" data-dep="' + esc(l.dep) + '">' +
+      '<td><a href="deputado.html?d=' + esc(l.slug) + '" title="Abrir o perfil completo">' + esc(l.dep) + "</a></td>" +
+      "<td>" + esc(l.partido ?? "—") + "</td>" +
+      '<td class="num">' + fmt(l.exibido) + "</td>" +
+      '<td class="bar"><span class="barra" style="width:' + larg + '%"></span></td>' +
+      "</tr>";
+    const nomes = l.pessoas.map((p) =>
+      "<li>" + esc(p.nome) +
+      ' <span class="cargo">· ' + esc(p.cargo ?? "sem cargo informado") + " · " + esc(p.vinculo) + "</span>" +
+      ' <span class="desde">desde ' + dataBR(p.desde) + "</span></li>",
+    ).join("");
+    const detalhe =
+      '<tr class="det"' + (aberta ? "" : " hidden") + '><td colspan="4"><div class="pessoas">' +
+      '<ol>' + nomes + "</ol></div></td></tr>";
+    return cabecalho + detalhe;
+  }).join("");
+}
+
+function renderDivergencias() {
+  const d = DADOS.divergencias ?? [];
+  const det = $("#divs");
+  if (d.length === 0) { det.hidden = true; return; }
+  det.querySelector("summary").textContent =
+    d.length + " divergência(s) entre os dados abertos e o portal legado da Alepe";
+  det.querySelector("ul").innerHTML = d
+    .map((x) => "<li><strong>" + esc(x.chave) + "</strong> [" + esc(x.tipo) + "] — " + esc(x.detalhe) + "</li>")
+    .join("");
+  $("#rodape").innerHTML =
+    esc(DADOS.fonte) + " · snapshot de " + dataBR(DADOS.snapshot) +
+    ' · <a href="https://dadosabertos.alepe.pe.gov.br/" rel="noopener">dadosabertos.alepe.pe.gov.br</a>' +
+    " · gerado em " + dataBR((DADOS.geradoEm || "").slice(0, 10));
+}
+</script>
+</body>
+</html>

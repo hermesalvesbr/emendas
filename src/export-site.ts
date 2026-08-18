@@ -9,12 +9,14 @@
 // chars criava a pseudo-subação "EMEN" e atribuiu R$ 177 mi à emenda errada;
 // ver NOTAS.md item 26). Somas por chave, sem dupla contagem.
 
-import { baseEleitoral, origemPorMunicipio, origemPorRegiao, todosCandidatos } from "./agregados.ts";
+import { agregadoPorAutorEstadual, baseEleitoral, origemPorMunicipio, origemPorRegiao, todosCandidatos } from "./agregados.ts";
 import type { Db } from "./db.ts";
 import type { CargoAtual } from "./harvest-candidatos.ts";
 import { casarCandidato, indexarPorNome } from "./harvest-candidatos.ts";
 import type { EmendaFederalRow } from "./db.ts";
 import { linhasPainel } from "./elo-painel.ts";
+import type { PerfilDeputado } from "./perfil-deputado.ts";
+import { perfisDeputados, slugDeputado } from "./perfil-deputado.ts";
 
 type LinhaSite = {
   /** chave do elo (código de subação ou numero/ano textual) */
@@ -384,4 +386,207 @@ export async function exportarMalhaPE(destino = "docs/malha-pe.json"): Promise<n
   }
   await Bun.write(destino, JSON.stringify(geo));
   return geo.features.length;
+}
+
+// === Pessoal: quem trabalha no gabinete de cada deputado estadual ===
+//
+// Dado nominal de pessoa, então o JSON carrega a data do snapshot e a ressalva
+// no próprio corpo — a página não pode publicar "N assessores" sem dizer de
+// quando é e de onde veio. Ver NOTAS.md item 37.
+
+export type LinhaGabinete = {
+  dep: string;
+  /** slug do perfil (docs/deputado.html?d=slug) — mesma regra de perfil-deputado.ts */
+  slug: string;
+  partido: string | null;
+  total: number;
+  /** contagem por cargo, ex. { "Assessor Especial": 17 } */
+  cargos: Record<string, number>;
+  /** nomes, em ordem alfabética, com cargo e vínculo */
+  pessoas: Array<{ nome: string; cargo: string | null; vinculo: string; desde: string | null }>;
+  /** o que o sistema legado da ALEPE dizia, quando havia par lá */
+  legado: number | null;
+};
+
+export type SiteDataPessoal = {
+  geradoEm: string;
+  snapshot: string;
+  fonte: string;
+  ressalva: string;
+  totalGabinetes: number;
+  totalEmGabinete: number;
+  linhas: LinhaGabinete[];
+  divergencias: Array<{ escopo: string; chave: string; tipo: string; detalhe: string }>;
+};
+
+export function exportarSitePessoal(db: Db): SiteDataPessoal {
+  const snapshot = db.ultimoSnapshotPessoal();
+  if (!snapshot) throw new Error("pessoal: nenhum snapshot no banco — rode `bun run coletar:pessoal` antes");
+
+  const gabinetes = db.listGabinetes();
+  const linhas: LinhaGabinete[] = gabinetes.map((g) => {
+    const pessoas = db.assessoresDoGabinete(g.chave, snapshot);
+    const cargos: Record<string, number> = {};
+    for (const p of pessoas) {
+      const c = p.cargo ?? "(sem cargo informado)";
+      cargos[c] = (cargos[c] ?? 0) + 1;
+    }
+    return {
+      dep: g.deputado_nome,
+      slug: slugDeputado(g.deputado_normalizado),
+      partido: g.partido,
+      total: g.total,
+      cargos,
+      pessoas: pessoas.map((p) => ({ nome: p.nome, cargo: p.cargo, vinculo: p.vinculo, desde: p.data_admissao })),
+      legado: g.total_legado,
+    };
+  });
+
+  // Mesmo invariante dos outros exports: se a soma do JSON divergir do banco,
+  // o dado mudou debaixo do export — quebrar é melhor do que publicar errado.
+  for (const l of linhas) {
+    if (l.pessoas.length !== l.total) {
+      throw new Error(`pessoal: ${l.dep} tem total ${l.total} mas ${l.pessoas.length} nome(s) no snapshot ${snapshot}`);
+    }
+  }
+  const totalEmGabinete = linhas.reduce((acc, l) => acc + l.total, 0);
+  const noBanco = (db.raw
+    .query("SELECT COUNT(*) c FROM servidor_alepe WHERE snapshot = $s AND gabinete_chave IS NOT NULL")
+    .get({ s: snapshot }) as { c: number } | null)?.c ?? -1;
+  if (totalEmGabinete !== noBanco) {
+    throw new Error(`pessoal: soma do JSON (${totalEmGabinete}) diverge do banco (${noBanco})`);
+  }
+
+  return {
+    geradoEm: new Date().toISOString(),
+    snapshot,
+    fonte: "Lotação de pessoal — Dados Abertos da Alepe (/api/v1/servidores e /api/v1/parlamentares)",
+    ressalva:
+      `Foto do dia ${snapshot.split("-").reverse().join("/")}, do sistema de dados abertos da Alepe. ` +
+      "O portal legado da Alepe (funcionarios.php) publica números diferentes porque está desatualizado — " +
+      "as diferenças estão listadas ao final. A Alepe não publica remuneração individual.",
+    totalGabinetes: gabinetes.length,
+    totalEmGabinete,
+    linhas,
+    divergencias: db.divergenciasPessoal(snapshot).map((d) => ({ escopo: d.escopo, chave: d.chave, tipo: d.tipo, detalhe: d.detalhe })),
+  };
+}
+
+// === Perfil por deputado estadual ===
+//
+// Uma página por parlamentar, com o que as cinco camadas do projeto sabem
+// dele. O JSON carrega as fontes de CADA bloco (não uma linha genérica no
+// rodapé): assessores, emendas, votação e candidatura vêm de órgãos
+// diferentes, com datas diferentes, e a tela precisa dizer qual é qual.
+
+export type SiteDataDeputados = {
+  geradoEm: string;
+  snapshotPessoal: string;
+  fontes: {
+    gabinete: string;
+    emendas: string;
+    votacao2022: string;
+    candidatura2026: string;
+    bens: string;
+  };
+  ressalvas: {
+    gabinete: string;
+    emendas: string;
+    candidatura: string;
+    votacao: string;
+    ranking: string;
+  };
+  totais: {
+    deputados: number;
+    pessoasEmGabinete: number;
+    mediaAssessores: number;
+    comEmendas: number;
+    vempTotal: number;
+  };
+  perfis: PerfilDeputado[];
+};
+
+/**
+ * Índice enxuto (chave → slug) para as OUTRAS telas linkarem o perfil sem
+ * baixar os 49 perfis inteiros. `docs/dados-deputados.json` tem 210 KB; isto
+ * tem 4 KB e é tudo de que a tabela do painel precisa para virar link.
+ */
+export type IndiceDeputados = {
+  geradoEm: string;
+  itens: Array<{ chave: string; slug: string; nome: string; partido: string | null; assessores: number }>;
+};
+
+export function exportarIndiceDeputados(perfis: PerfilDeputado[]): IndiceDeputados {
+  return {
+    geradoEm: new Date().toISOString(),
+    itens: perfis.map((p) => ({
+      chave: p.chave,
+      slug: p.slug,
+      nome: p.nome,
+      partido: p.partido,
+      assessores: p.gabinete.total,
+    })),
+  };
+}
+
+export function exportarSiteDeputados(db: Db): SiteDataDeputados {
+  const snapshot = db.ultimoSnapshotPessoal();
+  if (!snapshot) throw new Error("deputados: nenhum snapshot de pessoal — rode `bun run coletar:pessoal` antes");
+
+  const perfis = perfisDeputados(db);
+
+  // Invariante cruzado: o agregado por autor do PAINEL é a referência
+  // publicada. Se o perfil chegar a outro número para a mesma pessoa, é
+  // porque o recorte divergiu — e o leitor clicaria em "confira no painel"
+  // para encontrar um valor diferente. Quebrar aqui é melhor.
+  const oficial = new Map(agregadoPorAutorEstadual(db.raw).map((a) => [a.chave, a]));
+  for (const p of perfis) {
+    const ref = oficial.get(p.chave);
+    const meu = p.emendas?.vemp ?? 0;
+    const dele = ref?.v ?? 0;
+    if (Math.abs(meu - dele) > 1) {
+      throw new Error(`perfil de ${p.nome}: R$ ${meu} no perfil != R$ ${dele} no agregado do painel`);
+    }
+    if (p.emendas && ref && p.emendas.n !== ref.n) {
+      throw new Error(`perfil de ${p.nome}: ${p.emendas.n} emenda(s) no perfil != ${ref.n} no agregado do painel`);
+    }
+  }
+
+  const totalPessoas = perfis.reduce((s, p) => s + p.gabinete.total, 0);
+  return {
+    geradoEm: new Date().toISOString(),
+    snapshotPessoal: snapshot,
+    fontes: {
+      gabinete: "Dados Abertos da Alepe — /api/v1/servidores e /api/v1/parlamentares (dadosabertos.alepe.pe.gov.br)",
+      emendas:
+        "Execução: Portal da Transparência PE (painéis Pentaho) e CKAN dados.pe.gov.br · " +
+        "Autoria: dados abertos da Alepe, bloco <emendas> do PLOA (proposicoes.alepe.pe.gov.br)",
+      votacao2022: "TSE — votação nominal por município e zona, Eleições Gerais 2022, 1º turno (cdn.tse.jus.br)",
+      candidatura2026: "TSE/DivulgaCandContas — Eleições Gerais 2026, circunscrição PE",
+      bens: "TSE/DivulgaCandContas — bens declarados no registro de candidatura de 2026",
+    },
+    ressalvas: {
+      gabinete:
+        `Foto do dia ${snapshot.split("-").reverse().join("/")}. O portal legado da Alepe publica números diferentes porque está desatualizado — as divergências estão na tela de gabinetes.`,
+      emendas:
+        "Só emendas com autoria CONFIRMADA no dicionário oficial da Alepe e com execução orçamentária nos empenhos coletados. " +
+        "Emenda apresentada e não executada não aparece; autoria apenas inferida de texto livre não entra.",
+      candidatura:
+        "Marcador positivo-only: a ausência não significa que a pessoa não é candidata. As candidaturas de 2026 ainda estão sujeitas a julgamento.",
+      votacao:
+        "Votação de 2022, 1º turno. Deputado estadual é eleito em circunscrição única — o estado inteiro. " +
+        "Onde teve voto não é 'a região que representa'.",
+      ranking:
+        "O tamanho de gabinete varia pouco (23 a 32 pessoas): os cargos são fixados por ato da Mesa, não pela vontade de cada deputado. " +
+        "A posição no ranking mede diferença pequena e não deve ser lida como excesso ou economia.",
+    },
+    totais: {
+      deputados: perfis.length,
+      pessoasEmGabinete: totalPessoas,
+      mediaAssessores: perfis.length ? Math.round((totalPessoas / perfis.length) * 10) / 10 : 0,
+      comEmendas: perfis.filter((p) => p.emendas).length,
+      vempTotal: Math.round(perfis.reduce((s, p) => s + (p.emendas?.vemp ?? 0), 0) * 100) / 100,
+    },
+    perfis,
+  };
 }

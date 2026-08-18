@@ -4,37 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Emendas Parlamentares Estaduais — PE</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tema.css">
 <style>
-  :root {
-    color-scheme: light;
-    --page: #f9f9f7; --surface: #fcfcfb;
-    --ink-1: #0b0b0b; --ink-2: #52514e; --ink-muted: #898781;
-    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --page: #0d0d0d; --surface: #1a1a19;
-      --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
-      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-    }
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19;
-    --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--page); color: var(--ink-1);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    font-size: 14px; line-height: 1.45;
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
   header h1 { font-size: 1.35rem; margin: 0 0 2px; }
   header p { margin: 0 0 16px; color: var(--ink-2); font-size: .85rem; }
   .modos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
@@ -46,29 +18,14 @@
   .modos button[aria-pressed="true"] {
     background: var(--s1); border-color: var(--s1); color: #fff; font-weight: 600;
   }
-  .filters {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; margin-bottom: 14px;
-  }
-  .filters label { color: var(--ink-2); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
   /* `display: flex` acima vence o estilo de agente de usuário do atributo
      [hidden], então os filtros escondidos por modo continuavam visíveis —
      inclusive "Partido" no modo estadual, desde antes do modo de bens. */
   .filters label[hidden] { display: none; }
-  .filters input, .filters select {
-    font: inherit; color: var(--ink-1); background: var(--page);
-    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 8px; min-width: 150px;
-  }
-  .filters button {
-    font: inherit; color: var(--ink-2); background: transparent;
-    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 12px; cursor: pointer;
-  }
   /* o seletor genérico .filters input dá largura de campo de texto; o
      checkbox precisa voltar ao tamanho natural para colar no rótulo */
   .filters .fcand { color: var(--ink-2); font-size: .8rem; cursor: pointer; white-space: nowrap; }
   .filters .fcand input[type="checkbox"] { width: auto; min-width: 0; flex: none; margin: 0; accent-color: #2a78d6; }
-  .filters button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
   /* Marcador de candidatura 2026. Duas variantes porque disputar o mesmo
      cargo e disputar outro são fatos diferentes — achatar os dois em
      "é candidato" perderia justamente a informação mais interessante. */
@@ -82,28 +39,20 @@
   :root:not([data-theme="light"]) .cand-reeleicao { color: #3987e5; }
   :root:not([data-theme="light"]) .cand-outro { color: #d95926; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
   .tile .l { color: var(--ink-2); font-size: .78rem; margin-top: 1px; }
-  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 4px; }
-  .card.full { grid-column: 1 / -1; }
-  .card h2 { font-size: .92rem; margin: 2px 4px 0; font-weight: 600; }
   .card .sub { color: var(--ink-muted); font-size: .75rem; margin: 0 4px 4px; }
   .chart { width: 100%; height: 380px; }
   #chEvolucao { height: 300px; }
   .tablecard { margin-top: 12px; }
   .tablewrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
-  table { border-collapse: collapse; width: 100%; font-size: .82rem; }
   th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
   th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr:hover td { background: color-mix(in srgb, var(--s1) 7%, transparent); }
   .conf { display: inline-flex; align-items: center; gap: 5px; }
   .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
   .conf-alta .dot { background: var(--s1); } .conf-media .dot { background: var(--s2); } .conf-nula .dot { background: var(--s3); }
-  footer { margin-top: 18px; color: var(--ink-muted); font-size: .75rem; }
-  a { color: var(--s1); }
   @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
   @media (max-width: 720px) {
     .filters label { flex: 1 1 46%; }
@@ -150,6 +99,10 @@
        como federal até 14 pontos deste arquivo serem editados. -->
   <p style="margin:-4px 0 12px;font-size:.82rem">
     <a href="candidatos.html">De onde são os candidatos → naturalidade e base eleitoral de 2022</a>
+    &nbsp;·&nbsp;
+    <a href="gabinetes.html">Gabinetes da Alepe → quantos assessores cada deputado tem</a>
+    &nbsp;·&nbsp;
+    <a href="deputado.html">Perfil dos deputados estaduais → emendas, gabinete e votação</a>
   </p>
 
   <div class="filters" role="search">
@@ -242,12 +195,14 @@
 </div>
 
 <script src="echarts.min.js"></script>
+<script src="comum.js"></script>
 <script>
 (async function () {
-  const [resp, respCand, respReg] = await Promise.all([
+  const [resp, respCand, respReg, respDep] = await Promise.all([
     fetch("dados.json"),
     fetch("dados-candidatos.json").catch(() => null),
     fetch("regioes.json").catch(() => null),
+    fetch("deputados-indice.json").catch(() => null),
   ]);
   const dados = await resp.json();
 
@@ -258,6 +213,13 @@
   const regData = respReg && respReg.ok ? await respReg.json() : null;
   const CAND = new Map((candData?.marcadores ?? []).map((m) => [m.autor, m]));
   const ehCandidato = (autor) => (autor ? CAND.get(autor) ?? null : null);
+
+  // Índice enxuto (5 KB) dos 49 gabinetes da Alepe: autor_normalizado -> slug
+  // do perfil. Só quem está aqui vira link — o painel tem autores federais e
+  // sobras de regex ("APORTE FINANCEIRO") que não são deputado estadual algum.
+  const depData = respDep && respDep.ok ? await respDep.json() : null;
+  const DEP_SLUG = new Map((depData?.itens ?? []).map((d) => [d.chave, d.slug]));
+  const slugDeputado = (autor) => (autor ? DEP_SLUG.get(autor) ?? null : null);
 
   // Mapa município -> região. Serve a dois filtros de significados diferentes:
   // nos modos de emenda, é a região do município que RECEBEU o recurso (dado
@@ -302,14 +264,13 @@
   document.getElementById("metaFonte2").textContent = dados.fonte;
   document.getElementById("metaData").textContent = new Date(dados.geradoEm).toLocaleString("pt-BR");
 
-  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  const { css, esc, baseOption } = PE;
+  const brl = PE.moeda;
   const brlCompact = (v) => {
     if (Math.abs(v) >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
     if (Math.abs(v) >= 1e3) return "R$ " + (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " mil";
     return brl.format(v);
   };
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   // filtros
   const fAutor = document.getElementById("fAutor");
@@ -382,18 +343,6 @@
   // ECharts base — grid recessivo, ink nos textos, sem decoração
   const CONF_LABEL = { alta: "confirmada", media: "inferida", nula: "sem autor" };
   let charts = {};
-  function baseOption() {
-    return {
-      animationDuration: 300,
-      textStyle: { fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif" },
-      tooltip: {
-        backgroundColor: css("--surface"), borderColor: css("--grid"),
-        textStyle: { color: css("--ink-1"), fontSize: 12 },
-        confine: true,
-      },
-    };
-  }
-
   function renderAutores(fl) {
     const por = new Map();
     for (const l of fl) if (l.autor) por.set(l.autor, (por.get(l.autor) ?? 0) + l.vemp);
@@ -516,7 +465,19 @@
       {
         const dAutor = document.createElement("td");
         dAutor.dataset.label = "Parlamentar";
-        dAutor.append(document.createTextNode(l.autor ?? "—"));
+        // Deputado estadual com gabinete na Alepe vira link para o perfil.
+        // Autor federal e sobra de regex ("APORTE FINANCEIRO") não têm perfil
+        // e continuam texto puro — o índice é a lista dos 49, não um palpite.
+        const perfil = eFederal() ? null : slugDeputado(l.autor);
+        if (perfil) {
+          const a = document.createElement("a");
+          a.href = "deputado.html?d=" + encodeURIComponent(perfil);
+          a.textContent = l.autor;
+          a.title = "Abrir o perfil completo deste deputado estadual";
+          dAutor.append(a);
+        } else {
+          dAutor.append(document.createTextNode(l.autor ?? "—"));
+        }
         const m = ehCandidato(l.autor);
         if (m) {
           const b = document.createElement("span");
@@ -819,7 +780,7 @@
   for (const el of [fCandidato, fRegiao, fCargo, fSuplentes]) el.addEventListener("change", render);
   document.getElementById("fLimpar").addEventListener("click", () => { limparFiltros(); render(); });
   window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });
+  PE.aoTrocarTema(() => { initCharts(); render(); });
 })();
 </script>
 </body>

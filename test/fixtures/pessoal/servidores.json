@@ -1,0 +1,7 @@
+[
+  {"NOME":"ABRAAO SANTOS SILVA","CODIGO_LOTACAO":"256","NOME_LOTACAO":"GAB.DEP. WANDERSON FLORENCIO","CARGO_EFETIVO":"Assessor Especial","CARGO_NIVEL":"Assessor Especial","VINCULO":"Comissionado","DATA_ADMISSAO":{"date":"2026-05-05 00:00:00.000000","timezone_type":3,"timezone":"America\/Recife"}},
+  {"NOME":"ADALNERY BELO DA SILVA ARAUJO","CODIGO_LOTACAO":"281","NOME_LOTACAO":"GAB.DEP. IZAIAS REGIS","CARGO_EFETIVO":"Coordenador de Expediente","CARGO_NIVEL":"Coordenador de Expediente","VINCULO":"Comissionado","DATA_ADMISSAO":{"date":"2023-06-13 00:00:00.000000","timezone_type":3,"timezone":"America\/Recife"}},
+  {"NOME":"MARIA DA SILVA","CODIGO_LOTACAO":"281","NOME_LOTACAO":"GAB.DEP. IZAIAS REGIS","CARGO_EFETIVO":"Chefe de Gabinete","CARGO_NIVEL":"Chefe de Gabinete","VINCULO":"Comissionado","DATA_ADMISSAO":{"date":"2024-02-01 00:00:00.000000","timezone_type":3,"timezone":"America\/Recife"}},
+  {"NOME":"JOSE ANDRADE","CODIGO_LOTACAO":"310","NOME_LOTACAO":"GAB.DEP. NINO ENOQUE","CARGO_EFETIVO":"","CARGO_NIVEL":"Assessor Especial Adjunto","VINCULO":"À Disposição","DATA_ADMISSAO":null},
+  {"NOME":"THIAGO FREITAS LIRA","CODIGO_LOTACAO":"40","NOME_LOTACAO":"Gerência de Apoio à Sistematização da Legislação Estadual","CARGO_EFETIVO":"Gerente","CARGO_NIVEL":"GERENTE","VINCULO":"Efetivo","DATA_ADMISSAO":{"date":"2010-03-01 00:00:00.000000","timezone_type":3,"timezone":"America\/Recife"}}
+]

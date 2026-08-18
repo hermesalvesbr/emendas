@@ -166,6 +166,71 @@ CREATE TABLE IF NOT EXISTS votacao_2022_municipio (
 CREATE INDEX IF NOT EXISTS idx_vm_municipio ON votacao_2022_municipio(municipio);
 CREATE INDEX IF NOT EXISTS idx_vm_cargo ON votacao_2022_municipio(cargo);
 
+-- === Camada PESSOAL (quem trabalha no gabinete de cada deputado estadual) ===
+--
+-- Também é a âncora de "deputado estadual" que o projeto não tinha: até aqui o
+-- parlamentar existia só como string em emenda.autor_normalizado. A tabela
+-- gabinete dá nome oficial, partido e chave de junção estáveis.
+--
+-- A contagem sai SÓ dos dados abertos (/api/v1/servidores). O sistema legado
+-- (funcionarios.php + mapaocupacaosetores.php) está defasado — medido em
+-- 18/08/2026: dos 101 admitidos desde 01/06/2026, só 18 aparecem lá. Ele entra
+-- como enriquecimento (matrícula, código de setor) e como divergência
+-- registrada, nunca alterando quem está lotado onde. Ver NOTAS.md item 37.
+CREATE TABLE IF NOT EXISTS gabinete (
+  chave TEXT PRIMARY KEY,              -- rótulo de lotação normalizado, sem "GAB.DEP."
+  rotulo_api TEXT NOT NULL,
+  rotulo_legado TEXT,
+  codigo_setor TEXT,                   -- 1110xxx, do legado; estável entre trocas de titular
+  codigo_lotacao TEXT,                 -- código curto dos dados abertos (outro espaço de códigos)
+  deputado_nome TEXT NOT NULL,
+  deputado_normalizado TEXT NOT NULL,  -- junta com autoria_oficial.autor_normalizado
+  deputado_matricula TEXT,
+  deputado_nome_civil TEXT,
+  partido TEXT,
+  total INTEGER NOT NULL,              -- pessoas lotadas, dos dados abertos
+  total_legado INTEGER,                -- o que o mapa de ocupação diz; pode divergir
+  demissionarios INTEGER,
+  atualizado_em TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_gab_deputado ON gabinete(deputado_normalizado);
+
+-- Foto nominal da lotação. NÃO é upsert: cada coleta grava um snapshot novo e a
+-- série temporal nasce do acúmulo, porque as fontes só expõem o estado de hoje
+-- (a única data histórica publicada é a de admissão).
+CREATE TABLE IF NOT EXISTS servidor_alepe (
+  snapshot TEXT NOT NULL,              -- YYYY-MM-DD da coleta
+  chave TEXT NOT NULL,                 -- matrícula quando o legado a fornece, senão nome normalizado
+  matricula TEXT,
+  nome TEXT NOT NULL,
+  nome_normalizado TEXT NOT NULL,
+  cargo TEXT,
+  cargo_codigo TEXT,
+  vinculo TEXT NOT NULL,
+  codigo_lotacao TEXT,
+  nome_lotacao TEXT,
+  gabinete_chave TEXT,                 -- NULL quando a lotação não é gabinete parlamentar
+  data_admissao TEXT,
+  no_legado INTEGER NOT NULL,          -- 1 = também aparece no CSV legado
+  PRIMARY KEY (snapshot, chave)
+);
+
+CREATE INDEX IF NOT EXISTS idx_serv_gabinete ON servidor_alepe(snapshot, gabinete_chave);
+CREATE INDEX IF NOT EXISTS idx_serv_nome ON servidor_alepe(nome_normalizado);
+
+-- Toda diferença entre as fontes fica registrada. Nada é silenciado para o
+-- número fechar — é o mesmo princípio do invariante de soma do export.
+CREATE TABLE IF NOT EXISTS pessoal_divergencia (
+  snapshot TEXT NOT NULL,
+  escopo TEXT NOT NULL CHECK (escopo IN ('gabinete','pessoa')),
+  chave TEXT NOT NULL,
+  tipo TEXT NOT NULL CHECK (tipo IN ('contagem','so-atual','so-legado','sem-titular','homonimo')),
+  detalhe TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_pdiv_snapshot ON pessoal_divergencia(snapshot);
+
 CREATE INDEX IF NOT EXISTS idx_vot_cpf ON votacao_2022(cpf);
 CREATE INDEX IF NOT EXISTS idx_vot_cand ON votacao_2022(candidato_2026_id);
 CREATE INDEX IF NOT EXISTS idx_vot_mun ON votacao_2022(municipio);
@@ -291,6 +356,51 @@ export type NewEmendaFederal = {
 
 export type EmendaFederalRow = NewEmendaFederal & { id: number; hash: string; coletado_em: string };
 
+export type NewGabinete = {
+  chave: string;
+  rotulo_api: string;
+  rotulo_legado: string | null;
+  codigo_setor: string | null;
+  codigo_lotacao: string | null;
+  deputado_nome: string;
+  deputado_normalizado: string;
+  deputado_matricula: string | null;
+  deputado_nome_civil: string | null;
+  partido: string | null;
+  total: number;
+  total_legado: number | null;
+  demissionarios: number | null;
+  atualizado_em: string;
+};
+
+export type NewServidorAlepe = {
+  snapshot: string;
+  chave: string;
+  matricula: string | null;
+  nome: string;
+  nome_normalizado: string;
+  cargo: string | null;
+  cargo_codigo: string | null;
+  vinculo: string;
+  codigo_lotacao: string | null;
+  nome_lotacao: string | null;
+  gabinete_chave: string | null;
+  data_admissao: string | null;
+  no_legado: number;
+};
+
+export type NewPessoalDivergencia = {
+  snapshot: string;
+  escopo: "gabinete" | "pessoa";
+  chave: string;
+  tipo: "contagem" | "so-atual" | "so-legado" | "sem-titular" | "homonimo";
+  detalhe: string;
+};
+
+export type GabineteRow = NewGabinete;
+export type ServidorAlepeRow = NewServidorAlepe;
+export type PessoalDivergenciaRow = NewPessoalDivergencia;
+
 export type Db = {
   readonly raw: Database;
   insertEmpenho(row: NewEmpenho): { inserted: boolean; hash: string };
@@ -319,6 +429,20 @@ export type Db = {
   inserirSuplentes(suplentes: Array<NewCandidato & { id_titular: number }>, coletadoEm: string): number;
   candidatosSemDetalhe(): Array<{ id: number; nome_urna: string }>;
   gravarDetalheCandidato(id: number, d: DetalheCandidato): void;
+  /** Grava um snapshot de pessoal inteiro em transação — tudo ou nada. */
+  gravarSnapshotPessoal(
+    snapshot: string,
+    gabinetes: NewGabinete[],
+    servidores: NewServidorAlepe[],
+    divergencias: NewPessoalDivergencia[],
+  ): void;
+  ultimoSnapshotPessoal(): string | null;
+  listGabinetes(): GabineteRow[];
+  /** Assessores de um gabinete no snapshot indicado (padrão: o mais recente). */
+  assessoresDoGabinete(chave: string, snapshot?: string): ServidorAlepeRow[];
+  /** Mesma coisa, mas partindo do nome normalizado do deputado (junta com autoria). */
+  assessoresDoDeputado(nomeNormalizado: string, snapshot?: string): ServidorAlepeRow[];
+  divergenciasPessoal(snapshot?: string): PessoalDivergenciaRow[];
   close(): void;
 };
 
@@ -342,6 +466,11 @@ export function openDb(path = "data/emendas.sqlite"): Db {
   for (const [nome, tipo] of COLUNAS_CANDIDATO_FASE2) {
     if (!colunasExistentes.has(nome)) raw.exec(`ALTER TABLE candidato_2026 ADD COLUMN ${nome} ${tipo}`);
   }
+
+  const ultimoSnapshotPessoal = (): string | null => {
+    const r = raw.query("SELECT MAX(snapshot) as s FROM servidor_alepe").get() as { s: string | null } | null;
+    return r?.s ?? null;
+  };
 
   const stmts = {
     insertEmpenho: raw.query(`
@@ -660,6 +789,85 @@ export function openDb(path = "data/emendas.sqlite"): Db {
           WHERE id = $id
         `)
         .run({ ...d, id });
+    },
+
+    // Snapshot inteiro em transação: uma coleta interrompida no meio deixaria o
+    // painel dizendo que um gabinete tem 3 assessores em vez de 26.
+    gravarSnapshotPessoal(snapshot, gabinetes, servidores, divergencias) {
+      const insGab = raw.query(`
+        INSERT INTO gabinete
+          (chave, rotulo_api, rotulo_legado, codigo_setor, codigo_lotacao, deputado_nome,
+           deputado_normalizado, deputado_matricula, deputado_nome_civil, partido, total, total_legado,
+           demissionarios, atualizado_em)
+        VALUES ($chave, $rotulo_api, $rotulo_legado, $codigo_setor, $codigo_lotacao, $deputado_nome,
+                $deputado_normalizado, $deputado_matricula, $deputado_nome_civil, $partido, $total, $total_legado,
+                $demissionarios, $atualizado_em)
+        ON CONFLICT (chave) DO UPDATE SET
+          rotulo_api = excluded.rotulo_api, rotulo_legado = excluded.rotulo_legado,
+          codigo_setor = excluded.codigo_setor, codigo_lotacao = excluded.codigo_lotacao,
+          deputado_nome = excluded.deputado_nome, deputado_normalizado = excluded.deputado_normalizado,
+          deputado_matricula = excluded.deputado_matricula, deputado_nome_civil = excluded.deputado_nome_civil,
+          partido = excluded.partido,
+          total = excluded.total, total_legado = excluded.total_legado,
+          demissionarios = excluded.demissionarios, atualizado_em = excluded.atualizado_em
+      `);
+      const insServ = raw.query(`
+        INSERT OR REPLACE INTO servidor_alepe
+          (snapshot, chave, matricula, nome, nome_normalizado, cargo, cargo_codigo, vinculo,
+           codigo_lotacao, nome_lotacao, gabinete_chave, data_admissao, no_legado)
+        VALUES ($snapshot, $chave, $matricula, $nome, $nome_normalizado, $cargo, $cargo_codigo, $vinculo,
+                $codigo_lotacao, $nome_lotacao, $gabinete_chave, $data_admissao, $no_legado)
+      `);
+      const insDiv = raw.query(`
+        INSERT INTO pessoal_divergencia (snapshot, escopo, chave, tipo, detalhe)
+        VALUES ($snapshot, $escopo, $chave, $tipo, $detalhe)
+      `);
+
+      raw.transaction(() => {
+        // Recoletar o mesmo dia sobrescreve o dia; snapshots anteriores ficam.
+        raw.query("DELETE FROM servidor_alepe WHERE snapshot = $snapshot").run({ snapshot });
+        raw.query("DELETE FROM pessoal_divergencia WHERE snapshot = $snapshot").run({ snapshot });
+        // Gabinete é estado atual, não série: some quem deixou de existir.
+        raw.query("DELETE FROM gabinete").run();
+        for (const g of gabinetes) insGab.run({ ...g });
+        for (const s of servidores) insServ.run({ ...s });
+        for (const d of divergencias) insDiv.run({ ...d });
+      })();
+    },
+
+    ultimoSnapshotPessoal: ultimoSnapshotPessoal,
+
+    listGabinetes() {
+      return raw.query("SELECT * FROM gabinete ORDER BY total DESC, deputado_nome").all() as GabineteRow[];
+    },
+
+    assessoresDoGabinete(chave, snapshot) {
+      const alvo = snapshot ?? ultimoSnapshotPessoal();
+      if (!alvo) return [];
+      return raw
+        .query("SELECT * FROM servidor_alepe WHERE snapshot = $snapshot AND gabinete_chave = $chave ORDER BY nome")
+        .all({ snapshot: alvo, chave }) as ServidorAlepeRow[];
+    },
+
+    assessoresDoDeputado(nomeNormalizado, snapshot) {
+      const alvo = snapshot ?? ultimoSnapshotPessoal();
+      if (!alvo) return [];
+      return raw
+        .query(`
+          SELECT s.* FROM servidor_alepe s
+          JOIN gabinete g ON g.chave = s.gabinete_chave
+          WHERE s.snapshot = $snapshot AND g.deputado_normalizado = $nome
+          ORDER BY s.nome
+        `)
+        .all({ snapshot: alvo, nome: nomeNormalizado }) as ServidorAlepeRow[];
+    },
+
+    divergenciasPessoal(snapshot) {
+      const alvo = snapshot ?? ultimoSnapshotPessoal();
+      if (!alvo) return [];
+      return raw
+        .query("SELECT * FROM pessoal_divergencia WHERE snapshot = $snapshot ORDER BY escopo, tipo, chave")
+        .all({ snapshot: alvo }) as PessoalDivergenciaRow[];
     },
 
     close() {

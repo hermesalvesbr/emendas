@@ -4,43 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>De onde são os candidatos — PE 2026</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tema.css">
 <style>
-  /* Mesmo sistema de cores do painel principal — light, dark automático e
-     override explícito por data-theme. Duplicado de propósito: a página é
-     autônoma e não deve depender de ordem de carregamento de um CSS comum. */
-  :root {
-    color-scheme: light;
-    --page: #f9f9f7; --surface: #fcfcfb;
-    --ink-1: #0b0b0b; --ink-2: #52514e; --ink-muted: #898781;
-    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
-    --mapa-0: #ececE6;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --page: #0d0d0d; --surface: #1a1a19;
-      --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
-      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-      --mapa-0: #232322;
-    }
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19;
-    --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
-    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70;
-    --mapa-0: #232322;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--page); color: var(--ink-1);
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    font-size: 14px; line-height: 1.45;
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
   header h1 { font-size: 1.35rem; margin: 0 0 2px; }
   header p { margin: 0 0 10px; color: var(--ink-2); font-size: .85rem; }
   .voltar { display: inline-block; margin-bottom: 14px; font-size: .82rem; }
@@ -51,51 +17,21 @@
   }
   .modos button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
   .modos button[aria-pressed="true"] { background: var(--s1); border-color: var(--s1); color: #fff; font-weight: 600; }
-  .filters {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; margin-bottom: 14px;
-  }
-  .filters label { color: var(--ink-2); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
   .filters label[hidden] { display: none; }
-  .filters input, .filters select {
-    font: inherit; color: var(--ink-1); background: var(--page);
-    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 8px; min-width: 150px;
-  }
-  .filters button {
-    font: inherit; color: var(--ink-2); background: transparent;
-    border: 1px solid var(--axis); border-radius: 7px; padding: 5px 12px; cursor: pointer;
-  }
-  .filters button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
   .tile .l { color: var(--ink-2); font-size: .78rem; margin-top: 1px; }
-  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 4px; }
-  .card.full { grid-column: 1 / -1; }
-  .card h2 { font-size: .92rem; margin: 2px 4px 0; font-weight: 600; }
   .card .sub { color: var(--ink-muted); font-size: .75rem; margin: 0 4px 4px; }
   .chart { width: 100%; height: 420px; }
   #chRegiao { height: 340px; }
   #chDispersao { height: 360px; }
   .tablecard { margin-top: 12px; }
   .tablewrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
-  table { border-collapse: collapse; width: 100%; font-size: .82rem; }
   th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
   th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   tr:hover td { background: color-mix(in srgb, var(--s1) 7%, transparent); }
   tr.sel td { background: color-mix(in srgb, var(--s2) 14%, transparent); }
-  .aviso {
-    background: color-mix(in srgb, var(--s2) 10%, var(--surface));
-    border: 1px solid color-mix(in srgb, var(--s2) 35%, var(--border));
-    border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
-    font-size: .82rem; color: var(--ink-2);
-  }
-  .aviso strong { color: var(--ink-1); }
-  footer { margin-top: 18px; color: var(--ink-muted); font-size: .75rem; }
-  a { color: var(--s1); }
   @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
   @media (max-width: 720px) {
     .filters label { flex: 1 1 46%; }
@@ -198,26 +134,13 @@
 </div>
 
 <script src="echarts.min.js"></script>
+<script src="comum.js"></script>
 <script>
 (() => {
   "use strict";
 
-  const num = new Intl.NumberFormat("pt-BR");
+  const { num, esc, css, baseOption } = PE;
   const pct1 = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-
-  function baseOption() {
-    return {
-      animationDuration: 300,
-      textStyle: { fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif" },
-      tooltip: {
-        backgroundColor: css("--surface"), borderColor: css("--grid"),
-        textStyle: { color: css("--ink-1"), fontSize: 12 }, confine: true,
-      },
-    };
-  }
 
   let dados = null, charts = {}, vista = "absoluto";
   /** Votação de 2022 indexada por id de candidato — nem todos têm. */
@@ -692,7 +615,7 @@
       renderTabela(filtrar());
     }));
     addEventListener("resize", () => { for (const c of Object.values(charts)) c?.resize?.(); });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { initCharts(); render(); });
+    PE.aoTrocarTema(() => { initCharts(); render(); });
   }).catch((e) => {
     document.getElementById("kpis").innerHTML =
       `<div class="tile"><div class="v">erro</div><div class="l">${esc(e.message)}</div></div>`;

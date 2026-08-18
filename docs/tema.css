@@ -1,0 +1,97 @@
+/* Sistema visual único das quatro telas do painel.
+ *
+ * Cada página tinha uma cópia deste bloco. Uma cópia divergiu (--mapa-0 só em
+ * candidatos, --s4 só em deputado) e a próxima divergência seria uma tela com
+ * outro azul. Aqui ficam a paleta e as primitivas IDÊNTICAS entre as páginas;
+ * o que é específico de cada tela continua no <style> dela, que é carregado
+ * depois e vence no empate.
+ *
+ * Três estados de tema: escolha explícita (data-theme), preferência do sistema
+ * (prefers-color-scheme) e o padrão claro. Nenhuma cor pode existir só dentro
+ * do bloco escuro, ou o modo claro herda o fundo do navegador.
+ */
+
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb;
+  --ink-1: #0b0b0b; --ink-2: #52514e; --ink-muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #8a6fd1;
+  --mapa-0: #ececE6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19;
+    --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9a80e0;
+    --mapa-0: #232322;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19;
+  --ink-1: #ffffff; --ink-2: #c3c2b7; --ink-muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #9a80e0;
+  --mapa-0: #232322;
+}
+
+/* ------------------------------------------------------------ primitivas */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0; background: var(--page); color: var(--ink-1);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px; line-height: 1.45;
+}
+
+a { color: var(--s1); }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; }
+
+/* filtros */
+.filters {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; margin-bottom: 14px;
+}
+.filters label { color: var(--ink-2); font-size: .8rem; display: flex; align-items: center; gap: 6px; }
+.filters input, .filters select {
+  font: inherit; color: var(--ink-1); background: var(--page);
+  border: 1px solid var(--axis); border-radius: 7px; padding: 5px 8px; min-width: 150px;
+}
+.filters button {
+  font: inherit; color: var(--ink-2); background: transparent;
+  border: 1px solid var(--axis); border-radius: 7px; padding: 5px 12px; cursor: pointer;
+}
+.filters button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
+
+/* cartões e indicadores */
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Item de grid tem min-width auto = min-content. O ECharts fixa a largura do
+   canvas em pixel, então sem isto o gráfico vira o piso da coluna e a página
+   inteira ganha rolagem horizontal no celular — medido em 390px. */
+.cards > * { min-width: 0; }
+.card.full { grid-column: 1 / -1; }
+.card h2 { font-size: .92rem; margin: 2px 4px 0; font-weight: 600; }
+
+/* tabelas */
+table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ressalva em destaque — sempre a mesma, porque significa sempre a mesma coisa */
+.aviso {
+  background: color-mix(in srgb, var(--s2) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--s2) 35%, var(--border));
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+  font-size: .82rem; color: var(--ink-2);
+}
+.aviso strong { color: var(--ink-1); }
+
+footer { margin-top: 18px; color: var(--ink-muted); font-size: .75rem; }

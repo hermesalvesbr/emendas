@@ -11,8 +11,9 @@ import { detalharCandidatos, harvestCandidatos } from "./harvest-candidatos.ts";
 import { harvestFederal } from "./harvest-federal.ts";
 import { harvestVotacao } from "./harvest-votacao.ts";
 import { harvestPentaho } from "./harvest-pentaho.ts";
+import { harvestPessoal } from "./harvest-pessoal.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
-import { exportarMalhaPE, exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal, exportarSiteOrigem } from "./export-site.ts";
+import { exportarMalhaPE, exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal, exportarSiteOrigem, exportarSitePessoal, exportarSiteDeputados, exportarIndiceDeputados } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import type { EstadoThread } from "./post-x.ts";
 import {
@@ -44,6 +45,7 @@ const COMMANDS = [
   "coletar:federal",
   "coletar:candidatos",
   "coletar:votacao",
+  "coletar:pessoal",
   "normalizar",
   "relatorio",
   "site",
@@ -128,6 +130,9 @@ async function main(): Promise<void> {
       break;
     case "coletar:votacao":
       await cmdColetarVotacao();
+      break;
+    case "coletar:pessoal":
+      await cmdColetarPessoal();
       break;
     case "normalizar":
       await cmdNormalizar();
@@ -307,6 +312,32 @@ async function cmdColetarAlepe(): Promise<void> {
   }
 }
 
+// A folha muda devagar e cada execução grava um snapshot datado — rodar isto de
+// hora em hora só engorda a tabela sem acrescentar informação. Ver cmdCronInstall.
+async function cmdColetarPessoal(): Promise<void> {
+  const config = await loadConfig();
+  const db = openDb();
+  try {
+    console.log("coletando lotação de pessoal da ALEPE (dados abertos + espelho legado)...");
+    const r = await harvestPessoal(db, config);
+    console.log(`pessoal: snapshot ${r.snapshot} — ${r.gabinetes} gabinete(s), ${r.pessoasEmGabinete} pessoa(s) lotada(s) em gabinete, ${r.totalServidores} servidor(es) no total`);
+    for (const f of r.fontesFalhas) {
+      console.log(`  fonte indisponível: ${f.fonte} — ${f.motivo}`);
+    }
+    if (r.divergencias > 0) {
+      console.log(`  ${r.divergencias} divergência(s) registrada(s) em pessoal_divergencia (o legado da ALEPE está defasado — NOTAS 37)`);
+      for (const d of db.divergenciasPessoal(r.snapshot).filter((x) => x.escopo === "gabinete").slice(0, 5)) {
+        console.log(`    [${d.tipo}] ${d.chave}: ${d.detalhe}`);
+      }
+    }
+    for (const g of db.listGabinetes().slice(0, 5)) {
+      console.log(`  ${String(g.total).padStart(3)}  ${g.deputado_nome}${g.partido ? ` (${g.partido})` : ""}`);
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function cmdColetarFederal(): Promise<void> {
   const config = await loadConfig();
   const db = openDb();
@@ -478,6 +509,26 @@ async function cmdSite(): Promise<void> {
     const comBens = bens.linhas.filter((l) => l.bens > 0).length;
     console.log(`docs/dados-bens.json gerado: ${bens.linhas.length} candidato(s) detalhado(s), ${comBens} com patrimônio declarado`);
     if (bens.semDetalhe > 0) console.log(`  ${bens.semDetalhe} sem detalhe coletado — ficam FORA do ranking (não viram zero falso)`);
+
+    // Gabinetes: só exporta se já houve coleta de pessoal, para "bun run site"
+    // continuar funcionando em banco que ainda não rodou coletar:pessoal.
+    if (db.ultimoSnapshotPessoal()) {
+      const pessoal = exportarSitePessoal(db);
+      await Bun.write("docs/dados-pessoal.json", JSON.stringify(pessoal));
+      console.log(`docs/dados-pessoal.json gerado: ${pessoal.totalGabinetes} gabinete(s), ${pessoal.totalEmGabinete} pessoa(s) — snapshot ${pessoal.snapshot}`);
+      if (pessoal.divergencias.length > 0) {
+        console.log(`  ${pessoal.divergencias.length} divergência(s) com o portal legado da Alepe, publicadas junto`);
+      }
+
+      const deps = exportarSiteDeputados(db);
+      await Bun.write("docs/dados-deputados.json", JSON.stringify(deps));
+      const comVoto = deps.perfis.filter((p) => p.votacao2022).length;
+      const comCand = deps.perfis.filter((p) => p.candidatura2026).length;
+      await Bun.write("docs/deputados-indice.json", JSON.stringify(exportarIndiceDeputados(deps.perfis)));
+      console.log(`docs/dados-deputados.json gerado: ${deps.totais.deputados} perfil(is) — ${deps.totais.comEmendas} com emendas, ${comVoto} com votação de 2022, ${comCand} com candidatura em 2026`);
+    } else {
+      console.log("docs/dados-pessoal.json NÃO gerado: rode `bun run coletar:pessoal` primeiro");
+    }
 
     // Mapa município -> região, usado pelo filtro regional do painel nos dois
     // sentidos: destino da emenda (sólido) e naturalidade do candidato (proxy).
