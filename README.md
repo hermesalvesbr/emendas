@@ -89,8 +89,8 @@ em custo. Ver NOTAS.md itens 37 e 40.
 
 ### Perfil por deputado
 
-`docs/deputado.html?d=<slug>` reúne, num lugar só, o que as cinco camadas
-sabem de cada um dos 49: gabinete e ranking de assessores, emendas executadas
+A aba **Perfil e comparação** (`#tab=deputados&dep=<slug>`) reúne, num lugar só,
+o que as cinco camadas sabem de cada um dos 49 — e permite pôr dois lado a lado: gabinete e ranking de assessores, emendas executadas
 por exercício, destino do recurso por município e região, base eleitoral de
 2022, candidatura e bens de 2026. Cada gráfico carrega a **fonte do seu
 próprio bloco** — são órgãos e datas diferentes.
@@ -105,8 +105,11 @@ camada que não casa vira uma frase explícita na tela. Ver NOTAS.md item 38.
 (`dependencies: {}`) — HTTP nativo, `bun:sqlite`, `HTMLRewriter`, `Bun.WebView`
 (descoberta dos endpoints Pentaho por observação de rede via CDP) e `Bun.cron`.
 O site é 100% estático (ECharts vendorizado + JSON gerado em build), hospedado
-no GitHub Pages a partir de [`docs/`](docs/) — quatro telas que compartilham
-`docs/tema.css` (paleta) e `docs/comum.js` (formatação e base dos gráficos).
+no GitHub Pages a partir de [`docs/`](docs/): uma casca única (`index.html`)
+com quatro abas, estado no hash da URL, e três arquivos com responsabilidades
+separadas — `tema.css` (paleta e componentes), `comum.js` (formatação e base
+dos gráficos) e `painel.js` (dados, estado e render). As telas antigas viraram
+redirecionamentos, para não quebrar link já compartilhado.
 
 ## Comandos
 

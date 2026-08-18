@@ -1476,3 +1476,59 @@ diário não produz. Baixado em `data/tce-servidores-alepe.json`.
 Armadilha de formato, de novo: o endpoint declara
 `application/json;charset=ISO-8859-1` — e desta vez o header **não** mente. O
 parâmetro `AnoRemessa` é aceito e ignorado (devolve sempre os mesmos 9.715).
+
+---
+
+## 42. Redesign: quatro páginas viraram uma casca com quatro abas
+
+O painel eram quatro HTML independentes, cada um com sua casca, seus filtros e
+sua navegação. Virou **uma casca única** com quatro abas e o estado no hash da
+URL, seguindo o canvas de redesign entregue em `template/`.
+
+### O que mudou de arquitetura
+
+| Antes | Depois |
+|---|---|
+| 4 páginas com casca duplicada | `index.html` (casca) + 4 renderizadores |
+| navegação por link entre páginas | abas, sem recarregar |
+| estado só na memória | estado no hash: `#tab=emendas&esfera=estadual&mun=RECIFE` |
+| cada página baixava o que queria | carregamento sob demanda, um conjunto por aba |
+| CSS e JS repetidos por página | `tema.css` · `comum.js` · `painel.js` |
+
+`painel.js` tem quatro blocos com uma responsabilidade cada: `Dados` (fetch sob
+demanda), `Estado` (estado + hash), `Graficos` (os quatro formatos usados, nada
+além) e `Abas` (uma função de render por aba, sem lógica de dado).
+
+### Decisões que se afastaram do canvas, de propósito
+
+**Tipografia.** O canvas pedia Gotham (Hoefler & Frere-Jones) e Hugein
+(MaulanaCreative) e trazia os arquivos. Publicar `.otf` licenciado no GitHub
+Pages é redistribuição — a EULA da H&FJ veda expressamente. O site usa
+**Montserrat** (SIL OFL), o geométrico livre mais próximo. Foi verificado lendo
+os metadados dos próprios arquivos, não presumido.
+
+**Tabelas.** O canvas monta as tabelas com `display:grid` e repete o
+`grid-template-columns` no cabeçalho **e em cada linha** — duplicação que
+divergiria na primeira coluna nova. Viraram `<table>` de verdade: mesmo
+resultado visual, semântica correta, e a largura definida num lugar só.
+
+**Sexta esfera.** O canvas listava cinco (estadual, dep. federais, senadores,
+bancada, bens). O banco tem uma sexta categoria, `gasto-pe` — autor de fora com
+recurso aplicado em PE. Omiti-la esconderia linha já coletada, então virou chip.
+
+### Dois defeitos achados na validação
+
+1. **`A form field element should have an id or name attribute`** — o DevTools
+   reporta como *issue*, não como erro, e passaria batido em quem só olha o
+   console. Dez campos gerados por template estavam sem `id`/`name`.
+
+2. **Topo fixo comendo a tela no celular.** Empilhado em 390px, o cabeçalho
+   passa de 240px; `position: sticky` deixava um terço da tela permanentemente
+   ocupado. Agora ele solta abaixo de 720px.
+
+### O que não pode quebrar
+
+As telas antigas viraram redirecionamentos que **preservam o parâmetro**:
+`/deputado.html?d=socorro-pimentel` cai em `#tab=deputados&dep=socorro-pimentel`.
+São links já compartilhados e já citados em post publicado — o `LINK_REPLY` de
+`cli.ts` apontava para `/candidatos.html` e passou a apontar para a aba.

@@ -397,7 +397,7 @@ export async function exportarMalhaPE(destino = "docs/malha-pe.json"): Promise<n
 
 export type LinhaGabinete = {
   dep: string;
-  /** slug do perfil (docs/deputado.html?d=slug) — mesma regra de perfil-deputado.ts */
+  /** slug do perfil (index.html#tab=deputados&dep=slug) — mesma regra de perfil-deputado.ts */
   slug: string;
   partido: string | null;
   total: number;

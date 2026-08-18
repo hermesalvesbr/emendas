@@ -3,785 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Emendas Parlamentares Estaduais — PE</title>
+<title>Emendas Parlamentares de Pernambuco — painel de dados abertos</title>
+<meta name="description" content="Execução das emendas parlamentares estaduais e federais em Pernambuco, gabinetes da ALEPE, perfil dos deputados e candidaturas de 2026. Projeto independente de dados abertos.">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap">
 <link rel="stylesheet" href="tema.css">
-<style>
-  header h1 { font-size: 1.35rem; margin: 0 0 2px; }
-  header p { margin: 0 0 16px; color: var(--ink-2); font-size: .85rem; }
-  .modos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .modos button {
-    font: inherit; font-size: .82rem; color: var(--ink-2); background: var(--surface);
-    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; cursor: pointer;
-  }
-  .modos button:hover { color: var(--ink-1); border-color: var(--ink-muted); }
-  .modos button[aria-pressed="true"] {
-    background: var(--s1); border-color: var(--s1); color: #fff; font-weight: 600;
-  }
-  /* `display: flex` acima vence o estilo de agente de usuário do atributo
-     [hidden], então os filtros escondidos por modo continuavam visíveis —
-     inclusive "Partido" no modo estadual, desde antes do modo de bens. */
-  .filters label[hidden] { display: none; }
-  /* o seletor genérico .filters input dá largura de campo de texto; o
-     checkbox precisa voltar ao tamanho natural para colar no rótulo */
-  .filters .fcand { color: var(--ink-2); font-size: .8rem; cursor: pointer; white-space: nowrap; }
-  .filters .fcand input[type="checkbox"] { width: auto; min-width: 0; flex: none; margin: 0; accent-color: #2a78d6; }
-  /* Marcador de candidatura 2026. Duas variantes porque disputar o mesmo
-     cargo e disputar outro são fatos diferentes — achatar os dois em
-     "é candidato" perderia justamente a informação mais interessante. */
-  .cand {
-    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
-    font-size: .68rem; font-weight: 600; letter-spacing: .01em; white-space: nowrap;
-    border: 1px solid currentColor; vertical-align: baseline;
-  }
-  .cand-reeleicao { color: #2a78d6; }
-  .cand-outro { color: #eb6834; }
-  :root:not([data-theme="light"]) .cand-reeleicao { color: #3987e5; }
-  :root:not([data-theme="light"]) .cand-outro { color: #d95926; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
-  .tile .v { font-size: 1.7rem; font-weight: 650; letter-spacing: -0.01em; }
-  .tile .l { color: var(--ink-2); font-size: .78rem; margin-top: 1px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px 4px; }
-  .card .sub { color: var(--ink-muted); font-size: .75rem; margin: 0 4px 4px; }
-  .chart { width: 100%; height: 380px; }
-  #chEvolucao { height: 300px; }
-  .tablecard { margin-top: 12px; }
-  .tablewrap { overflow-x: auto; max-height: 480px; overflow-y: auto; }
-  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
-  th { position: sticky; top: 0; background: var(--surface); color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; }
-  tr:hover td { background: color-mix(in srgb, var(--s1) 7%, transparent); }
-  .conf { display: inline-flex; align-items: center; gap: 5px; }
-  .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
-  .conf-alta .dot { background: var(--s1); } .conf-media .dot { background: var(--s2); } .conf-nula .dot { background: var(--s3); }
-  @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
-  @media (max-width: 720px) {
-    .filters label { flex: 1 1 46%; }
-    .filters input, .filters select { min-width: 0; width: 100%; }
-    .tablewrap { overflow-x: visible; max-height: none; }
-    #tbl thead { display: none; }
-    #tbl, #tbl tbody, #tbl tr, #tbl td { display: block; }
-    #tbl tr {
-      border: 1px solid var(--border); border-radius: 10px; background: var(--page);
-      margin-bottom: 8px; padding: 8px 12px;
-    }
-    #tbl td {
-      border: none; padding: 2px 0; white-space: normal;
-      display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-    }
-    #tbl td::before {
-      content: attr(data-label);
-      color: var(--ink-muted); font-size: .72rem; flex: 0 0 auto;
-    }
-    #tbl td.num { text-align: right; }
-    #tbl td[data-label="Empenhado"] { font-weight: 650; font-size: .95rem; }
-    #tbl td:not([data-label]) { display: none; }
-    tr:hover td { background: transparent; }
-  }
-</style>
+<script>
+  // Antes da primeira pintura, para o tema salvo não piscar branco.
+  try {
+    var t = localStorage.getItem("emendas-pe-tema");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1 id="tituloPagina">Emendas Parlamentares — Pernambuco</h1>
-    <p id="subtituloPagina">20ª Legislatura (execução 2023–2026) · consulta por parlamentar e município</p>
-  </header>
 
-  <div class="modos" role="group" aria-label="Esfera das emendas">
-    <button type="button" data-modo="estadual" aria-pressed="true">Estaduais (ALEPE)</button>
-    <button type="button" data-modo="deputado" aria-pressed="false">Dep. Federais de PE</button>
-    <button type="button" data-modo="senador" aria-pressed="false">Senadores de PE</button>
-    <button type="button" data-modo="bancada" aria-pressed="false">Bancada de PE</button>
-    <button type="button" data-modo="bens" aria-pressed="false">Bens dos candidatos 2026</button>
-  </div>
-
-  <!-- Página própria, não um 6º modo: eFederal() é um catch-all
-       (modo !== "estadual" && modo !== "bens") e um modo novo seria renderizado
-       como federal até 14 pontos deste arquivo serem editados. -->
-  <p style="margin:-4px 0 12px;font-size:.82rem">
-    <a href="candidatos.html">De onde são os candidatos → naturalidade e base eleitoral de 2022</a>
-    &nbsp;·&nbsp;
-    <a href="gabinetes.html">Gabinetes da Alepe → quantos assessores cada deputado tem</a>
-    &nbsp;·&nbsp;
-    <a href="deputado.html">Perfil dos deputados estaduais → emendas, gabinete e votação</a>
-  </p>
-
-  <div class="filters" role="search">
-    <label id="lblAutor">Parlamentar
-      <input id="fAutor" list="dlAutores" placeholder="todos" autocomplete="off">
-      <datalist id="dlAutores"></datalist>
-    </label>
-    <label id="lblMun">Município
-      <input id="fMun" list="dlMunicipios" placeholder="todos" autocomplete="off">
-      <datalist id="dlMunicipios"></datalist>
-    </label>
-    <label id="lblAno">Exercício
-      <select id="fAno"><option value="">todos</option></select>
-    </label>
-    <label id="lblPartido" hidden>Partido
-      <select id="fPartido"><option value="">todos</option></select>
-    </label>
-    <label id="lblConf">Autoria
-      <select id="fConf">
-        <option value="">todas</option>
-        <option value="alta">confirmada (alta)</option>
-        <option value="media">inferida (média)</option>
-        <option value="nula">sem autor</option>
-      </select>
-    </label>
-    <label id="lblRegiao">Região <select id="fRegiao"><option value="">todas</option></select></label>
-    <label id="lblCargo" hidden>Cargo <select id="fCargo"><option value="">todos</option></select></label>
-    <label class="fcand"><input type="checkbox" id="fCandidato"> só candidatos em 2026</label>
-    <label class="fcand" id="lblSup" hidden><input type="checkbox" id="fSuplentes" checked> incluir suplentes</label>
-    <button id="fLimpar" type="button">Limpar</button>
-  </div>
-
-  <div class="kpis">
-    <div class="tile"><div class="v" id="kValor">–</div><div class="l" id="kValorLabel">valor empenhado</div></div>
-    <div class="tile"><div class="v" id="kEmendas">–</div><div class="l" id="kEmendasLabel">emendas (subações)</div></div>
-    <div class="tile"><div class="v" id="kAutores">–</div><div class="l" id="kAutoresLabel">parlamentares</div></div>
-    <div class="tile"><div class="v" id="kMun">–</div><div class="l" id="kMunLabel">municípios</div></div>
-  </div>
-
-  <div class="cards">
-    <div class="card">
-      <h2 id="h2Autores">Top parlamentares por valor empenhado</h2>
-      <p class="sub" id="subAutores">clique numa barra para filtrar</p>
-      <div id="chAutores" class="chart"></div>
-    </div>
-    <div class="card">
-      <h2 id="h2Segundo">Top municípios por valor empenhado</h2>
-      <p class="sub" id="subSegundo">clique numa barra para filtrar</p>
-      <div id="chMunicipios" class="chart"></div>
-    </div>
-    <div class="card full">
-      <h2 id="h2Evolucao">Evolução por exercício e qualidade da autoria</h2>
-      <p class="sub" id="subEvolucao">confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI</p>
-      <div id="chEvolucao" class="chart"></div>
-    </div>
-    <div class="card full tablecard">
-      <h2 id="h2Tabela">Emendas do filtro atual</h2>
-      <p class="sub" id="tblInfo"></p>
-      <div class="tablewrap">
-        <table id="tbl">
-          <thead><tr>
-            <th data-k="em">Emenda</th><th data-k="autor">Parlamentar</th><th data-k="mun">Município</th>
-            <th data-k="benef">Beneficiário</th><th data-k="ug">Unidade gestora</th>
-            <th class="num" data-k="ex">Exercício</th><th class="num" data-k="vemp">Empenhado</th>
-            <th class="num" data-k="vpago">Pago</th><th data-k="conf">Autoria</th><th>Conferir na fonte</th>
-          </tr></thead>
-          <tbody></tbody>
-        </table>
+<header class="topo">
+  <div class="faixa"></div>
+  <div class="limite topo-linha">
+    <div class="marca">
+      <svg width="42" height="42" viewBox="0 0 40 40" aria-hidden="true">
+        <rect width="40" height="40" rx="11" fill="var(--pe-brand-fill)"></rect>
+        <path d="M20 7.5v8.5M15.9 11.7h8.2" stroke="var(--pe-brand-ink)" stroke-width="2.3" stroke-linecap="round"></path>
+        <circle cx="20" cy="21.4" r="2.2" fill="var(--pe-amber)"></circle>
+        <path d="M7.5 32.5a12.5 12.5 0 0 1 25 0" stroke="var(--pe-red)" stroke-width="3.4" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div>
+        <div class="marca-nome">emendas</div>
+        <div class="marca-sub">pernambuco · dados abertos</div>
       </div>
     </div>
+
+    <div class="busca">
+      <div class="busca-campo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pe-text3)" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="m20 20-4.3-4.3"></path>
+        </svg>
+        <input id="busca" type="search" placeholder="parlamentar, município ou candidato" autocomplete="off"
+               aria-label="Buscar parlamentar, município ou candidato">
+      </div>
+      <div id="buscaLista" class="busca-lista" hidden></div>
+    </div>
+
+    <div class="topo-fim">
+      <a class="credito" href="https://github.com/hermesalvesbr/emendas" target="_blank" rel="noopener">
+        por <strong>Hermes Alves</strong></a>
+      <button type="button" id="btnTema" class="btn-tema" title="Alternar tema">Tema escuro</button>
+    </div>
   </div>
 
-  <footer>
-    Fontes oficiais:
-    <a href="https://dados.pe.gov.br/dataset/emendasparlamentaresestaduais" target="_blank" rel="noopener">dataset CKAN (SCGE)</a> ·
-    <a href="https://transparencia.pe.gov.br/gestao-estadual/emendas-parlamentares/emendas-parlamentares-estaduais/painel-emendas-parlamentares-estaduais/" target="_blank" rel="noopener">painel de emendas (exercício atual)</a> ·
-    <a href="https://transparencia.pe.gov.br/painel-historico-de-emendas-parlamentares-estaduais/" target="_blank" rel="noopener">painel histórico 2023–2025</a> ·
-    <a href="https://proposicoes.alepe.pe.gov.br/" target="_blank" rel="noopener">proposições ALEPE (emendas aos PLOAs)</a> ·
-    <a href="https://dadosabertos.alepe.pe.gov.br/api/v1/proposicoes/" target="_blank" rel="noopener">API dados abertos ALEPE</a>.
-    <br>Fontes federais:
-    <a href="https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO" target="_blank" rel="noopener">emendas parlamentares (CGU)</a> ·
-    <a href="https://dadosabertos.camara.leg.br/swagger/api.html" target="_blank" rel="noopener">API da Câmara</a> ·
-    <a href="https://legis.senado.leg.br/dadosabertos/" target="_blank" rel="noopener">API do Senado</a>.
-    <br>Gerado em <span id="metaData"></span>. <span id="metaFonte2" hidden></span>
-    <span id="notaModo"></span>
-    <br><span id="notaCandidatos"></span>
-    <br><span id="notaBens" hidden></span>
-    Projeto de dados abertos — código e metodologia no repositório.
-  </footer>
-</div>
+  <nav class="limite" aria-label="Seções do painel">
+    <div class="abas" id="abas" role="tablist">
+      <button type="button" class="aba" role="tab" data-tab="emendas" aria-selected="true">Emendas</button>
+      <button type="button" class="aba" role="tab" data-tab="territorio" aria-selected="false">Território e candidatos</button>
+      <button type="button" class="aba" role="tab" data-tab="gabinetes" aria-selected="false">Gabinetes da ALEPE</button>
+      <button type="button" class="aba" role="tab" data-tab="deputados" aria-selected="false">Perfil e comparação</button>
+    </div>
+  </nav>
+</header>
+
+<main class="limite">
+  <div class="cabecalho">
+    <div class="cabecalho-texto">
+      <h1 id="titulo">Para onde vai o dinheiro das emendas</h1>
+      <p id="subtitulo"></p>
+    </div>
+    <span class="carregando" id="carregando">carregando dados oficiais…</span>
+  </div>
+
+  <div class="painel" id="conteudo"></div>
+</main>
+
+<footer class="rodape">
+  <div class="limite rodape-grade">
+    <div>
+      <div class="rodape-marca">emendas</div>
+      <p>Levantamento, coleta, metodologia e código: <strong>Hermes Alves</strong>. Projeto independente de dados abertos, sem vínculo com a ALEPE ou com o Governo de Pernambuco.</p>
+      <p><a href="https://github.com/hermesalvesbr/emendas" target="_blank" rel="noopener">github.com/hermesalvesbr/emendas</a></p>
+    </div>
+    <div>
+      <div class="rodape-t">Fontes estaduais</div>
+      <p class="rodape-links">
+        <a href="https://dados.pe.gov.br/dataset/emendasparlamentaresestaduais" target="_blank" rel="noopener">dataset CKAN (SCGE)</a><br>
+        <a href="https://transparencia.pe.gov.br/" target="_blank" rel="noopener">Portal da Transparência de PE</a><br>
+        <a href="https://dadosabertos.alepe.pe.gov.br/" target="_blank" rel="noopener">API de dados abertos da ALEPE</a>
+      </p>
+    </div>
+    <div>
+      <div class="rodape-t">Fontes federais e eleitorais</div>
+      <p class="rodape-links">
+        <a href="https://portaldatransparencia.gov.br/download-de-dados/emendas-parlamentares/UNICO" target="_blank" rel="noopener">emendas parlamentares (CGU)</a><br>
+        <a href="https://dadosabertos.camara.leg.br/swagger/api.html" target="_blank" rel="noopener">API da Câmara</a><br>
+        <a href="https://legis.senado.leg.br/dadosabertos/" target="_blank" rel="noopener">API do Senado</a> ·
+        <a href="https://divulgacandcontas.tse.jus.br/" target="_blank" rel="noopener">TSE/DivulgaCandContas</a>
+      </p>
+    </div>
+    <div>
+      <div class="rodape-t">Atualização</div>
+      <p id="rodapeAtualizacao">Carregando metadados da coleta.</p>
+    </div>
+  </div>
+</footer>
 
 <script src="echarts.min.js"></script>
 <script src="comum.js"></script>
-<script>
-(async function () {
-  const [resp, respCand, respReg, respDep] = await Promise.all([
-    fetch("dados.json"),
-    fetch("dados-candidatos.json").catch(() => null),
-    fetch("regioes.json").catch(() => null),
-    fetch("deputados-indice.json").catch(() => null),
-  ]);
-  const dados = await resp.json();
-
-  // Marcadores de candidatura 2026. Só existe o positivo: ausência aqui NÃO
-  // quer dizer "não é candidato" (o registro fecha em 15/08/2026), por isso
-  // nada é renderizado quando o autor não está no mapa.
-  const candData = respCand && respCand.ok ? await respCand.json() : null;
-  const regData = respReg && respReg.ok ? await respReg.json() : null;
-  const CAND = new Map((candData?.marcadores ?? []).map((m) => [m.autor, m]));
-  const ehCandidato = (autor) => (autor ? CAND.get(autor) ?? null : null);
-
-  // Índice enxuto (5 KB) dos 49 gabinetes da Alepe: autor_normalizado -> slug
-  // do perfil. Só quem está aqui vira link — o painel tem autores federais e
-  // sobras de regex ("APORTE FINANCEIRO") que não são deputado estadual algum.
-  const depData = respDep && respDep.ok ? await respDep.json() : null;
-  const DEP_SLUG = new Map((depData?.itens ?? []).map((d) => [d.chave, d.slug]));
-  const slugDeputado = (autor) => (autor ? DEP_SLUG.get(autor) ?? null : null);
-
-  // Mapa município -> região. Serve a dois filtros de significados diferentes:
-  // nos modos de emenda, é a região do município que RECEBEU o recurso (dado
-  // sólido); no modo de bens, é a região de NASCIMENTO do candidato (proxy).
-  let REGIOES = regData ?? { regioes: [], municipios: {} };
-  const regiaoDe = (mun) => (mun ? REGIOES.municipios[mun] ?? null : null);
-
-  let dadosBens = null;
-  async function carregarBens() {
-    if (dadosBens) return dadosBens;
-    const r = await fetch("dados-bens.json");
-    dadosBens = await r.json();
-    return dadosBens;
-  }
-  const linhasEstaduais = dados.linhas;
-
-  // Modo atual: "estadual" ou uma categoria federal (deputado/senador/bancada).
-  // O JSON federal só é buscado no primeiro clique — a home continua leve.
-  let modo = "estadual";
-  let dadosFederal = null;
-
-  async function carregarFederal() {
-    if (dadosFederal) return dadosFederal;
-    const r = await fetch("dados-federal.json");
-    const d = await r.json();
-    // normaliza para os mesmos nomes de campo do painel estadual, para que
-    // KPIs, gráficos e tabela funcionem sem ramificação em cada função
-    dadosFederal = d.linhas.map((l) => ({
-      s: l.cod, ex: l.ano, em: l.num ? l.num + "/" + l.ano : l.cod,
-      autor: l.autor, mun: l.mun, vemp: l.vemp, vpago: l.vpago,
-      cat: l.cat, partido: l.partido, tipo: l.tipo, func: l.func, loc: l.loc,
-      conf: "alta", benef: null, ug: null, f: ["cgu"], ploa: null, n: 1,
-    }));
-    return dadosFederal;
-  }
-
-  const eBens = () => modo === "bens";
-  const eFederal = () => modo !== "estadual" && modo !== "bens";
-  const baseAtual = () =>
-    eBens() ? (dadosBens?.linhas ?? []) : eFederal() ? (dadosFederal ?? []).filter((l) => l.cat === modo) : linhasEstaduais;
-
-  document.getElementById("metaFonte2").textContent = dados.fonte;
-  document.getElementById("metaData").textContent = new Date(dados.geradoEm).toLocaleString("pt-BR");
-
-  const { css, esc, baseOption } = PE;
-  const brl = PE.moeda;
-  const brlCompact = (v) => {
-    if (Math.abs(v) >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
-    if (Math.abs(v) >= 1e3) return "R$ " + (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " mil";
-    return brl.format(v);
-  };
-
-  // filtros
-  const fAutor = document.getElementById("fAutor");
-  const fCandidato = document.getElementById("fCandidato");
-  const fRegiao = document.getElementById("fRegiao");
-  const fCargo = document.getElementById("fCargo");
-  const fSuplentes = document.getElementById("fSuplentes");
-  const fMun = document.getElementById("fMun");
-  const fAno = document.getElementById("fAno");
-  const fConf = document.getElementById("fConf");
-
-  const fPartido = document.getElementById("fPartido");
-
-  function preencherOpcoes() {
-    const base = baseAtual();
-    const encher = (el, valores, comTexto) => {
-      const atual = el.value;
-      el.textContent = "";
-      if (el.tagName === "SELECT") {
-        const o = document.createElement("option"); o.value = ""; o.textContent = "todos"; el.append(o);
-      }
-      for (const v of valores) {
-        const o = document.createElement("option");
-        o.value = v; if (comTexto) o.textContent = v;
-        el.append(o);
-      }
-      if (valores.includes(atual)) el.value = atual;
-    };
-    encher(document.getElementById("dlAutores"), [...new Set(base.map((l) => l.autor).filter(Boolean))].sort(), false);
-    encher(document.getElementById("dlMunicipios"), [...new Set(base.map((l) => l.mun).filter(Boolean))].sort(), false);
-    encher(fAno, [...new Set(base.map((l) => l.ex))].sort(), true);
-    encher(fPartido, [...new Set(base.map((l) => l.partido).filter(Boolean))].sort(), true);
-
-    // Região é a mesma lista nos dois contextos, mas com significados
-    // diferentes (destino da emenda x naturalidade do candidato) — o rótulo
-    // do filtro muda para não confundir.
-    encher(fRegiao, [...(REGIOES.regioes ?? [])].sort(), true);
-    document.getElementById("lblRegiao").firstChild.textContent = eBens() ? "Região de nascimento " : "Região ";
-    if (eBens()) encher(fCargo, [...new Set((dadosBens?.linhas ?? []).map((l) => l.cargo))].sort(), true);
-  }
-
-  // No modo de bens a unidade não é a emenda, é o candidato — filtro próprio.
-  function filtrarBens() {
-    const va = fAutor.value.trim().toUpperCase();
-    const vr = fRegiao.value || null, vc = fCargo.value || null, vp = fPartido.value || null;
-    return (dadosBens?.linhas ?? []).filter((l) =>
-      (!va || l.nome.toUpperCase().includes(va)) &&
-      (!vr || l.regiao === vr) &&
-      (!vc || l.cargo === vc) &&
-      (!vp || l.partido === vp) &&
-      (fSuplentes.checked || !l.sup));
-  }
-
-  function filtrar() {
-    if (eBens()) return filtrarBens();
-    const va = fAutor.value.trim().toUpperCase(), vm = fMun.value.trim().toUpperCase();
-    const vy = fAno.value ? Number(fAno.value) : null;
-    const vc = eFederal() ? null : (fConf.value || null);
-    const vp = eFederal() ? (fPartido.value || null) : null;
-    return baseAtual().filter((l) =>
-      (!va || (l.autor ?? "").includes(va)) &&
-      (!vm || (l.mun ?? "").includes(vm)) &&
-      (vy === null || l.ex === vy) &&
-      (!vc || l.conf === vc) &&
-      (!vp || l.partido === vp) &&
-      (!fCandidato.checked || ehCandidato(l.autor) !== null) &&
-      (!fRegiao.value || regiaoDe(l.mun) === fRegiao.value));
-  }
-
-  // ECharts base — grid recessivo, ink nos textos, sem decoração
-  const CONF_LABEL = { alta: "confirmada", media: "inferida", nula: "sem autor" };
-  let charts = {};
-  function renderAutores(fl) {
-    const por = new Map();
-    for (const l of fl) if (l.autor) por.set(l.autor, (por.get(l.autor) ?? 0) + l.vemp);
-    const top = [...por.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
-    charts.autores.setOption({
-      ...baseOption(),
-      grid: { left: 8, right: 70, top: 6, bottom: 6, containLabel: true },
-      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-      yAxis: { type: "category", data: top.map(([a]) => a), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
-      tooltip: { ...baseOption().tooltip, formatter: (p) => `<b>${brlCompact(p.value)}</b><br>${esc(p.name)}` },
-      series: [{
-        type: "bar", data: top.map(([, v]) => Math.round(v)),
-        itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] },
-        barMaxWidth: 16, emphasis: { itemStyle: { color: css("--s1"), opacity: 0.85 } },
-        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) },
-      }],
-    }, true);
-    charts.autores.off("click");
-    charts.autores.on("click", (p) => { fAutor.value = p.name; render(); });
-  }
-
-  function renderMunicipios(fl) {
-    // No federal a maioria das emendas é estadual ("PERNAMBUCO (UF)") ou
-    // multi-município: ranquear por FUNÇÃO (Saúde, Educação…) informa muito
-    // mais do que por município, que só existe em ~11% das linhas.
-    const campo = eFederal() ? "func" : "mun";
-    const por = new Map();
-    for (const l of fl) if (l[campo]) por.set(l[campo], (por.get(l[campo]) ?? 0) + l.vemp);
-    const top = [...por.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).reverse();
-    charts.municipios.setOption({
-      ...baseOption(),
-      grid: { left: 8, right: 70, top: 6, bottom: 6, containLabel: true },
-      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-      yAxis: { type: "category", data: top.map(([m]) => m), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
-      tooltip: { ...baseOption().tooltip, formatter: (p) => `<b>${brlCompact(p.value)}</b><br>${esc(p.name)}` },
-      series: [{
-        type: "bar", data: top.map(([, v]) => Math.round(v)),
-        itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] },
-        barMaxWidth: 16, emphasis: { itemStyle: { opacity: 0.85 } },
-        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) },
-      }],
-    }, true);
-    charts.municipios.off("click");
-    charts.municipios.on("click", (p) => { if (!eFederal()) { fMun.value = p.name; render(); } });
-  }
-
-  function renderEvolucao(fl) {
-    const anosF = [...new Set(fl.map((l) => l.ex))].sort();
-    const serie = (nome, filtro, cor) => ({
-      name: nome, type: "bar", stack: "v",
-      data: anosF.map((a) => Math.round(fl.filter((l) => l.ex === a && filtro(l)).reduce((s, l) => s + l.vemp, 0))),
-      itemStyle: { color: cor, borderColor: css("--surface"), borderWidth: 2 },
-      barMaxWidth: 56,
-    });
-    // Federal: empilha por TIPO de emenda (individual/especial/bancada) — a
-    // autoria aqui é nativa, então "qualidade da autoria" não se aplica.
-    const tiposFed = eFederal() ? [...new Set(fl.map((l) => l.tipo).filter(Boolean))].sort() : [];
-    const curtoTipo = (t) => t.replace(/^Emenda\s*/i, "").replace(/Transferências\s*/i, "Transf. ");
-    const series = eFederal()
-      ? tiposFed.slice(0, 3).map((t, i) => serie(curtoTipo(t), (l) => l.tipo === t, css(["--s1", "--s2", "--s3"][i])))
-      : [
-          serie(CONF_LABEL.alta, (l) => l.conf === "alta", css("--s1")),
-          serie(CONF_LABEL.media, (l) => l.conf === "media", css("--s2")),
-          serie(CONF_LABEL.nula, (l) => l.conf === "nula", css("--s3")),
-        ];
-    charts.evolucao.setOption({
-      ...baseOption(),
-      legend: { top: 0, textStyle: { color: css("--ink-2") }, itemWidth: 14, itemHeight: 10 },
-      grid: { left: 8, right: 16, top: 34, bottom: 6, containLabel: true },
-      xAxis: { type: "category", data: anosF, axisLabel: { color: css("--ink-2") }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
-      yAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-      tooltip: {
-        ...baseOption().tooltip, trigger: "axis", axisPointer: { type: "shadow" },
-        formatter: (ps) => ps[0].name + ps.map((p) => `<br><span style="color:${p.color}">▬</span> <b>${brlCompact(p.value)}</b> ${esc(p.seriesName)}`).join(""),
-      },
-      series,
-    }, true);
-  }
-
-  // links de conferência na fonte oficial, por linha
-  const FONTES_URL = {
-    ckan: "https://dados.pe.gov.br/dataset/emendasparlamentaresestaduais",
-    painelAtual: "https://transparencia.pe.gov.br/gestao-estadual/emendas-parlamentares/emendas-parlamentares-estaduais/painel-emendas-parlamentares-estaduais/",
-    painelHistorico: "https://transparencia.pe.gov.br/painel-historico-de-emendas-parlamentares-estaduais/",
-  };
-  function linksFonte(l) {
-    const links = [];
-    if (eFederal()) {
-      if (l.s) links.push(["Portal da Transparência", "https://portaldatransparencia.gov.br/emendas/detalhe?codigoEmenda=" + encodeURIComponent(l.s)]);
-      return links;
-    }
-    if ((l.f ?? []).includes("ckan")) links.push(["CKAN", FONTES_URL.ckan]);
-    if ((l.f ?? []).includes("pentaho")) links.push(["Painel", l.ex >= 2026 ? FONTES_URL.painelAtual : FONTES_URL.painelHistorico]);
-    if (l.ploa) {
-      const [pn, pa] = l.ploa.split("/");
-      links.push(["PLOA " + l.ploa, "https://proposicoes.alepe.pe.gov.br/proposicoes/detalhes?tipo=projeto&numero=" + encodeURIComponent(pn) + "&ano=" + encodeURIComponent(pa)]);
-    }
-    return links;
-  }
-
-  // tabela (drill-down; também é a "table view" de acessibilidade)
-  let ordem = { k: "vemp", dir: -1 };
-  function renderTabela(fl) {
-    const tb = document.querySelector("#tbl tbody");
-    tb.textContent = "";
-    const rows = [...fl].sort((a, b) => {
-      const x = a[ordem.k], y = b[ordem.k];
-      return (x == null) - (y == null) || (x > y ? 1 : x < y ? -1 : 0) * ordem.dir;
-    }).slice(0, 400);
-    for (const l of rows) {
-      const tr = document.createElement("tr");
-      const td = (txt, cls, label) => {
-        const d = document.createElement("td");
-        d.textContent = txt ?? "—";
-        if (cls) d.className = cls;
-        if (label) d.dataset.label = label;
-        tr.append(d);
-      };
-      td(l.em ?? "(sem nº)", null, "Emenda");
-      {
-        const dAutor = document.createElement("td");
-        dAutor.dataset.label = "Parlamentar";
-        // Deputado estadual com gabinete na Alepe vira link para o perfil.
-        // Autor federal e sobra de regex ("APORTE FINANCEIRO") não têm perfil
-        // e continuam texto puro — o índice é a lista dos 49, não um palpite.
-        const perfil = eFederal() ? null : slugDeputado(l.autor);
-        if (perfil) {
-          const a = document.createElement("a");
-          a.href = "deputado.html?d=" + encodeURIComponent(perfil);
-          a.textContent = l.autor;
-          a.title = "Abrir o perfil completo deste deputado estadual";
-          dAutor.append(a);
-        } else {
-          dAutor.append(document.createTextNode(l.autor ?? "—"));
-        }
-        const m = ehCandidato(l.autor);
-        if (m) {
-          const b = document.createElement("span");
-          b.className = "cand " + (m.reeleicao ? "cand-reeleicao" : "cand-outro");
-          b.textContent = m.reeleicao ? "reeleição 2026" : m.cargo_2026 + " 2026";
-          b.title = "Candidatura registrada no TSE para 2026 (" + m.cargo_2026 + (m.partido ? " · " + m.partido : "") + "). " + (candData?.ressalva ?? "");
-          dAutor.append(b);
-        }
-        tr.append(dAutor);
-      }
-      td(eFederal() ? (l.loc ?? "—") : (l.mun ?? "—"), null, eFederal() ? "Localidade" : "Município");
-      td(eFederal() ? (l.func ?? "—") : (l.benef ?? "—"), null, eFederal() ? "Função" : "Beneficiário");
-      td(eFederal() ? (l.tipo ?? "—") : (l.ug ?? "—"), null, eFederal() ? "Tipo" : "Unidade gestora");
-      td(String(l.ex), "num", "Exercício"); td(brl.format(l.vemp), "num", "Empenhado"); td(brl.format(l.vpago), "num", "Pago");
-      const d = document.createElement("td");
-      if (eFederal()) {
-        d.dataset.label = "Partido";
-        d.textContent = l.partido ?? "—";
-      } else {
-        d.dataset.label = "Autoria";
-        const sp = document.createElement("span"); sp.className = "conf conf-" + l.conf;
-        const dot = document.createElement("span"); dot.className = "dot";
-        sp.append(dot, document.createTextNode(" " + CONF_LABEL[l.conf])); d.append(sp);
-      }
-      tr.append(d);
-      const df = document.createElement("td");
-      df.dataset.label = "Conferir";
-      const ls = linksFonte(l);
-      if (ls.length === 0) df.textContent = "—";
-      for (const [nome, url] of ls) {
-        if (df.childNodes.length) df.append(document.createTextNode(" · "));
-        const a = document.createElement("a");
-        a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = nome;
-        df.append(a);
-      }
-      tr.append(df);
-      tb.append(tr);
-    }
-    document.getElementById("tblInfo").textContent =
-      fl.length + " registro(s)" + (fl.length > 400 ? " — mostrando os 400 maiores; refine o filtro" : "") +
-      " · ordenado por " + ordem.k + (ordem.dir < 0 ? " ↓" : " ↑");
-  }
-  document.querySelectorAll("#tbl th").forEach((th) => th.addEventListener("click", () => {
-    const k = th.dataset.k;
-    ordem = { k, dir: ordem.k === k ? -ordem.dir : -1 };
-    renderTabela(filtrar());
-  }));
-
-  const NOTA_ESTADUAL = 'Autoria "inferida" tem ~81% de acerto estimado; "sem autor" está documentada para pedido de LAI. ' +
-    'Leitura do campo município: reflete o texto do empenho ou o cadastro do painel — em compras centralizadas e em ' +
-    'instituições estaduais sediadas no Recife, o valor aparece na sede do beneficiário, que pode não ser o destino final do gasto.';
-  const NOTA_FEDERAL = 'Autoria vem nominal da própria fonte (CGU) — sem inferência. A classificação por casa (deputado/senador) usa as ' +
-    'APIs da Câmara (56ª e 57ª legislaturas) e do Senado. "Localidade" é como a União registra o destino: a maioria das emendas é ' +
-    'estadual ("PERNAMBUCO (UF)") ou multi-município, então o ranking por município cobre só parte do valor — por isso o painel ranqueia por função. ' +
-    'ATENÇÃO ao ler o ranking de função: Saúde lidera por IMPOSIÇÃO LEGAL, não por escolha da bancada — a Constituição (EC 86/2015, ' +
-    'consolidada pela EC 126/2022) obriga no mínimo 50% das emendas individuais a irem para saúde. Em PE elas somam R$ 4,24 bi com 57,7% ' +
-    'em saúde, ou seja, 7,7 pontos acima do piso. E "Encargos especiais" (R$ 1,31 bi) não é uma área: são as transferências especiais, ' +
-    'as "emendas Pix", que a lei obriga a aplicar no mínimo 70% em investimento mas cujo setor a União não registra.';
-
-  const TITULOS = {
-    estadual: { seg: "Top municípios por valor empenhado", segSub: "clique numa barra para filtrar",
-      evo: "Evolução por exercício e qualidade da autoria",
-      evoSub: "confirmada = citada em fonte oficial/texto do empenho · inferida = propagação ou dicionário da ALEPE · sem autor = candidata a LAI",
-      titulo: "Emendas Parlamentares Estaduais — Pernambuco",
-      sub: "20ª Legislatura da ALEPE (execução 2023–2026) · consulta por parlamentar e município",
-      nota: NOTA_ESTADUAL,
-      kEmendas: "emendas (subações)", cols: ["Emenda","Parlamentar","Município","Beneficiário","Unidade gestora","Exercício","Empenhado","Pago","Autoria","Conferir na fonte"] },
-    federal: { seg: "Top funções por valor empenhado", segSub: "Saúde lidera por piso constitucional de 50% das emendas individuais, não por escolha · \u0022Encargos especiais\u0022 são as emendas Pix, sem setor declarado",
-      evo: "Evolução por exercício e tipo de emenda",
-      evoSub: "autoria federal é nativa da fonte (CGU) — o empilhamento mostra o tipo: individual, transferência especial ou de bancada",
-      titulo: "Emendas Parlamentares Federais — foco Pernambuco",
-      sub: "Orçamento da União (execução 2023–2026) · recursos ligados a PE",
-      nota: NOTA_FEDERAL,
-      kEmendas: "emendas (registros)", cols: ["Emenda","Parlamentar","Localidade","Função","Tipo","Exercício","Empenhado","Pago","Partido","Conferir na fonte"] },
-    bens: { seg: "Patrimônio declarado por região de nascimento", segSub: "mediana por candidato — a média seria dominada por um único caso",
-      evo: "Patrimônio declarado por cargo",
-      evoSub: "cada barra é a mediana do cargo; a faixa cinza mostra quantos declararam zero",
-      titulo: "Bens Declarados — Candidaturas 2026 em Pernambuco",
-      sub: "Patrimônio informado no registro de candidatura ao TSE · inclui suplentes de senador",
-      nota: "",
-      kEmendas: "candidatos", cols: ["Candidato","Cargo","Partido","Região (nascimento)","Naturalidade","Ocupação","Patrimônio","Itens","Escolaridade","Conferir na fonte"] },
-  };
-
-  const ROTULO_MODO = { deputado: "Deputados Federais de PE", senador: "Senadores de PE", bancada: "Bancada de PE" };
-
-  function aplicarTitulos() {
-    const t = eBens() ? TITULOS.bens : eFederal() ? TITULOS.federal : TITULOS.estadual;
-    document.getElementById("tituloPagina").textContent = t.titulo;
-    document.getElementById("subtituloPagina").textContent = eFederal() ? `${t.sub} · ${ROTULO_MODO[modo]}` : t.sub;
-    document.getElementById("notaCandidatos").hidden = eBens();
-    document.getElementById("notaBens").hidden = !eBens();
-    document.getElementById("notaModo").textContent = t.nota;
-    document.getElementById("h2Segundo").textContent = t.seg;
-    document.getElementById("subSegundo").textContent = t.segSub;
-    document.getElementById("h2Evolucao").textContent = t.evo;
-    document.getElementById("subEvolucao").textContent = t.evoSub;
-    document.getElementById("kEmendasLabel").textContent = t.kEmendas;
-    document.getElementById("kValorLabel").textContent = eBens() ? "patrimônio declarado (soma)" : "valor empenhado";
-    document.getElementById("kAutoresLabel").textContent = eBens() ? "patrimônio mediano" : "parlamentares";
-    document.getElementById("kMunLabel").textContent = eBens() ? "declararam zero" : "municípios";
-    document.getElementById("lblConf").hidden = eFederal() || eBens();
-    document.getElementById("lblPartido").hidden = !eFederal() && !eBens();
-    document.getElementById("lblCargo").hidden = !eBens();
-    document.getElementById("lblSup").hidden = !eBens();
-    // no modo de bens não existe município nem exercício de execução
-    document.getElementById("lblMun").hidden = eBens();
-    document.getElementById("lblAno").hidden = eBens();
-    document.querySelector(".fcand").hidden = eBens();
-    document.getElementById("h2Autores").textContent = eBens() ? "Maiores patrimônios declarados" : "Top parlamentares por valor empenhado";
-    document.getElementById("subAutores").textContent = eBens() ? "clique numa barra para filtrar pelo candidato" : "clique numa barra para filtrar";
-    document.getElementById("lblAutor").firstChild.textContent = eBens() ? "Candidato " : "Parlamentar ";
-    const ths = document.querySelectorAll("#tbl thead th");
-    // As colunas numéricas mudam de posição entre os modos; sem reatribuir,
-    // "Ocupação" herda o alinhamento à direita que era do "Exercício".
-    const numericas = eBens() ? new Set([6, 7]) : new Set([5, 6, 7]);
-    t.cols.forEach((c, i) => {
-      if (!ths[i]) return;
-      ths[i].textContent = c;
-      ths[i].classList.toggle("num", numericas.has(i));
-    });
-    document.getElementById("h2Tabela").textContent = eBens() ? "Candidatos do filtro atual" : "Emendas do filtro atual";
-  }
-
-  const mediana = (xs) => {
-    if (xs.length === 0) return 0;
-    const o = [...xs].sort((a, b) => a - b), i = Math.floor(o.length / 2);
-    return o.length % 2 ? o[i] : (o[i - 1] + o[i]) / 2;
-  };
-
-  // O ranking de bens usa MEDIANA nos agregados. A média por região seria
-  // definida por um único candidato milionário e diria mais sobre ele do que
-  // sobre a região.
-  function renderBens(fl) {
-    const vals = fl.map((l) => l.bens);
-    document.getElementById("kValor").textContent = brlCompact(vals.reduce((a, b) => a + b, 0));
-    document.getElementById("kEmendas").textContent = fl.length.toLocaleString("pt-BR");
-    document.getElementById("kAutores").textContent = brlCompact(mediana(vals));
-    document.getElementById("kMun").textContent = fl.filter((l) => l.bens === 0).length.toLocaleString("pt-BR");
-
-    const top = [...fl].sort((a, b) => b.bens - a.bens).slice(0, 15).reverse();
-    charts.autores.setOption({
-      ...baseOption(),
-      grid: { left: 8, right: 80, top: 6, bottom: 6, containLabel: true },
-      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-      yAxis: { type: "category", data: top.map((l) => l.nome), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 150, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
-      tooltip: { ...baseOption().tooltip, formatter: (p) => { const l = top[p.dataIndex]; return `<b>${brlCompact(l.bens)}</b><br>${esc(l.nome)}<br>${esc(l.cargo)}${l.partido ? " · " + esc(l.partido) : ""}<br>${l.qtd} item(ns) declarado(s)`; } },
-      series: [{ type: "bar", data: top.map((l) => l.bens), itemStyle: { color: css("--s1"), borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16,
-        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) } }],
-    }, true);
-    charts.autores.off("click");
-    charts.autores.on("click", (p) => { fAutor.value = top[p.dataIndex].nome; render(); });
-
-    const porRegiao = new Map();
-    for (const l of fl) { const r = l.regiao ?? "(nascido fora de PE)"; (porRegiao.get(r) ?? porRegiao.set(r, []).get(r)).push(l.bens); }
-    const reg = [...porRegiao.entries()].map(([r, v]) => [r, mediana(v), v.length]).sort((a, b) => b[1] - a[1]).reverse();
-    charts.municipios.setOption({
-      ...baseOption(),
-      grid: { left: 8, right: 80, top: 6, bottom: 6, containLabel: true },
-      xAxis: { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-      yAxis: { type: "category", data: reg.map((r) => r[0]), axisLabel: { color: css("--ink-2"), fontSize: 11, width: 170, overflow: "truncate" }, axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false } },
-      tooltip: { ...baseOption().tooltip, formatter: (p) => `mediana <b>${brlCompact(reg[p.dataIndex][1])}</b><br>${esc(reg[p.dataIndex][0])}<br>${reg[p.dataIndex][2]} candidato(s)` },
-      series: [{ type: "bar", data: reg.map((r) => r[1]), itemStyle: { color: css("--s2"), borderRadius: [0, 4, 4, 0] }, barMaxWidth: 16,
-        label: { show: true, position: "right", color: css("--ink-2"), fontSize: 10, formatter: (p) => brlCompact(p.value) } }],
-    }, true);
-    charts.municipios.off("click");
-    charts.municipios.on("click", (p) => { const r = reg[p.dataIndex][0]; fRegiao.value = REGIOES.regioes.includes(r) ? r : ""; render(); });
-
-    const porCargo = new Map();
-    for (const l of fl) { (porCargo.get(l.cargo) ?? porCargo.set(l.cargo, []).get(l.cargo)).push(l.bens); }
-    const cg = [...porCargo.entries()].sort((a, b) => mediana(b[1]) - mediana(a[1]));
-    charts.evolucao.setOption({
-      ...baseOption(),
-      legend: { data: ["mediana declarada", "declararam zero"], textStyle: { color: css("--ink-2") }, top: 0 },
-      grid: { left: 8, right: 16, top: 30, bottom: 6, containLabel: true },
-      xAxis: { type: "category", data: cg.map((c) => c[0]), axisLabel: { color: css("--ink-2"), fontSize: 11 }, axisLine: { lineStyle: { color: css("--axis") } } },
-      yAxis: [
-        { type: "value", axisLabel: { color: css("--ink-muted"), formatter: brlCompact }, splitLine: { lineStyle: { color: css("--grid") } } },
-        { type: "value", axisLabel: { color: css("--ink-muted") }, splitLine: { show: false } },
-      ],
-      tooltip: { ...baseOption().tooltip, trigger: "axis" },
-      series: [
-        { name: "mediana declarada", type: "bar", data: cg.map((c) => mediana(c[1])), itemStyle: { color: css("--s1"), borderRadius: [4, 4, 0, 0] }, barMaxWidth: 40 },
-        { name: "declararam zero", type: "line", yAxisIndex: 1, data: cg.map((c) => c[1].filter((v) => v === 0).length), itemStyle: { color: css("--ink-muted") }, lineStyle: { type: "dashed" } },
-      ],
-    }, true);
-
-    renderTabelaBens(fl);
-  }
-
-  function renderTabelaBens(fl) {
-    const tb = document.querySelector("#tbl tbody");
-    tb.textContent = "";
-    const rows = [...fl].sort((a, b) => b.bens - a.bens).slice(0, 400);
-    for (const l of rows) {
-      const tr = document.createElement("tr");
-      const td = (txt, cls, label) => { const d = document.createElement("td"); d.textContent = txt ?? "—"; if (cls) d.className = cls; if (label) d.dataset.label = label; tr.append(d); return d; };
-      const dNome = td(l.nome, null, "Candidato");
-      if (l.sup) {
-        const b = document.createElement("span");
-        b.className = "cand cand-outro";
-        b.textContent = "suplente";
-        if (l.titular) b.title = "Suplente na chapa de " + l.titular;
-        dNome.append(b);
-      }
-      // "2º Suplente" sozinho não diz suplente de quem — a chapa é a informação.
-      td(l.sup && l.titular ? `${l.cargo} de ${l.titular}` : l.cargo, null, "Cargo"); td(l.partido, null, "Partido");
-      td(l.regiao, null, "Região (nascimento)"); td(l.nasc, null, "Naturalidade"); td(l.ocup, null, "Ocupação");
-      td(brl.format(l.bens), "num", "Patrimônio"); td(String(l.qtd), "num", "Itens");
-      td(l.esc, null, "Escolaridade");
-      const dl = document.createElement("td"); dl.dataset.label = "Conferir na fonte";
-      const a = document.createElement("a");
-      a.href = "https://divulgacandcontas.tse.jus.br/divulga/#/candidato/2026/20322002026/PE/" + l.id;
-      a.target = "_blank"; a.rel = "noopener"; a.textContent = "TSE";
-      dl.append(a); tr.append(dl);
-      tb.append(tr);
-    }
-    document.getElementById("tblInfo").textContent =
-      `${fl.length.toLocaleString("pt-BR")} candidato(s) no filtro · exibindo ${rows.length} por patrimônio declarado`;
-  }
-
-  function render() {
-    if (eBens()) { renderBens(filtrar()); return; }
-    const fl = filtrar();
-    document.getElementById("kValor").textContent = brlCompact(fl.reduce((s, l) => s + l.vemp, 0));
-    // Chave "E:" é empenho SEM vínculo com emenda alguma — contá-la como
-    // emenda inflava o KPI em 401 unidades (R$ 61,2 mi). A linha continua na
-    // tabela, mas não vira "emenda" no contador.
-    const unidades = new Set(fl.map((l) => l.s).filter((s) => !String(s).startsWith("E:")));
-    const soltos = new Set(fl.map((l) => l.s).filter((s) => String(s).startsWith("E:"))).size;
-    document.getElementById("kEmendas").textContent = unidades.size.toLocaleString("pt-BR");
-    document.getElementById("kEmendasLabel").textContent = eFederal()
-      ? "emendas (registros)"
-      : soltos > 0
-        ? `emendas · ${soltos.toLocaleString("pt-BR")} empenhos sem vínculo`
-        : "emendas (subações)";
-    document.getElementById("kAutores").textContent = new Set(fl.map((l) => l.autor).filter(Boolean)).size.toLocaleString("pt-BR");
-    document.getElementById("kMun").textContent = new Set(fl.map((l) => l.mun).filter(Boolean)).size.toLocaleString("pt-BR");
-    renderAutores(fl); renderMunicipios(fl); renderEvolucao(fl); renderTabela(fl);
-  }
-
-  function initCharts() {
-    for (const c of Object.values(charts)) c?.dispose?.();
-    charts = {
-      autores: echarts.init(document.getElementById("chAutores")),
-      municipios: echarts.init(document.getElementById("chMunicipios")),
-      evolucao: echarts.init(document.getElementById("chEvolucao")),
-    };
-  }
-
-  function limparFiltros() {
-    fAutor.value = ""; fMun.value = ""; fAno.value = ""; fConf.value = ""; fPartido.value = ""; fCandidato.checked = false;
-    fRegiao.value = ""; fCargo.value = ""; fSuplentes.checked = true;
-  }
-
-  async function trocarModo(novo) {
-    if (novo === modo) return;
-    modo = novo;
-    for (const b of document.querySelectorAll(".modos button")) {
-      b.setAttribute("aria-pressed", String(b.dataset.modo === modo));
-    }
-    if (eFederal()) await carregarFederal();
-    if (eBens()) await carregarBens();
-    limparFiltros();
-    aplicarTitulos();
-    preencherOpcoes();
-    render();
-  }
-
-  if (candData) {
-    const el = document.getElementById("notaCandidatos");
-    const a = document.createElement("a");
-    a.href = "https://divulgacandcontas.tse.jus.br/"; a.target = "_blank"; a.rel = "noopener";
-    a.textContent = "TSE/DivulgaCandContas";
-    el.append(
-      document.createTextNode("Marcador de candidatura 2026 (" + candData.totalCandidatosPE + " candidaturas em PE): "),
-      a,
-      document.createTextNode(". " + candData.ressalva),
-    );
-  }
-
-  // A ressalva sobre a região é o ponto mais fácil de ler errado no painel
-  // inteiro, então fica no rodapé e não só no tooltip.
-  {
-    const el = document.getElementById("notaBens");
-    const a = document.createElement("a");
-    a.href = "https://divulgacandcontas.tse.jus.br/"; a.target = "_blank"; a.rel = "noopener";
-    a.textContent = "TSE/DivulgaCandContas";
-    el.append(document.createTextNode("Bens declarados no registro de candidatura: "), a, document.createTextNode("."));
-    const aviso = document.createElement("strong");
-    aviso.textContent = " A região é a de NASCIMENTO do candidato, não a base eleitoral: todos os cargos em disputa são eleitos pelo estado inteiro.";
-    el.append(aviso);
-  }
-
-  aplicarTitulos(); preencherOpcoes(); initCharts(); render();
-
-  for (const b of document.querySelectorAll(".modos button")) {
-    b.addEventListener("click", () => { trocarModo(b.dataset.modo); });
-  }
-  for (const el of [fAutor, fMun, fAno, fConf, fPartido]) el.addEventListener("input", render);
-  for (const el of [fCandidato, fRegiao, fCargo, fSuplentes]) el.addEventListener("change", render);
-  document.getElementById("fLimpar").addEventListener("click", () => { limparFiltros(); render(); });
-  window.addEventListener("resize", () => { for (const c of Object.values(charts)) c.resize(); });
-  PE.aoTrocarTema(() => { initCharts(); render(); });
-})();
-</script>
+<script src="painel.js"></script>
 </body>
 </html>

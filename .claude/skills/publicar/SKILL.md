@@ -29,19 +29,26 @@ setsid bun -e 'Bun.serve({port:4173,fetch(r){const p=new URL(r.url).pathname;
   return new Response(Bun.file("docs"+(p==="/"?"/index.html":p)));}})' </dev/null >/dev/null 2>&1 & disown
 ```
 
-Abra `http://localhost:4173/`, percorra **os cinco modos** (estadual, dep.
-federais, senadores, bancada, bens) e confira: zero erro de console além do
-favicon, KPIs preenchidos, gráficos desenhados, tabela com as colunas do modo.
+Abra `http://localhost:4173/`. O painel é uma casca única com quatro abas e o
+estado vive no hash da URL — percorra **as quatro abas** e, dentro de Emendas,
+**as seis esferas** (estadual, dep. federais, senadores, bancada, gasto federal,
+bens). Em cada uma confira: **zero erro E zero aviso de console**, KPIs
+preenchidos, gráficos desenhados e tabela com as colunas daquela esfera.
 
-Depois abra **`/candidatos.html`**, que é página própria e não um modo — o
-`eFederal()` do index.html é um catch-all (`modo !== "estadual" && modo !==
-"bens"`), então um 6º modo seria renderizado como federal até 14 pontos serem
-editados. Nela, confira as três vistas (por município, por 100 mil habitantes,
-base eleitoral de 2022), que o mapa desenha os 185 municípios, e que clicar
-numa linha da tabela troca o mapa para a votação daquele candidato. Dois erros
-já nasceram aqui: `symbolSize` do scatter recebe `(valor, params)` e ler o
-objeto direto derrubava o render inteiro; e a escala linear do mapa apagava o
-estado, porque o Recife tem 387 candidatos e o segundo colocado tem 31.
+Confira também, porque são caminhos que já quebraram:
+
+- **Território:** as três vistas (por município, por 100 mil, base eleitoral de
+  2022) e o mapa desenhando os 185 municípios. A escala linear apagava o estado,
+  porque o Recife tem 387 candidatos e o segundo colocado tem 31.
+- **Gabinetes:** clicar numa linha abre os nomes; filtrar por pessoa recalcula a
+  contagem **e** o custo, sem perder o foco do campo.
+- **Perfil:** trocar de deputado, entrar e sair da comparação, e o permalink
+  (`#tab=deputados&dep=<slug>`) reabrindo no mesmo deputado.
+- **Redirecionamentos:** `/deputado.html?d=<slug>`, `/gabinetes.html` e
+  `/candidatos.html` têm de cair na aba certa — são links já compartilhados.
+- **390px:** rolagem horizontal do `<body>` tem de ser zero. O canvas do ECharts
+  fixa largura em px e arrasta a página inteira sem `min-width: 0` no item de
+  grid (NOTAS 39).
 
 ## 3. Commit e push
 

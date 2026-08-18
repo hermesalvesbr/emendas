@@ -538,7 +538,7 @@ async function cmdSite(): Promise<void> {
     );
     console.log(`docs/regioes.json gerado: ${MUNICIPIO_REGIAO.size} municípios em ${REGIOES_PE.length} regiões`);
 
-    // Tela de origem dos candidatos. Página própria (docs/candidatos.html):
+    // Tela de origem dos candidatos. Aba "território" do painel:
     // o index.html discrimina modo por predicado negativo, e um 6º modo cairia
     // no catch-all de eFederal() até 14 pontos serem editados à mão.
     const nBase = await exportarSiteOrigem(db);
@@ -883,7 +883,7 @@ const LINK_REPLY: Record<string, string> = {
   cidade: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
   autor: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
   funcao: "Confira linha a linha, com a fonte oficial de cada registro:\nhttps://hermesalvesbr.github.io/emendas/",
-  curiosidade: "Naturalidade e votação de 2022, com a fonte do TSE:\nhttps://hermesalvesbr.github.io/emendas/candidatos.html",
+  curiosidade: "Naturalidade e votação de 2022, com a fonte do TSE:\nhttps://hermesalvesbr.github.io/emendas/#tab=territorio",
 };
 const FILA = "data/fila-posts.json";
 const PUBLICADOS = "data/x-publicados.json";
