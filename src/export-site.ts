@@ -418,6 +418,7 @@ export type SiteDataPessoal = {
   snapshot: string;
   fonte: string;
   fonteCusto: string;
+  fonteTransparencia: string;
   ressalva: string;
   ressalvaCusto: string;
   competencia: string | null;
@@ -487,10 +488,14 @@ export function exportarSitePessoal(db: Db): SiteDataPessoal {
     snapshot,
     fonte: "Lotação de pessoal — Dados Abertos da Alepe (/api/v1/servidores e /api/v1/parlamentares)",
     fonteCusto: `Vencimento por cargo — Dados Abertos da Alepe (/api/v1/remuneracao), competência ${competencia ?? "não coletada"}`,
+    fonteTransparencia: "Transparência Internacional – Brasil, ITGP Legislativo Estadual — indicador TA01 (‘Publica mensalmente, bases de dados com o salário dos servidores efetivos e comissionados de forma nominal’): Alepe = 0. Nota cheia só em CE, ES, GO e RS. transparenciainternacional.org.br/itgp/assembleia-legislativa/pernambuco/",
     ressalvaCusto:
-      "A Alepe NÃO publica remuneração individual: publica o vencimento de cada CARGO. O valor ao lado de cada nome é " +
-      "o do cargo que a pessoa ocupa, não o que ela recebe. É bruto — sem descontos, sem 13º, sem férias, sem " +
-      "gratificação e sem encargo patronal. Quem está à disposição é pago pelo órgão de origem e fica fora da conta.",
+      "A Alepe não publica remuneração individual — publica o vencimento de cada CARGO. O valor ao lado de cada nome " +
+      "é o do cargo que a pessoa ocupa, não o que ela recebe. É bruto: sem descontos, sem 13º, sem férias, sem " +
+      "gratificação e sem encargo patronal. Quem está à disposição é pago pelo órgão de origem e fica fora da conta. " +
+      "Essa ausência é medida por avaliação externa: no ITGP Legislativo Estadual da Transparência Internacional – " +
+      "Brasil, a Alepe recebe nota ZERO no indicador TA01, que mede exatamente a publicação do salário nominal dos " +
+      "servidores; das 27 assembleias, só Ceará, Espírito Santo, Goiás e Rio Grande do Sul cumprem o critério.",
     competencia,
     ressalva:
       `Foto do dia ${snapshot.split("-").reverse().join("/")}, do sistema de dados abertos da Alepe. ` +
@@ -524,6 +529,7 @@ export type SiteDataDeputados = {
     candidatura2026: string;
     bens: string;
     custo: string;
+    transparencia: string;
   };
   ressalvas: {
     gabinete: string;
@@ -604,6 +610,7 @@ export function exportarSiteDeputados(db: Db): SiteDataDeputados {
       candidatura2026: "TSE/DivulgaCandContas — Eleições Gerais 2026, circunscrição PE",
       bens: "TSE/DivulgaCandContas — bens declarados no registro de candidatura de 2026",
       custo: `Dados Abertos da Alepe — /api/v1/remuneracao, vencimento por cargo, competência ${db.ultimaCompetenciaRemuneracao() ?? "não coletada"}`,
+      transparencia: "Transparência Internacional – Brasil, ITGP Legislativo Estadual — indicador TA01 (‘Publica mensalmente, bases de dados com o salário dos servidores efetivos e comissionados de forma nominal’): Alepe = 0. Nota cheia só em CE, ES, GO e RS. transparenciainternacional.org.br/itgp/assembleia-legislativa/pernambuco/",
     },
     ressalvas: {
       gabinete:
@@ -620,9 +627,11 @@ export function exportarSiteDeputados(db: Db): SiteDataDeputados {
         "O tamanho de gabinete varia pouco (23 a 32 pessoas): os cargos são fixados por ato da Mesa, não pela vontade de cada deputado. " +
         "A posição no ranking mede diferença pequena e não deve ser lida como excesso ou economia.",
       custo:
-        "A Alepe NÃO publica remuneração individual — publica o vencimento de cada CARGO. O custo é a soma dos vencimentos " +
+        "A Alepe não publica remuneração individual — publica o vencimento de cada CARGO. O custo é a soma dos vencimentos " +
         "de tabela dos cargos ocupados: valor bruto, sem descontos, 13º, férias, gratificação ou encargo patronal, e sem " +
-        "quem está à disposição (pago pelo órgão de origem). É estimativa de custo do gabinete, não folha de pagamento.",
+        "quem está à disposição (pago pelo órgão de origem). É estimativa de custo do gabinete, não folha de pagamento. " +
+        "A Alepe tem nota ZERO no indicador TA01 do ITGP Legislativo Estadual (Transparência Internacional – Brasil), que " +
+        "mede a publicação do salário nominal dos servidores; só 4 das 27 assembleias cumprem o critério.",
     },
     totais: {
       deputados: perfis.length,

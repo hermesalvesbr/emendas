@@ -78,7 +78,10 @@ Ver NOTAS.md item 30.
   diferenças ficam gravadas em `pessoal_divergencia` e publicadas no painel.
 
 A Alepe **não publica remuneração individual** — `/api/v1/remuneracao/` traz o
-vencimento **por cargo**. O painel cruza cargo × lotação para estimar o **custo
+vencimento **por cargo**. Isso não é característica da fonte, é lacuna medida:
+no ITGP Legislativo Estadual da Transparência Internacional – Brasil, a Alepe
+tira **zero** no indicador TA01, que mede exatamente a publicação do salário
+nominal dos servidores — só CE, ES, GO e RS cumprem o critério (NOTAS 41). O painel cruza cargo × lotação para estimar o **custo
 mensal do gabinete** (R$ 10,0 mi/mês nos 49), sempre rotulado como vencimento
 de tabela: valor bruto, sem 13º, férias, gratificação ou encargo, e sem quem
 está à disposição. Contar cabeças engana — o maior gabinete em pessoas é o 38º

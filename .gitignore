@@ -3,6 +3,8 @@ data/emendas.sqlite
 data/emendas.sqlite-shm
 data/emendas.sqlite-wal
 data/raw/
+# Bruto re-baixável do TCE-PE (6,7 MB): fica fora do repo, como o resto do raw.
+data/tce-servidores-alepe.json
 data/shots/
 data/endpoints.json
 data/endpoints-historico.json

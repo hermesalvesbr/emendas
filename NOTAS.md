@@ -1338,6 +1338,10 @@ cada pessoa. Competência única (08/2026 na coleta). Não existe contracheque
 nominal em lugar nenhum do portal — o SPA de `transparencia.alepe.pe.gov.br`
 consome exatamente esse endpoint na rota `/pessoal/servidores-remuneracao`.
 
+> **Atualização (NOTAS 41):** esta seção dizia apenas que a Alepe "não publica",
+> como se fosse característica da fonte. Uma varredura posterior mostrou que é
+> uma lacuna medida por avaliação externa e judicializada. Ver item 41.
+
 Então **"o assessor Fulano ganha R$ X" não é afirmável**. O que é afirmável:
 *"Fulano ocupa o cargo Y, cujo vencimento de tabela é R$ X"*. A tela escreve
 assim, e a distinção não é preciosismo — o valor de tabela é bruto, sem IR,
@@ -1396,3 +1400,79 @@ pessoas") em vez de substituí-lo.
   mesmo array.
 - Cargo fora da tabela **não** é estimado por semelhança. Fica sem valor, com o
   motivo gravado — mesma regra do casamento de nomes (NOTAS 37/38).
+
+---
+
+## 41. "A Alepe não publica" era fraco demais — a varredura, e o que ela achou
+
+O item 40 registrou que a Alepe publica vencimento por cargo e não por pessoa.
+Estava certo no fato e **errado no enquadramento**: apresentei como
+característica da fonte o que é uma lacuna de transparência medida por terceiro
+independente e, hoje, objeto de ação judicial. A provocação que forçou a
+revisão foi simples e correta: *é dinheiro público, concorda?*
+
+Rodei então uma varredura de 8 ângulos com 27 verificações adversariais — cada
+achado refeito por um cético que executava a própria requisição. **Zero
+confirmações.** O negativo passou de presumido a provado.
+
+### O que foi testado e não existe
+
+| Fonte | O que tem | O que falta |
+|---|---|---|
+| `dadosabertos.alepe` `/servidores/` | 1.987 nomes + cargo + lotação | nenhum campo monetário |
+| `dadosabertos.alepe` `/remuneracao/` | 50 cargos + valor | nenhum nome |
+| Portal legado da Alepe | 316 URLs fuzzeadas em `/fun/`, `/adm/`, `/dep/` | nada com nome + valor |
+| SPA da transparência | consome 4 endpoints; a rota `servidores-remuneracao` é rotulada **no próprio código** como "Tabelas de Remuneração" | — |
+| Diário Oficial do Legislativo | portarias com nome + cargo + símbolo (PL-ASC…) | nunca valor em R$ |
+| `dados.pe.gov.br` (Executivo) | 183.511 servidores ativos, nominais | `grep -c "^ASSEMBLEIA LEGISLATIVA"` → **0** |
+| Intranet da Alepe | contracheque existe | HTTP 401 |
+| TCE-PE `ListaServidores` | 9.715 vínculos da Alepe, 6.469 pessoas | **zero campo monetário** |
+
+As únicas 195 linhas da Alepe em `dados.pe.gov.br` estão no arquivo de
+**inativos** e são 100% `BNF-PENSIONISTA PREVIDENCIÁRIO` com `cargo = NA` — é o
+beneficiário da pensão, não o servidor. Mesmo padrão em TJPE (720), MPPE (111) e
+TCE (58). Usar essa base para falar de "servidor da Alepe" é erro factual.
+
+### A medida externa — e um número que NÃO se sustentou
+
+Baixei o banco de dados do **ITGP Legislativo Estadual** da Transparência
+Internacional – Brasil (XLSX, 38 KB) e li a aba `Indicadores`. O indicador
+**TA01** é literalmente *"Publica mensalmente, bases de dados com o salário dos
+servidores efetivos e comissionados de forma nominal"*.
+
+- **PE = 0.** O indicador irmão **TL12** (salário nominal dos parlamentares) também **= 0**.
+- Nota cheia em TA01: **só CE, ES, GO e RS** — 4 das 27.
+- Ficha de PE: 11º lugar, 45,2/100, conceito "Regular". Pior dimensão:
+  **Transparência Administrativa, 30,6**.
+
+**Correção importante:** circulou na imprensa local que "PE é uma de três
+assembleias das 27 que escondem a lista de salários". Cheguei a repetir isso. O
+dado primário do ITGP **não sustenta o número**: 11 estados tiram zero em TA01.
+Os critérios podem medir coisas diferentes (o TA01 exige periodicidade mensal,
+formato legível por máquina e série histórica), mas por isso mesmo o que vai
+para texto público é a métrica que eu baixei e conferi — não o número do jornal.
+
+### O dado existe, e está com o TCE-PE
+
+O manual do Sagres Pessoal (v1.3.12), publicado pelo próprio TCE, prova que os
+arquivos `FolhaPagamento` e `VantagemDesconto` integram a **remessa mensal
+obrigatória** (Resoluções TCE-PE nº 20/2016 e nº 26/2016), chaveados por
+`NomeServidor`/`CPFServidor`. O manual chega a orientar que não sejam omitidas
+"quaisquer vantagens ou descontos recebidos por meio da folha de pagamento,
+independente da natureza da rubrica, evitando-se também a simples menção à
+remuneração bruta ou líquida percebida".
+
+Ou seja: o TCE **recebe** a remuneração nominal de cada servidor da Alepe todo
+mês e publica só a parte cadastral. Isso muda o alvo do pedido de LAI — ao TCE
+não cabe "não temos o dado".
+
+### Subproduto aproveitável
+
+`ListaServidores` do TCE (UJ 778) traz o que a API da Alepe não tem:
+**histórico**. 9.715 vínculos, 6.469 pessoas, 74 cargos, **7.461 afastamentos**
+com data — matéria-prima para série de rotatividade por gabinete, que o snapshot
+diário não produz. Baixado em `data/tce-servidores-alepe.json`.
+
+Armadilha de formato, de novo: o endpoint declara
+`application/json;charset=ISO-8859-1` — e desta vez o header **não** mente. O
+parâmetro `AnoRemessa` é aceito e ignorado (devolve sempre os mesmos 9.715).

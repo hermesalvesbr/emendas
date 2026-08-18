@@ -433,6 +433,8 @@
       ["Candidatura em 2026", DADOS.fontes.candidatura2026, DADOS.ressalvas.candidatura],
       ["Bens declarados", DADOS.fontes.bens, "Patrimônio declarado pelo próprio candidato, ainda sujeito a julgamento."],
       ["Custo do gabinete", DADOS.fontes.custo, DADOS.ressalvas.custo],
+      ["Medida externa de transparência", DADOS.fontes.transparencia ?? "—",
+       "A ausência de remuneração nominal não é característica da fonte: é lacuna medida por avaliação independente."],
       ["Rankings", "Calculados sobre os 49 gabinetes da 20ª legislatura.", DADOS.ressalvas.ranking],
     ].map(([t, f, r]) => "<dt>" + esc(t) + "</dt><dd>" + esc(f) + "</dd><dd><em>" + esc(r) + "</em></dd>").join("");
 

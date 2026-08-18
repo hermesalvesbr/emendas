@@ -265,7 +265,9 @@ function renderDivergencias() {
     .map((x) => "<li><strong>" + esc(x.chave) + "</strong> [" + esc(x.tipo) + "] — " + esc(x.detalhe) + "</li>")
     .join("");
   $("#rodape").innerHTML =
-    esc(DADOS.fonte) + " · " + esc(DADOS.fonteCusto) + " · snapshot de " + dataBR(DADOS.snapshot) +
+    esc(DADOS.fonte) + " · " + esc(DADOS.fonteCusto) +
+    (DADOS.fonteTransparencia ? "<br>" + esc(DADOS.fonteTransparencia) : "") +
+    " · snapshot de " + dataBR(DADOS.snapshot) +
     ' · <a href="https://dadosabertos.alepe.pe.gov.br/" rel="noopener">dadosabertos.alepe.pe.gov.br</a>' +
     " · gerado em " + dataBR((DADOS.geradoEm || "").slice(0, 10));
 }
