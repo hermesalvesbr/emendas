@@ -141,7 +141,16 @@
     /** Cria ou reaproveita a instância. Container sem largura ainda não pinta. */
     montar(id, option, aoClicar) {
       const el = document.getElementById(id);
-      if (!el || !window.echarts || !el.clientWidth) return null;
+      if (!el) return null;
+      // A biblioteca de gráficos pode falhar sozinha (já houve 503 de CDN no
+      // deploy). Espaço em branco sem explicação é pior que a ausência: a
+      // tela diz o que faltou, e o resto do painel continua servindo.
+      if (!window.echarts) {
+        el.textContent = "gráfico indisponível: a biblioteca de visualização não carregou";
+        el.style.cssText = "display:flex;align-items:center;justify-content:center;color:var(--pe-text3);font-size:12px;text-align:center;padding:0 12px";
+        return null;
+      }
+      if (!el.clientWidth) return null;
 
       let c = echarts.getInstanceByDom(el);
       if (!c) {
