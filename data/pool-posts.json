@@ -1,6 +1,6 @@
 {
   "nota": "Gerado por 'bun run gerar:pool'. Não editar à mão — regere.",
-  "gerado_em": "2026-08-16T21:50:37.600Z",
+  "gerado_em": "2026-08-21T12:12:44.061Z",
   "posts": [
     {
       "id": "cidade:RECIFE:total",
@@ -24905,6 +24905,3351 @@
       "peso_editorial": 5752108.95,
       "dominios": [
         "emendas",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "gabinete:alvaro-porto:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Álvaro Porto (MDB) tem 31 pessoas, entre os cinco maiores da Alepe.\n\nCusto estimado: R$ 249 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 265,
+      "hash": "fe9049b18307535e",
+      "fatos": [
+        {
+          "valor": 31,
+          "rotulo": "pessoas no gabinete de Álvaro Porto"
+        },
+        {
+          "valor": 249000,
+          "rotulo": "custo mensal do gabinete de Álvaro Porto"
+        }
+      ],
+      "chave": {
+        "deputado": "Álvaro Porto"
+      },
+      "peso_editorial": 249076.47,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:edson-vieira:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Edson Vieira (Podemos) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 245 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 245,
+      "hash": "672093276882c82a",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Edson Vieira"
+        },
+        {
+          "valor": 245000,
+          "rotulo": "custo mensal do gabinete de Edson Vieira"
+        }
+      ],
+      "chave": {
+        "deputado": "Edson Vieira"
+      },
+      "peso_editorial": 245190.11,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joao-de-nadegi:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de João de Nadegi (PV) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 245 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 242,
+      "hash": "e814dc388e4cbf83",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de João de Nadegi"
+        },
+        {
+          "valor": 245000,
+          "rotulo": "custo mensal do gabinete de João de Nadegi"
+        }
+      ],
+      "chave": {
+        "deputado": "João de Nadegi"
+      },
+      "peso_editorial": 245190.11,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joao-de-nadegi:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de João de Nadegi (PV) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 245 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 277,
+      "hash": "604cfbca2be95e09",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de João de Nadegi"
+        },
+        {
+          "valor": 245000,
+          "rotulo": "custo mensal do gabinete de João de Nadegi"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "João de Nadegi"
+      },
+      "peso_editorial": 245190.11,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:gilmar-junior:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Gilmar Júnior (PV) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 230 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 241,
+      "hash": "5e321cafbe6bd537",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Gilmar Júnior"
+        },
+        {
+          "valor": 230000,
+          "rotulo": "custo mensal do gabinete de Gilmar Júnior"
+        }
+      ],
+      "chave": {
+        "deputado": "Gilmar Júnior"
+      },
+      "peso_editorial": 229968.6,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:gilmar-junior:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Gilmar Júnior (PV) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 230 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 276,
+      "hash": "7d7066ad0c25cc9b",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Gilmar Júnior"
+        },
+        {
+          "valor": 230000,
+          "rotulo": "custo mensal do gabinete de Gilmar Júnior"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Gilmar Júnior"
+      },
+      "peso_editorial": 229968.6,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:dani-portela:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Dani Portela (PT) tem 24 pessoas, entre os cinco menores da Alepe.\n\nCusto estimado: R$ 229 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 264,
+      "hash": "69b850676273e45c",
+      "fatos": [
+        {
+          "valor": 24,
+          "rotulo": "pessoas no gabinete de Dani Portela"
+        },
+        {
+          "valor": 229000,
+          "rotulo": "custo mensal do gabinete de Dani Portela"
+        }
+      ],
+      "chave": {
+        "deputado": "Dani Portela"
+      },
+      "peso_editorial": 228673.22,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:dani-portela:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Dani Portela (PT) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 24 pessoas e R$ 229 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 275,
+      "hash": "974b97d5eefbe849",
+      "fatos": [
+        {
+          "valor": 24,
+          "rotulo": "pessoas no gabinete de Dani Portela"
+        },
+        {
+          "valor": 229000,
+          "rotulo": "custo mensal do gabinete de Dani Portela"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Dani Portela"
+      },
+      "peso_editorial": 228673.22,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:claudiano-martins-filho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Claudiano Martins Filho (PP) tem 29 pessoas, entre os cinco maiores da Alepe.\n\nCusto estimado: R$ 228 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 275,
+      "hash": "3d282393e20d67a1",
+      "fatos": [
+        {
+          "valor": 29,
+          "rotulo": "pessoas no gabinete de Claudiano Martins Filho"
+        },
+        {
+          "valor": 228000,
+          "rotulo": "custo mensal do gabinete de Claudiano Martins Filho"
+        }
+      ],
+      "chave": {
+        "deputado": "Claudiano Martins Filho"
+      },
+      "peso_editorial": 227701.59,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:rosa-amorim:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Rosa Amorim (PT) tem 25 pessoas, entre os dez menores da Alepe.\n\nCusto estimado: R$ 224 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 261,
+      "hash": "983554e0dd791316",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Rosa Amorim"
+        },
+        {
+          "valor": 224000,
+          "rotulo": "custo mensal do gabinete de Rosa Amorim"
+        }
+      ],
+      "chave": {
+        "deputado": "Rosa Amorim"
+      },
+      "peso_editorial": 223815.29,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:rosa-amorim:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Rosa Amorim (PT) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 224 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 274,
+      "hash": "0f48081918b6d404",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Rosa Amorim"
+        },
+        {
+          "valor": 224000,
+          "rotulo": "custo mensal do gabinete de Rosa Amorim"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Rosa Amorim"
+      },
+      "peso_editorial": 223815.29,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joao-paulo-costa:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de João Paulo Costa (PT) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 223 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 244,
+      "hash": "be21166d4649afd9",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de João Paulo Costa"
+        },
+        {
+          "valor": 223000,
+          "rotulo": "custo mensal do gabinete de João Paulo Costa"
+        }
+      ],
+      "chave": {
+        "deputado": "João Paulo Costa"
+      },
+      "peso_editorial": 222843.66,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:nino-de-enoque:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Nino de Enoque (PL) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 219 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 242,
+      "hash": "b1414e219a98887b",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Nino de Enoque"
+        },
+        {
+          "valor": 219000,
+          "rotulo": "custo mensal do gabinete de Nino de Enoque"
+        }
+      ],
+      "chave": {
+        "deputado": "Nino de Enoque"
+      },
+      "peso_editorial": 218957.36,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:william-brigido:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de William Brigido (PSD) tem 25 pessoas, entre os cinco menores da Alepe.\n\nCusto estimado: R$ 216 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 268,
+      "hash": "7e6f9b6b74e02b94",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de William Brigido"
+        },
+        {
+          "valor": 216000,
+          "rotulo": "custo mensal do gabinete de William Brigido"
+        }
+      ],
+      "chave": {
+        "deputado": "William Brigido"
+      },
+      "peso_editorial": 215718.72,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:william-brigido:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de William Brigido (PSD) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 216 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 279,
+      "hash": "2740ece61c7169b9",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de William Brigido"
+        },
+        {
+          "valor": 216000,
+          "rotulo": "custo mensal do gabinete de William Brigido"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "William Brigido"
+      },
+      "peso_editorial": 215718.72,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:debora-almeida:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Débora Almeida (PSD) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 213 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 243,
+      "hash": "b10489f2399e2cf7",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Débora Almeida"
+        },
+        {
+          "valor": 213000,
+          "rotulo": "custo mensal do gabinete de Débora Almeida"
+        }
+      ],
+      "chave": {
+        "deputado": "Débora Almeida"
+      },
+      "peso_editorial": 213451.71,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:debora-almeida:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Débora Almeida (PSD) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 213 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 278,
+      "hash": "493547f4061bf217",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Débora Almeida"
+        },
+        {
+          "valor": 213000,
+          "rotulo": "custo mensal do gabinete de Débora Almeida"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Débora Almeida"
+      },
+      "peso_editorial": 213451.71,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:dannilo-godoy:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Dannilo Godoy (PP) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 213 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 241,
+      "hash": "6e17e87163c4b164",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Dannilo Godoy"
+        },
+        {
+          "valor": 213000,
+          "rotulo": "custo mensal do gabinete de Dannilo Godoy"
+        }
+      ],
+      "chave": {
+        "deputado": "Dannilo Godoy"
+      },
+      "peso_editorial": 212804.05,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:izaias-regis:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Izaías Régis (PSD) tem 28 pessoas, entre os dez maiores da Alepe.\n\nCusto estimado: R$ 211 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 263,
+      "hash": "3767b359d684dd77",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Izaías Régis"
+        },
+        {
+          "valor": 211000,
+          "rotulo": "custo mensal do gabinete de Izaías Régis"
+        }
+      ],
+      "chave": {
+        "deputado": "Izaías Régis"
+      },
+      "peso_editorial": 210860.79,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:fabrizio-ferraz:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Fabrizio Ferraz (Podemos) tem 28 pessoas, entre os dez maiores da Alepe.\n\nCusto estimado: R$ 210 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 270,
+      "hash": "fd3db20abd224c94",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Fabrizio Ferraz"
+        },
+        {
+          "valor": 210000,
+          "rotulo": "custo mensal do gabinete de Fabrizio Ferraz"
+        }
+      ],
+      "chave": {
+        "deputado": "Fabrizio Ferraz"
+      },
+      "peso_editorial": 209889.16,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:cayo-albino:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Cayo Albino (PSB) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 240,
+      "hash": "19ff4e9736c687eb",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Cayo Albino"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Cayo Albino"
+        }
+      ],
+      "chave": {
+        "deputado": "Cayo Albino"
+      },
+      "peso_editorial": 209241.44,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:cayo-albino:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Cayo Albino (PSB) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 209 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 275,
+      "hash": "a45ba9dfc57074c9",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Cayo Albino"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Cayo Albino"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Cayo Albino"
+      },
+      "peso_editorial": 209241.44,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:eriberto-filho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Eriberto Filho (PSB) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 243,
+      "hash": "229dd8636bde245d",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Eriberto Filho"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Eriberto Filho"
+        }
+      ],
+      "chave": {
+        "deputado": "Eriberto Filho"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:henrique-queiroz-filho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Henrique Queiroz Filho (PP) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 250,
+      "hash": "74ad906fa451e244",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Henrique Queiroz Filho"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Henrique Queiroz Filho"
+        }
+      ],
+      "chave": {
+        "deputado": "Henrique Queiroz Filho"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joel-da-harpa:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Joel da Harpa (PP) tem 25 pessoas, entre os dez menores da Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 263,
+      "hash": "f5890fa18619b785",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Joel da Harpa"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Joel da Harpa"
+        }
+      ],
+      "chave": {
+        "deputado": "Joel da Harpa"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joel-da-harpa:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Joel da Harpa (PP) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 209 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 276,
+      "hash": "ea1ea849a4900bfd",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Joel da Harpa"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Joel da Harpa"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Joel da Harpa"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:kaio-manicoba:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Kaio Maniçoba (PP) tem 25 pessoas, entre os dez menores da Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 263,
+      "hash": "79a8a85665719ce4",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Kaio Maniçoba"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Kaio Maniçoba"
+        }
+      ],
+      "chave": {
+        "deputado": "Kaio Maniçoba"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:kaio-manicoba:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Kaio Maniçoba (PP) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 209 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 276,
+      "hash": "e5f1f0b3fbc9db8d",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Kaio Maniçoba"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Kaio Maniçoba"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Kaio Maniçoba"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:mario-ricardo:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Mário Ricardo (Podemos) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 246,
+      "hash": "74ccfdd3cc8329f7",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Mário Ricardo"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Mário Ricardo"
+        }
+      ],
+      "chave": {
+        "deputado": "Mário Ricardo"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:romero-albuquerque:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Romero Albuquerque (PSB) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 247,
+      "hash": "24b0f5a5d01103da",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Romero Albuquerque"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Romero Albuquerque"
+        }
+      ],
+      "chave": {
+        "deputado": "Romero Albuquerque"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:romero-sales-filho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Romero Sales Filho (PSD) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 247,
+      "hash": "7cc570c427c0d8e1",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Romero Sales Filho"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Romero Sales Filho"
+        }
+      ],
+      "chave": {
+        "deputado": "Romero Sales Filho"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:sileno-guedes:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Sileno Guedes (PSB) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 242,
+      "hash": "d83831bb38ca84c9",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Sileno Guedes"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Sileno Guedes"
+        }
+      ],
+      "chave": {
+        "deputado": "Sileno Guedes"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:simone-santana:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Simone Santana (PSB) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 243,
+      "hash": "a1a45fd2811e48d0",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Simone Santana"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Simone Santana"
+        }
+      ],
+      "chave": {
+        "deputado": "Simone Santana"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:socorro-pimentel:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Socorro Pimentel (PSD) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 245,
+      "hash": "361732b24eac15de",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Socorro Pimentel"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Socorro Pimentel"
+        }
+      ],
+      "chave": {
+        "deputado": "Socorro Pimentel"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:wanderson-florencio:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Wanderson Florêncio (Podemos) tem 25 pessoas, entre os cinco menores da Alepe.\n\nCusto estimado: R$ 209 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 276,
+      "hash": "0b57cb5cca4efb7e",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Wanderson Florêncio"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Wanderson Florêncio"
+        }
+      ],
+      "chave": {
+        "deputado": "Wanderson Florêncio"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:wanderson-florencio:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Wanderson Florêncio (Podemos) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 25 pessoas e R$ 209 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.",
+      "peso": 263,
+      "hash": "17efbfd34646cddf",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Wanderson Florêncio"
+        },
+        {
+          "valor": 209000,
+          "rotulo": "custo mensal do gabinete de Wanderson Florêncio"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Wanderson Florêncio"
+      },
+      "peso_editorial": 208593.78,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joaquim-lira:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Joaquim Lira (PV) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 208 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 240,
+      "hash": "a8895e3b4631aab7",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Joaquim Lira"
+        },
+        {
+          "valor": 208000,
+          "rotulo": "custo mensal do gabinete de Joaquim Lira"
+        }
+      ],
+      "chave": {
+        "deputado": "Joaquim Lira"
+      },
+      "peso_editorial": 207622.15,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:antonio-moraes:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Antônio Moraes (PSD) tem 30 pessoas, entre os cinco maiores da Alepe.\n\nCusto estimado: R$ 205 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 267,
+      "hash": "5c2303c84910172e",
+      "fatos": [
+        {
+          "valor": 30,
+          "rotulo": "pessoas no gabinete de Antônio Moraes"
+        },
+        {
+          "valor": 205000,
+          "rotulo": "custo mensal do gabinete de Antônio Moraes"
+        }
+      ],
+      "chave": {
+        "deputado": "Antônio Moraes"
+      },
+      "peso_editorial": 204707.26,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:antonio-moraes:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Antônio Moraes (PSD) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 30 pessoas e R$ 205 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 280,
+      "hash": "07aee3b2df0db1bc",
+      "fatos": [
+        {
+          "valor": 30,
+          "rotulo": "pessoas no gabinete de Antônio Moraes"
+        },
+        {
+          "valor": 205000,
+          "rotulo": "custo mensal do gabinete de Antônio Moraes"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Antônio Moraes"
+      },
+      "peso_editorial": 204707.26,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:renato-antunes:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Renato Antunes (Novo) tem 24 pessoas, entre os cinco menores da Alepe.\n\nCusto estimado: R$ 204 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 268,
+      "hash": "d1437cbe4b38d6cb",
+      "fatos": [
+        {
+          "valor": 24,
+          "rotulo": "pessoas no gabinete de Renato Antunes"
+        },
+        {
+          "valor": 204000,
+          "rotulo": "custo mensal do gabinete de Renato Antunes"
+        }
+      ],
+      "chave": {
+        "deputado": "Renato Antunes"
+      },
+      "peso_editorial": 204383.51,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:renato-antunes:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Renato Antunes (Novo) é um dos menores da Alepe em número de pessoas e um dos mais caros.\n\nSão 24 pessoas e R$ 204 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 279,
+      "hash": "6f1c820394b49698",
+      "fatos": [
+        {
+          "valor": 24,
+          "rotulo": "pessoas no gabinete de Renato Antunes"
+        },
+        {
+          "valor": 204000,
+          "rotulo": "custo mensal do gabinete de Renato Antunes"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Renato Antunes"
+      },
+      "peso_editorial": 204383.51,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:abimael-santos:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Abimael Santos (PL) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 201 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 242,
+      "hash": "1f18d4f31c5fe6ea",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Abimael Santos"
+        },
+        {
+          "valor": 201000,
+          "rotulo": "custo mensal do gabinete de Abimael Santos"
+        }
+      ],
+      "chave": {
+        "deputado": "Abimael Santos"
+      },
+      "peso_editorial": 201468.84,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:francismar-pontes:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Francismar Pontes (PSB) tem 28 pessoas, entre os dez maiores da Alepe.\n\nCusto estimado: R$ 201 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 268,
+      "hash": "b6350871851580a2",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Francismar Pontes"
+        },
+        {
+          "valor": 201000,
+          "rotulo": "custo mensal do gabinete de Francismar Pontes"
+        }
+      ],
+      "chave": {
+        "deputado": "Francismar Pontes"
+      },
+      "peso_editorial": 201468.84,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:francismar-pontes:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Francismar Pontes (PSB) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 28 pessoas e R$ 201 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.",
+      "peso": 259,
+      "hash": "9b52ff32bea0ed25",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Francismar Pontes"
+        },
+        {
+          "valor": 201000,
+          "rotulo": "custo mensal do gabinete de Francismar Pontes"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Francismar Pontes"
+      },
+      "peso_editorial": 201468.84,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:jeferson-timoteo:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Jeferson Timóteo (Podemos) tem 28 pessoas na Alepe.\n\nCusto estimado: R$ 201 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 249,
+      "hash": "f596d53a99888c9a",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Jeferson Timóteo"
+        },
+        {
+          "valor": 201000,
+          "rotulo": "custo mensal do gabinete de Jeferson Timóteo"
+        }
+      ],
+      "chave": {
+        "deputado": "Jeferson Timóteo"
+      },
+      "peso_editorial": 201468.84,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:jeferson-timoteo:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Jeferson Timóteo (Podemos) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 28 pessoas e R$ 201 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.",
+      "peso": 262,
+      "hash": "b3e645e697b320ee",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Jeferson Timóteo"
+        },
+        {
+          "valor": 201000,
+          "rotulo": "custo mensal do gabinete de Jeferson Timóteo"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Jeferson Timóteo"
+      },
+      "peso_editorial": 201468.84,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:coronel-alberto-feitosa:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Coronel Alberto Feitosa (PL) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 200 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 251,
+      "hash": "4ca9308ae113e114",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Coronel Alberto Feitosa"
+        },
+        {
+          "valor": 200000,
+          "rotulo": "custo mensal do gabinete de Coronel Alberto Feitosa"
+        }
+      ],
+      "chave": {
+        "deputado": "Coronel Alberto Feitosa"
+      },
+      "peso_editorial": 199525.58,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:luciano-duque:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Luciano Duque (Podemos) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 200 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 246,
+      "hash": "78802d642ba7d8d8",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Luciano Duque"
+        },
+        {
+          "valor": 200000,
+          "rotulo": "custo mensal do gabinete de Luciano Duque"
+        }
+      ],
+      "chave": {
+        "deputado": "Luciano Duque"
+      },
+      "peso_editorial": 199525.58,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:gustavo-gouveia:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Gustavo Gouveia (Podemos) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 198 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 248,
+      "hash": "f70562fb12d67b9a",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Gustavo Gouveia"
+        },
+        {
+          "valor": 198000,
+          "rotulo": "custo mensal do gabinete de Gustavo Gouveia"
+        }
+      ],
+      "chave": {
+        "deputado": "Gustavo Gouveia"
+      },
+      "peso_editorial": 197582.32,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joaozinho-tenorio:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Joãozinho Tenório (PSD) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 196 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 246,
+      "hash": "5638891005540e54",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Joãozinho Tenório"
+        },
+        {
+          "valor": 196000,
+          "rotulo": "custo mensal do gabinete de Joãozinho Tenório"
+        }
+      ],
+      "chave": {
+        "deputado": "Joãozinho Tenório"
+      },
+      "peso_editorial": 195936.45,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:pastor-cleiton-collins:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Pastor Cleiton Collins (PP) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 194 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 250,
+      "hash": "e82e09a71ca61416",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de Pastor Cleiton Collins"
+        },
+        {
+          "valor": 194000,
+          "rotulo": "custo mensal do gabinete de Pastor Cleiton Collins"
+        }
+      ],
+      "chave": {
+        "deputado": "Pastor Cleiton Collins"
+      },
+      "peso_editorial": 194343.9,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:france-hacker:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de France Hacker (PP) tem 32 pessoas, o maior da Alepe.\n\nCusto estimado: R$ 193 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 250,
+      "hash": "6c3ce604c0eb68b4",
+      "fatos": [
+        {
+          "valor": 32,
+          "rotulo": "pessoas no gabinete de France Hacker"
+        },
+        {
+          "valor": 193000,
+          "rotulo": "custo mensal do gabinete de France Hacker"
+        }
+      ],
+      "chave": {
+        "deputado": "France Hacker"
+      },
+      "peso_editorial": 193372.27,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:france-hacker:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de France Hacker (PP) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 32 pessoas e R$ 193 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 278,
+      "hash": "bbd7a08581803458",
+      "fatos": [
+        {
+          "valor": 32,
+          "rotulo": "pessoas no gabinete de France Hacker"
+        },
+        {
+          "valor": 193000,
+          "rotulo": "custo mensal do gabinete de France Hacker"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "France Hacker"
+      },
+      "peso_editorial": 193372.27,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:jarbas-filho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Jarbas Filho (PSD) tem 28 pessoas, entre os dez maiores da Alepe.\n\nCusto estimado: R$ 187 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 263,
+      "hash": "829d40d84d041a02",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Jarbas Filho"
+        },
+        {
+          "valor": 187000,
+          "rotulo": "custo mensal do gabinete de Jarbas Filho"
+        }
+      ],
+      "chave": {
+        "deputado": "Jarbas Filho"
+      },
+      "peso_editorial": 186894.99,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:jarbas-filho:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Jarbas Filho (PSD) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 28 pessoas e R$ 187 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 278,
+      "hash": "f6988a03cfdc7210",
+      "fatos": [
+        {
+          "valor": 28,
+          "rotulo": "pessoas no gabinete de Jarbas Filho"
+        },
+        {
+          "valor": 187000,
+          "rotulo": "custo mensal do gabinete de Jarbas Filho"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Jarbas Filho"
+      },
+      "peso_editorial": 186894.99,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:doriel-barros:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Doriel Barros (PT) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 184 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 241,
+      "hash": "156b22dde2ff2671",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Doriel Barros"
+        },
+        {
+          "valor": 184000,
+          "rotulo": "custo mensal do gabinete de Doriel Barros"
+        }
+      ],
+      "chave": {
+        "deputado": "Doriel Barros"
+      },
+      "peso_editorial": 184304.07,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joao-paulo-do-pt:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de João Paulo do PT (PT) tem 26 pessoas na Alepe.\n\nCusto estimado: R$ 182 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 244,
+      "hash": "fb2bbcb587d9aff2",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de João Paulo do PT"
+        },
+        {
+          "valor": 182000,
+          "rotulo": "custo mensal do gabinete de João Paulo do PT"
+        }
+      ],
+      "chave": {
+        "deputado": "João Paulo do PT"
+      },
+      "peso_editorial": 182037.28,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:joao-paulo-do-pt:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de João Paulo do PT (PT) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 26 pessoas e R$ 182 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.",
+      "peso": 257,
+      "hash": "b47dc173f5643c21",
+      "fatos": [
+        {
+          "valor": 26,
+          "rotulo": "pessoas no gabinete de João Paulo do PT"
+        },
+        {
+          "valor": 182000,
+          "rotulo": "custo mensal do gabinete de João Paulo do PT"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "João Paulo do PT"
+      },
+      "peso_editorial": 182037.28,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:pastor-junior-tercio:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Pastor Júnior Tércio (PP) tem 25 pessoas, entre os dez menores da Alepe.\n\nCusto estimado: R$ 182 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 270,
+      "hash": "c4c6f58a8f950410",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Pastor Júnior Tércio"
+        },
+        {
+          "valor": 182000,
+          "rotulo": "custo mensal do gabinete de Pastor Júnior Tércio"
+        }
+      ],
+      "chave": {
+        "deputado": "Pastor Júnior Tércio"
+      },
+      "peso_editorial": 181686.57,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:aglailson-victor:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Aglailson Victor (PSD) tem 27 pessoas na Alepe.\n\nCusto estimado: R$ 181 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 245,
+      "hash": "f598c2b4c534b666",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Aglailson Victor"
+        },
+        {
+          "valor": 181000,
+          "rotulo": "custo mensal do gabinete de Aglailson Victor"
+        }
+      ],
+      "chave": {
+        "deputado": "Aglailson Victor"
+      },
+      "peso_editorial": 181389.18,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:aglailson-victor:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Aglailson Victor (PSD) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 27 pessoas e R$ 181 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.",
+      "peso": 258,
+      "hash": "adc2b582da40d0b9",
+      "fatos": [
+        {
+          "valor": 27,
+          "rotulo": "pessoas no gabinete de Aglailson Victor"
+        },
+        {
+          "valor": 181000,
+          "rotulo": "custo mensal do gabinete de Aglailson Victor"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Aglailson Victor"
+      },
+      "peso_editorial": 181389.18,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:delegada-gleide-angelo:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gabinete de Delegada Gleide Ângelo (PP) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 177 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 250,
+      "hash": "c2c9023b380e1d42",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Delegada Gleide Ângelo"
+        },
+        {
+          "valor": 177000,
+          "rotulo": "custo mensal do gabinete de Delegada Gleide Ângelo"
+        }
+      ],
+      "chave": {
+        "deputado": "Delegada Gleide Ângelo"
+      },
+      "peso_editorial": 177179.13,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:adalto-santos:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Adalto Santos (PP) tem 25 pessoas na Alepe.\n\nCusto estimado: R$ 175 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 241,
+      "hash": "013cf8e1e7a3245e",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Adalto Santos"
+        },
+        {
+          "valor": 175000,
+          "rotulo": "custo mensal do gabinete de Adalto Santos"
+        }
+      ],
+      "chave": {
+        "deputado": "Adalto Santos"
+      },
+      "peso_editorial": 175235.87,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:diogo-moraes:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Diogo Moraes (PSB) tem 29 pessoas, entre os cinco maiores da Alepe.\n\nCusto estimado: R$ 173 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 265,
+      "hash": "dfaae63f4cddb62b",
+      "fatos": [
+        {
+          "valor": 29,
+          "rotulo": "pessoas no gabinete de Diogo Moraes"
+        },
+        {
+          "valor": 173000,
+          "rotulo": "custo mensal do gabinete de Diogo Moraes"
+        }
+      ],
+      "chave": {
+        "deputado": "Diogo Moraes"
+      },
+      "peso_editorial": 172618.37,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:diogo-moraes:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Diogo Moraes (PSB) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 29 pessoas e R$ 173 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 278,
+      "hash": "cf1dea48a23db4be",
+      "fatos": [
+        {
+          "valor": 29,
+          "rotulo": "pessoas no gabinete de Diogo Moraes"
+        },
+        {
+          "valor": 173000,
+          "rotulo": "custo mensal do gabinete de Diogo Moraes"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Diogo Moraes"
+      },
+      "peso_editorial": 172618.37,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:antonio-coelho:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Antonio Coelho (União) tem 23 pessoas, o menor da Alepe.\n\nCusto estimado: R$ 170 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 254,
+      "hash": "3b1e857681ec65ce",
+      "fatos": [
+        {
+          "valor": 23,
+          "rotulo": "pessoas no gabinete de Antonio Coelho"
+        },
+        {
+          "valor": 170000,
+          "rotulo": "custo mensal do gabinete de Antonio Coelho"
+        }
+      ],
+      "chave": {
+        "deputado": "Antonio Coelho"
+      },
+      "peso_editorial": 170377.88,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:rodrigo-farias:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O gabinete de Rodrigo Farias (PSB) tem 29 pessoas, entre os dez maiores da Alepe.\n\nCusto estimado: R$ 170 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 265,
+      "hash": "2f8d7d804a985bd2",
+      "fatos": [
+        {
+          "valor": 29,
+          "rotulo": "pessoas no gabinete de Rodrigo Farias"
+        },
+        {
+          "valor": 170000,
+          "rotulo": "custo mensal do gabinete de Rodrigo Farias"
+        }
+      ],
+      "chave": {
+        "deputado": "Rodrigo Farias"
+      },
+      "peso_editorial": 170054.19,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:rodrigo-farias:contraste",
+      "eixo": "gabinete",
+      "template": "gabinete-contraste",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O gabinete de Rodrigo Farias (PSB) é um dos maiores da Alepe em número de pessoas e um dos mais baratos.\n\nSão 29 pessoas e R$ 170 mil por mês em vencimento de tabela.\n\nA composição explica: um Chefe de Gabinete custa 5,2 vezes um Coordenador de Expediente.\n\nContar cabeças engana.",
+      "peso": 280,
+      "hash": "4e0ae38897e5c3d7",
+      "fatos": [
+        {
+          "valor": 29,
+          "rotulo": "pessoas no gabinete de Rodrigo Farias"
+        },
+        {
+          "valor": 170000,
+          "rotulo": "custo mensal do gabinete de Rodrigo Farias"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "deputado": "Rodrigo Farias"
+      },
+      "peso_editorial": 170054.19,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:junior-matuto:custo",
+      "eixo": "gabinete",
+      "template": "gabinete-nominal",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O gabinete de Junior Matuto (Republicanos) tem 25 pessoas, entre os dez menores da Alepe.\n\nCusto estimado: R$ 168 mil por mês.\n\nO número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nVencimento de cargo, não salário individual — a Alepe não publica o nominal.",
+      "peso": 273,
+      "hash": "59246cc3ac88b68a",
+      "fatos": [
+        {
+          "valor": 25,
+          "rotulo": "pessoas no gabinete de Junior Matuto"
+        },
+        {
+          "valor": 168000,
+          "rotulo": "custo mensal do gabinete de Junior Matuto"
+        }
+      ],
+      "chave": {
+        "deputado": "Junior Matuto"
+      },
+      "peso_editorial": 167787.18,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:custo-total",
+      "eixo": "gabinete",
+      "template": "gabinete-custo-total",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "Os 49 gabinetes da Alepe reúnem 1.292 pessoas e R$ 10,0 mi por mês em vencimento de tabela.\n\nValor bruto, sem 13º, férias e encargo patronal — o número real é maior.",
+      "peso": 165,
+      "hash": "36b1b79b57d858f4",
+      "fatos": [
+        {
+          "valor": 49,
+          "rotulo": "gabinetes da Alepe"
+        },
+        {
+          "valor": 1292,
+          "rotulo": "pessoas lotadas em gabinete na Alepe"
+        },
+        {
+          "valor": 10000000,
+          "rotulo": "custo mensal dos gabinetes da Alepe"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 100,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:custo-total:campanha",
+      "eixo": "gabinete",
+      "template": "gabinete-custo-total",
+      "variante": 1,
+      "postura": "campanha",
+      "texto": "Os 49 gabinetes da Alepe reúnem 1.292 pessoas e R$ 10,0 mi por mês em vencimento de tabela.\n\nNão é sobre gastar menos: é sobre poder conferir.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 206,
+      "hash": "d7828ba93cf97d3a",
+      "fatos": [
+        {
+          "valor": 49,
+          "rotulo": "gabinetes da Alepe"
+        },
+        {
+          "valor": 1292,
+          "rotulo": "pessoas lotadas em gabinete na Alepe"
+        },
+        {
+          "valor": 10000000,
+          "rotulo": "custo mensal dos gabinetes da Alepe"
+        },
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 100,
+      "dominios": [
+        "gabinete",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:custo-ano",
+      "eixo": "gabinete",
+      "template": "gabinete-custo-ano",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "Doze meses de gabinete na Alepe dão R$ 120,1 mi em vencimento de tabela.\n\nSem 13º, férias e encargo patronal, que a estimativa não cobre.",
+      "peso": 137,
+      "hash": "f42f6ee49b4bd497",
+      "fatos": [
+        {
+          "valor": 120100000,
+          "rotulo": "custo dos gabinetes da Alepe em 12 meses"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 96,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:custo-ano:campanha",
+      "eixo": "gabinete",
+      "template": "gabinete-custo-ano",
+      "variante": 3,
+      "postura": "campanha",
+      "texto": "Doze meses de gabinete na Alepe dão R$ 120,1 mi em vencimento de tabela.\n\nNão é sobre gastar menos: é sobre poder conferir.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 187,
+      "hash": "6c5cb400a924c027",
+      "fatos": [
+        {
+          "valor": 120100000,
+          "rotulo": "custo dos gabinetes da Alepe em 12 meses"
+        },
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 96,
+      "dominios": [
+        "gabinete",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:amplitude",
+      "eixo": "gabinete",
+      "template": "gabinete-amplitude",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O menor gabinete da Alepe tem 23 pessoas e o maior tem 32. O número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nA diferença entre gabinetes está mais na composição dos cargos do que no número de gente.",
+      "peso": 217,
+      "hash": "006e3be9aafc18c0",
+      "fatos": [
+        {
+          "valor": 23,
+          "rotulo": "pessoas no menor gabinete da Alepe"
+        },
+        {
+          "valor": 32,
+          "rotulo": "pessoas no maior gabinete da Alepe"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 92,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:amplitude:campanha",
+      "eixo": "gabinete",
+      "template": "gabinete-amplitude",
+      "variante": 2,
+      "postura": "campanha",
+      "texto": "O menor gabinete da Alepe tem 23 pessoas e o maior tem 32. O número de cargos é fixado por ato da Mesa, não por cada deputado.\n\nOrçamento que ninguém consegue abrir não é orçamento público.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 253,
+      "hash": "7b529c12de5490e7",
+      "fatos": [
+        {
+          "valor": 23,
+          "rotulo": "pessoas no menor gabinete da Alepe"
+        },
+        {
+          "valor": 32,
+          "rotulo": "pessoas no maior gabinete da Alepe"
+        },
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 92,
+      "dominios": [
+        "gabinete",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:tabela-cargos",
+      "eixo": "gabinete",
+      "template": "gabinete-tabela-cargos",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "Na Alepe, um Chefe de Gabinete tem vencimento de tabela de R$ 11.685,70 e um Coordenador de Expediente, R$ 2.267,01: 5,2 vezes menos.\n\nPor isso gabinete com menos gente pode custar mais que gabinete cheio.\n\nVencimento do cargo, bruto, não o que a pessoa recebe.",
+      "peso": 261,
+      "hash": "527fac801f560dcd",
+      "fatos": [
+        {
+          "valor": 11685.7,
+          "rotulo": "vencimento de tabela do cargo Chefe de Gabinete"
+        },
+        {
+          "valor": 2267.01,
+          "rotulo": "vencimento de tabela do cargo Coordenador de Expediente"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 88,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:tabela-cargos:campanha",
+      "eixo": "gabinete",
+      "template": "gabinete-tabela-cargos",
+      "variante": 3,
+      "postura": "campanha",
+      "texto": "Na Alepe, um Chefe de Gabinete tem vencimento de tabela de R$ 11.685,70 e um Coordenador de Expediente, R$ 2.267,01: 5,2 vezes menos.\n\nOrçamento que ninguém consegue abrir não é orçamento público.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 260,
+      "hash": "a25575b35038170c",
+      "fatos": [
+        {
+          "valor": 11685.7,
+          "rotulo": "vencimento de tabela do cargo Chefe de Gabinete"
+        },
+        {
+          "valor": 2267.01,
+          "rotulo": "vencimento de tabela do cargo Coordenador de Expediente"
+        },
+        {
+          "valor": 5.2,
+          "rotulo": "vezes que Chefe de Gabinete custa Coordenador de Expediente"
+        },
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 88,
+      "dominios": [
+        "gabinete",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:transparencia",
+      "eixo": "gabinete",
+      "template": "gabinete-transparencia",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "A Alepe não publica quanto cada servidor recebe, e tira nota zero no item do índice da Transparência Internacional que mede exatamente isso.\n\nEla publica o vencimento de cada cargo, e o resto é cruzamento nosso.\n\nSó quatro assembleias do país tiram nota cheia nesse item.",
+      "peso": 271,
+      "hash": "352086ff951297ba",
+      "fatos": [],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 94,
+      "dominios": [
+        "gabinete"
+      ]
+    },
+    {
+      "id": "gabinete:alepe:transparencia:campanha",
+      "eixo": "gabinete",
+      "template": "gabinete-transparencia",
+      "variante": 3,
+      "postura": "campanha",
+      "texto": "A Alepe não publica quanto cada servidor recebe, e tira nota zero no item do índice da Transparência Internacional que mede exatamente isso.\n\nDefendo que a Alepe publique quanto cada servidor recebe.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 263,
+      "hash": "9c04f620a1e39a4c",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "escopo": "alepe"
+      },
+      "peso_editorial": 94,
+      "dominios": [
+        "gabinete",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:contrato-passagem",
+      "eixo": "trem",
+      "template": "trem-contrato-passagem",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O contrato da Transnordestina obriga a concessionária a assegurar a passagem de trens de passageiros, sempre que um operador ferroviário requerer.\n\nA cláusula está em vigor desde 2014.\n\nNenhum operador requereu até hoje.",
+      "peso": 220,
+      "hash": "d9ebe5c81822f188",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 100,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:ninguem-pediu:campanha",
+      "eixo": "trem",
+      "template": "trem-ninguem-pediu",
+      "variante": 1,
+      "postura": "campanha",
+      "texto": "A obrigação de deixar passar trem de passageiros está no contrato da Transnordestina há mais de uma década. Ninguém em Pernambuco bateu nessa porta.\n\nSou de Araripina e quero essa pergunta em cima da mesa.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 269,
+      "hash": "030d2f43f4d8d924",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 98,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:falta-pedido:campanha",
+      "eixo": "trem",
+      "template": "trem-falta-pedido",
+      "variante": 1,
+      "postura": "campanha",
+      "texto": "Para um trem de passageiros no sertão de Pernambuco, o que falta não é permissão: é ferrovia construída, alguém que peça e dinheiro que sustente.\n\nQuem mora no sertão paga a conta da distância todo mês.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 266,
+      "hash": "2c9f5caaa6312482",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 96,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:lei-atf",
+      "eixo": "trem",
+      "template": "trem-lei-atf",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "A Lei 14.273/2021 criou o agente transportador ferroviário: quem transporta passageiros sem ser dono dos trilhos.\n\nBasta registro no regulador para requerer acesso à via de terceiro.\n\nNeste eixo, ninguém se registrou.",
+      "peso": 217,
+      "hash": "bc44e00da7bc1a48",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 92,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:politica-nacional",
+      "eixo": "trem",
+      "template": "trem-politica-nacional",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Em novembro de 2025 o Ministério dos Transportes instituiu a Política Nacional de Transporte Ferroviário de Passageiros.\n\nEla define como objetivo aproveitar a malha existente para passageiros, inclusive a ociosa ou subutilizada.",
+      "peso": 229,
+      "hash": "8acd91d79cc2850c",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 90,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:subsidio-previsto",
+      "eixo": "trem",
+      "template": "trem-subsidio-previsto",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "A política nacional de trens de passageiros admite que esses serviços sejam sustentados por subsídio ou subvenção.\n\nO Estado brasileiro já reconheceu, em norma, que trem regional de gente pode não se pagar pela tarifa.",
+      "peso": 218,
+      "hash": "cce3902841cdde1d",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 84,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:malha-antiga-dois-pares",
+      "eixo": "trem",
+      "template": "trem-malha-antiga-dois-pares",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O contrato da malha antiga que serve o Recife, de 1997, obriga a assegurar a passagem de até 2 pares de trens de passageiros por dia.\n\nA obrigação é quantificada e só depende de um patamar de tráfego na linha.\n\nEssa linha está abandonada.",
+      "peso": 238,
+      "hash": "f76c4d614da756ec",
+      "fatos": [
+        {
+          "valor": 2,
+          "rotulo": "pares de trens de passageiros por dia no contrato de 1997 [F33]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 82,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:coe-90-dias",
+      "eixo": "trem",
+      "template": "trem-coe-90-dias",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Para rodar sobre trilho de terceiro existe um instrumento pronto: o Contrato Operacional Específico, regulado pela ANTT.\n\nO pedido precisa ser feito com pelo menos 90 dias de antecedência, e a celebração é obrigatória.\n\nÉ burocracia conhecida, não obstáculo novo.",
+      "peso": 263,
+      "hash": "815cddb9e8f71067",
+      "fatos": [
+        {
+          "valor": 90,
+          "rotulo": "dias de antecedência para pedir Contrato Operacional Específico [F37]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 70,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:sem-prioridade",
+      "eixo": "trem",
+      "template": "trem-sem-prioridade",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "A norma de compartilhamento ferroviário não fixa prioridade entre trem de passageiros e trem de carga na mesma via.\n\nNuma ferrovia feita para minério, grãos e gesso, a pontualidade dependeria de negociação, não de garantia.",
+      "peso": 223,
+      "hash": "a7d14b5bf8c2bf0d",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 74,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:janela-desestatizacao:campanha",
+      "eixo": "trem",
+      "template": "trem-janela-desestatizacao",
+      "variante": 0,
+      "postura": "campanha",
+      "texto": "O ramal pernambucano da Transnordestina está em estudo para ser concedido. É no desenho desse contrato que uma obrigação de levar passageiros pode entrar.\n\nQuem mora no sertão paga a conta da distância todo mês.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 275,
+      "hash": "833aa8acda2dd9a3",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 94,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:precedente-vale",
+      "eixo": "trem",
+      "template": "trem-precedente-vale",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "Os dois únicos trens regulares de passageiros de longa distância do Brasil são os da Vale, em Minas e no Pará.\n\nEles não existem por viabilidade de mercado: nasceram de obrigação assumida na renovação das concessões, em 2020.",
+      "peso": 225,
+      "hash": "6f7bc42d2088a566",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 88,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:outorgas-turisticas",
+      "eixo": "trem",
+      "template": "trem-outorgas-turisticas",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "A ANTT registra cerca de 13 trens turísticos e histórico-culturais em operação no país.\n\nÉ um regime próprio, autorizado caso a caso, mais simples que o serviço regular.\n\nNenhum deles usa a Transnordestina.",
+      "peso": 206,
+      "hash": "dd7e1ff6c1c06598",
+      "fatos": [
+        {
+          "valor": 13,
+          "rotulo": "trens turísticos em operação com outorga da ANTT [F19]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 60,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:evtea-passageiros",
+      "eixo": "trem",
+      "template": "trem-evtea-passageiros",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O estudo de viabilidade da própria Transnordestina já contabilizou trens de passageiros no dimensionamento diário da via.\n\nFoi em outro ramal, no Piauí e no Maranhão — mas mostra que a hipótese nunca foi estranha ao projeto.",
+      "peso": 224,
+      "hash": "68b4272ee1568111",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 76,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:antt-carga",
+      "eixo": "trem",
+      "template": "trem-antt-carga",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "A ANTT liberou ao tráfego cerca de 679 km da Transnordestina em regime de teste, em outubro de 2025.\n\nA autorização é expressa: transporte público ferroviário de cargas. Passageiro não aparece em nenhuma linha dela.",
+      "peso": 215,
+      "hash": "ae9a7a02e7666ed6",
+      "fatos": [
+        {
+          "valor": 679,
+          "rotulo": "km liberados ao tráfego em regime de comissionamento [F01]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 78,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:fase1-avanco",
+      "eixo": "trem",
+      "template": "trem-fase1-avanco",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "A primeira fase da Transnordestina, de Eliseu Martins ao Porto do Pecém, tinha 777 dos 1.206 km concluídos em julho de 2026.\n\nÉ a obra que avança, e ela vai para o Ceará.\n\nO trecho que chegaria a Pernambuco é outro.",
+      "peso": 215,
+      "hash": "0dde3d32fa170e37",
+      "fatos": [
+        {
+          "valor": 777,
+          "rotulo": "km concluídos da fase 1 em julho de 2026 [F15]"
+        },
+        {
+          "valor": 1206,
+          "rotulo": "km da fase 1 da Transnordestina [F15]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 86,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:divergencia-82-81",
+      "eixo": "trem",
+      "template": "trem-divergencia-82-81",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "A execução da primeira fase da Transnordestina aparece como 82% na Agência Brasil e como 81% no release da própria CSN.\n\nSão apurações de datas e critérios distintos.\n\nAs duas ficam registradas, sem arbitrar a mais conveniente.",
+      "peso": 227,
+      "hash": "04850f78a7796540",
+      "fatos": [
+        {
+          "valor": 82,
+          "rotulo": "% de execução da fase 1 pela Agência Brasil [F15]"
+        },
+        {
+          "valor": 81,
+          "rotulo": "% de execução da fase 1 pelo release da CSN [F15]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 58,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:trindade-salgueiro",
+      "eixo": "trem",
+      "template": "trem-trindade-salgueiro",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "Entre Trindade e Salgueiro há 163 km de ferrovia construídos e já liberados ao tráfego de carga em regime de teste.\n\nÉ trilho pronto, dentro do sertão de Pernambuco.\n\nNão há nenhuma estação de passageiros nesse trecho.",
+      "peso": 218,
+      "hash": "d096053c2444fdae",
+      "fatos": [
+        {
+          "valor": 163,
+          "rotulo": "km entre Trindade e Salgueiro [F01]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 80,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:velocidade-c31",
+      "eixo": "trem",
+      "template": "trem-velocidade-c31",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "No regime de teste, a Transnordestina roda entre 41 e 64 km/h.\n\nÉ a classificação declarada à ANTT para o período de comissionamento, com restrição adicional onde há pendências na via.",
+      "peso": 184,
+      "hash": "22b8757e4bbfee69",
+      "fatos": [
+        {
+          "valor": 41,
+          "rotulo": "km/h mínimos da classificação C31 de comissionamento [F01]"
+        },
+        {
+          "valor": 64,
+          "rotulo": "km/h máximos da classificação C31 de comissionamento [F01]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 56,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:grade-montada",
+      "eixo": "trem",
+      "template": "trem-grade-montada",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "A concessionária declarou 676 km de grade ferroviária montada ao fim de 2025.\n\nO número é declaração da administração: a própria companhia registra que esses percentuais não passaram pelos auditores independentes.",
+      "peso": 213,
+      "hash": "a2666346e4bfaafd",
+      "fatos": [
+        {
+          "valor": 676,
+          "rotulo": "km de grade ferroviária montada em 31/12/2025 [F36]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 54,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:eliseu-trindade",
+      "eixo": "trem",
+      "template": "trem-eliseu-trindade",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O trecho de Eliseu Martins a Trindade tem 420 km e avanço declarado de 80% ao fim de 2025.\n\nPercentual informado pela concessionária, fora do escopo de exame dos auditores independentes.",
+      "peso": 186,
+      "hash": "7a10fd74c7817d47",
+      "fatos": [
+        {
+          "valor": 420,
+          "rotulo": "km entre Eliseu Martins e Trindade [F36]"
+        },
+        {
+          "valor": 80,
+          "rotulo": "% da fase 1 declarado pela concessionária em 31/12/2025 [F36]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 52,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:salgueiro-missao-velha",
+      "eixo": "trem",
+      "template": "trem-salgueiro-missao-velha",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O trecho de Salgueiro a Missão Velha, 96 km, está declarado como concluído.\n\nÉ a costura da ferrovia pernambucana com o corredor que segue para o Ceará.\n\nPercentual declarado pela concessionária, não auditado.",
+      "peso": 209,
+      "hash": "c81803e4672798fb",
+      "fatos": [
+        {
+          "valor": 96,
+          "rotulo": "km entre Salgueiro e Missão Velha [F36]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 50,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:ramal-544",
+      "eixo": "trem",
+      "template": "trem-ramal-544",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O ramal que ligaria Salgueiro a Suape tem cerca de 544 km e está em torno de 38% executado.\n\nÉ o trecho que traria a ferrovia para dentro de Pernambuco, e é o que não anda.",
+      "peso": 172,
+      "hash": "2fe8f28d248aaf95",
+      "fatos": [
+        {
+          "valor": 544,
+          "rotulo": "km do ramal de Salgueiro a Suape [F25]"
+        },
+        {
+          "valor": 38,
+          "rotulo": "% executado do ramal de Salgueiro a Suape [F25]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 96,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:238-sem-obra",
+      "eixo": "trem",
+      "template": "trem-238-sem-obra",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "No ramal de Salgueiro a Suape, cerca de 238 km sequer tiveram obra iniciada.\n\nNão é obra atrasada nesse pedaço: é obra que não começou.",
+      "peso": 135,
+      "hash": "d2ec78736051023c",
+      "fatos": [
+        {
+          "valor": 238,
+          "rotulo": "km do ramal que não tiveram obra iniciada [F25]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 94,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:lote-sps04",
+      "eixo": "trem",
+      "template": "trem-lote-sps04",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O primeiro lote do ramal pernambucano, com 73 km, foi contratado em abril de 2026 por R$ 312,8 mi.\n\nA execução física continua vedada: o contrato existe, a obra não começou.",
+      "peso": 173,
+      "hash": "8e4c9a1315672b81",
+      "fatos": [
+        {
+          "valor": 73,
+          "rotulo": "km do lote SPS 04 [F06]"
+        },
+        {
+          "valor": 312800000,
+          "rotulo": "valor contratado do lote SPS 04 [F06]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 72,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:tcu-vedacao",
+      "eixo": "trem",
+      "template": "trem-tcu-vedacao",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "Em maio de 2026 o TCU determinou que o Ministério dos Transportes e a Infra S.A. não assumam novos compromissos financeiros no ramal de Suape.\n\nA condição é demonstrar, em base técnica atual e idônea, a vantajosidade do empreendimento.",
+      "peso": 235,
+      "hash": "7e5718f3de907706",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 90,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:tcu-tres-acordaos",
+      "eixo": "trem",
+      "template": "trem-tcu-tres-acordaos",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Sobre a Transnordestina existem três decisões distintas do TCU em 2026, e elas não se confundem.\n\nUma trata da devolução da malha antiga, outra veda novos compromissos no ramal de Suape, a terceira é uma liberação parcial que manteve a obra vedada.",
+      "peso": 248,
+      "hash": "47949aa3589abdb6",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 44,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:tracado-suape-pendente",
+      "eixo": "trem",
+      "template": "trem-tracado-suape-pendente",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O traçado do trecho final do ramal, junto ao Porto de Suape, ainda está pendente de definição.\n\nNão é detalhe de engenharia: é o pedaço que decide onde a ferrovia encosta no litoral.",
+      "peso": 182,
+      "hash": "b800881d8db78dd2",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 68,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:suape-nao-e-recife",
+      "eixo": "trem",
+      "template": "trem-suape-nao-e-recife",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O ramal da Transnordestina termina em Suape, não no Recife.\n\nNão há ligação ferroviária prevista entre um ponto e outro, e a bitola muda: a Transnordestina é de 1,60 m e a malha metropolitana é métrica.\n\nUm trem da Transnordestina não roda nos trilhos do Recife.",
+      "peso": 262,
+      "hash": "8aaa65287a477be6",
+      "fatos": [
+        {
+          "valor": 1.6,
+          "rotulo": "bitola da Transnordestina, em metros [F25]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 92,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:terceiro-trilho",
+      "eixo": "trem",
+      "template": "trem-terceiro-trilho",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Em outubro de 2025, a ANTT autorizou retirar provisoriamente o terceiro trilho em trechos que teriam bitola mista.\n\nIsso reduz ainda mais a possibilidade de um trem passar de uma malha para a outra.",
+      "peso": 198,
+      "hash": "baa5707bae7faf06",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 46,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:araripina-trilhos:campanha",
+      "eixo": "trem",
+      "template": "trem-araripina-trilhos",
+      "variante": 2,
+      "postura": "campanha",
+      "texto": "A Transnordestina corta Araripina por mais de vinte quilômetros, mais de três vezes o que corta Trindade. O terminal previsto fica em Trindade.\n\nDefendo que Pernambuco peça o seu trem de passageiros.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 263,
+      "hash": "bf8715f30f089c50",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 99,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:araripina-parada:campanha",
+      "eixo": "trem",
+      "template": "trem-araripina-parada",
+      "variante": 1,
+      "postura": "campanha",
+      "texto": "Se um dia houver trem de passageiros nessa ferrovia, Araripina não precisa de trilho novo: os trilhos já cruzam o município. Falta uma parada.\n\nLevantei isso porque ninguém tinha levantado.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 253,
+      "hash": "1bed20e1201ad976",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 97,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:terminal-trindade",
+      "eixo": "trem",
+      "template": "trem-terminal-trindade",
+      "variante": 3,
+      "postura": "dado",
+      "texto": "O equipamento da Transnordestina previsto para o Araripe é um terminal de carga em Trindade, voltado ao polo gesseiro.\n\nDois fluxos declarados: gesso agrícola para o sul do Piauí, e gipsita e gesso para exportação pelo Pecém.",
+      "peso": 225,
+      "hash": "45654547147e0f51",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 76,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:araripina-trindade-35km",
+      "eixo": "trem",
+      "template": "trem-araripina-trindade-35km",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "Entre Araripina e Trindade há cerca de 35 km de rodovia.\n\nMesmo no melhor cenário imaginável, um passageiro de Araripina começaria a viagem de carro ou de ônibus até o terminal.",
+      "peso": 177,
+      "hash": "bfc341461722a8bd",
+      "fatos": [
+        {
+          "valor": 35,
+          "rotulo": "km de rodovia entre Araripina e Trindade [F42]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 66,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:gesso-ja-andou",
+      "eixo": "trem",
+      "template": "trem-gesso-ja-andou",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O gesso do Araripe já andou de trem: uma mineradora embarca em Trindade e move hoje cerca de 15 mil toneladas por mês pela ferrovia.\n\nA expectativa da empresa é chegar a 100 mil toneladas quando a operação estiver consolidada.",
+      "peso": 226,
+      "hash": "475fa45fbd82e191",
+      "fatos": [
+        {
+          "valor": 15000,
+          "rotulo": "toneladas por mês que a Siqueira Mineração move pela ferrovia [F17]"
+        },
+        {
+          "valor": 100000,
+          "rotulo": "toneladas por mês esperadas na operação plena [F17]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 82,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:rodovia-hoje",
+      "eixo": "trem",
+      "template": "trem-rodovia-hoje",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "Os produtores do polo gesseiro escoam hoje entre 70 mil e 100 mil toneladas por mês por rodovia.\n\nÉ o tamanho do que a ferrovia pode tirar do asfalto do sertão.",
+      "peso": 160,
+      "hash": "9363acb1d50b19fb",
+      "fatos": [
+        {
+          "valor": 70000,
+          "rotulo": "toneladas por mês escoadas por rodovia, piso [F17]"
+        },
+        {
+          "valor": 100000,
+          "rotulo": "toneladas por mês escoadas por rodovia, teto [F17]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 64,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:previsao-comissionamento",
+      "eixo": "trem",
+      "template": "trem-previsao-comissionamento",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Para o período de teste, a concessionária previu à ANTT 20 mil toneladas mensais de grãos, 10 mil de gipsita e 3 mil de gesso agrícola.\n\nO Araripe aparece nessa conta como carga.",
+      "peso": 178,
+      "hash": "2eeedc7810313eee",
+      "fatos": [
+        {
+          "valor": 20000,
+          "rotulo": "toneladas mensais de grãos previstas no comissionamento [F01]"
+        },
+        {
+          "valor": 10000,
+          "rotulo": "toneladas mensais de gipsita previstas no comissionamento [F01]"
+        },
+        {
+          "valor": 3000,
+          "rotulo": "toneladas mensais de gesso agrícola previstas no comissionamento [F01]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 48,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:gesso-ressalva-tcu",
+      "eixo": "trem",
+      "template": "trem-gesso-ressalva-tcu",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O ganho da ferrovia para o gesso do Araripe é real, mas não é automático.\n\nO TCU registra que a bitola larga adotada no trecho pernambucano tem desvantagem econômica para granéis leves, como o gesso.",
+      "peso": 199,
+      "hash": "964000bf7d64ac65",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 62,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:arcoverde-locomotiva",
+      "eixo": "trem",
+      "template": "trem-arcoverde-locomotiva",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O TCU aponta que o trecho a partir de Arcoverde tem geometria, rampas e curvas que provavelmente exigirão uma terceira locomotiva de apoio.\n\nIsso elevaria os custos operacionais do segmento, segundo o próprio tribunal.",
+      "peso": 218,
+      "hash": "b426f090978fc8ee",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 42,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:linha-antiga-608",
+      "eixo": "trem",
+      "template": "trem-linha-antiga-608",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "A linha histórica que ligava o Recife a Salgueiro tem cerca de 608 km e está abandonada.\n\nA estação de Salgueiro deixou de operar em 1992. Hoje há trilho furtado e faixa de domínio ocupada.\n\nÉ essa a malha ociosa que a política nacional manda aproveitar.",
+      "peso": 254,
+      "hash": "8bc4728ff3e4be78",
+      "fatos": [
+        {
+          "valor": 608,
+          "rotulo": "km da linha histórica do Recife a Salgueiro [F21]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 86,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:devolucao-3001",
+      "eixo": "trem",
+      "template": "trem-devolucao-3001",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Em novembro de 2025 foi firmado no TCU um acordo para devolver cerca de 3.001 km da malha nordestina, com indenização da ordem de R$ 1,78 bi.\n\nO acordo ainda depende de deliberação final do plenário do tribunal.",
+      "peso": 211,
+      "hash": "0e70e4812449891c",
+      "fatos": [
+        {
+          "valor": 3001,
+          "rotulo": "km da malha nordestina devolvidos pela FTL [F22]"
+        },
+        {
+          "valor": 1780000000,
+          "rotulo": "indenização acordada na devolução da malha [F22]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 60,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:trem-do-forro",
+      "eixo": "trem",
+      "template": "trem-trem-do-forro",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O único trem de passageiros interurbano de Pernambuco fora do sistema metropolitano é o Trem do Forró, que circula poucos dias por ano.\n\nEm autorização anterior, a ANTT fixou velocidade máxima de 17 km/h.",
+      "peso": 204,
+      "hash": "d7b73288b43a798d",
+      "fatos": [
+        {
+          "valor": 17,
+          "rotulo": "km/h autorizados ao Trem do Forró [F24]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 56,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:estudo-recife-caruaru",
+      "eixo": "trem",
+      "template": "trem-estudo-recife-caruaru",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O único estudo de trem de passageiros em Pernambuco liga o Recife a Caruaru, com cerca de 120 km.\n\nEle para no Agreste. Do Araripe, a distância é de outra ordem.\n\nO resultado, previsto para o primeiro semestre de 2026, não foi publicado até agora.",
+      "peso": 247,
+      "hash": "700ea02728c9c93b",
+      "fatos": [
+        {
+          "valor": 120,
+          "rotulo": "km do estudo de trem de passageiros entre Recife e Caruaru [F20]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 74,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:seis-corredores",
+      "eixo": "trem",
+      "template": "trem-seis-corredores",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "O programa federal de retomada de trens regionais trabalha com 6 corredores-piloto.\n\nBrasília, Londrina, Pelotas, Salvador, Fortaleza e São Luís. Nenhum deles em Pernambuco.",
+      "peso": 173,
+      "hash": "f0eca4cf05cc0db3",
+      "fatos": [
+        {
+          "valor": 6,
+          "rotulo": "corredores-piloto de trem regional do Ministério dos Transportes [F19]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 78,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:fortaleza-sobral",
+      "eixo": "trem",
+      "template": "trem-fortaleza-sobral",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "O Ceará já tem estudo contratado para um corredor de cerca de 240 km entre Fortaleza e Sobral, com modelo compartilhado entre carga e passageiros.\n\nÉ o desenho institucional que um dia poderia ser repetido aqui.",
+      "peso": 211,
+      "hash": "5c928953e9073455",
+      "fatos": [
+        {
+          "valor": 240,
+          "rotulo": "km do corredor de Fortaleza a Sobral [F23]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 70,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:cadeia-7-condicoes",
+      "eixo": "trem",
+      "template": "trem-cadeia-7-condicoes",
+      "variante": 0,
+      "postura": "dado",
+      "texto": "Entre o que existe hoje e um trem de passageiros do Araripe ao Recife há 7 condições encadeadas.\n\nVão da liberação da obra pelo TCU até uma parada no sertão, passando por um operador interessado e por uma fonte de custeio.\n\nNenhuma delas foi iniciada.",
+      "peso": 251,
+      "hash": "cf13513f38f7a6cd",
+      "fatos": [
+        {
+          "valor": 7,
+          "rotulo": "condições da cadeia para um trem de passageiros no Araripe [dossiê 9.6]"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 88,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:cenario-turistico:campanha",
+      "eixo": "trem",
+      "template": "trem-cenario-turistico",
+      "variante": 3,
+      "postura": "campanha",
+      "texto": "O mais perto do possível não é um trem até o Recife: é um trem eventual dentro do sertão, sobre trilho que já existe. Hoje não há nenhum.\n\nQuem mora no sertão paga a conta da distância todo mês.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 258,
+      "hash": "2afa2602db6aecf1",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 84,
+      "dominios": [
+        "transnordestina",
+        "candidaturas"
+      ]
+    },
+    {
+      "id": "trem:operador-subsidio",
+      "eixo": "trem",
+      "template": "trem-operador-subsidio",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "O presidente da concessionária já disse que transporte de passageiros é deficitário e que a empresa não tem interesse em operá-lo.\n\nNa mesma entrevista, afirmou que nada impede o compartilhamento se o Estado entrar com infraestrutura e subsídio.",
+      "peso": 245,
+      "hash": "822d0d63bd4bc629",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 66,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:operador-nao-interfere",
+      "eixo": "trem",
+      "template": "trem-operador-nao-interfere",
+      "variante": 2,
+      "postura": "dado",
+      "texto": "Sobre trem de gente dividir trilho com trem de carga, o presidente da concessionária foi direto: nem um interfere no outro, e isso existe no Brasil todo.\n\nO argumento técnico contra a convivência, portanto, não vem nem da empresa.",
+      "peso": 230,
+      "hash": "1ba7c217a3805538",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 72,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:ninguem-de-pe-pediu",
+      "eixo": "trem",
+      "template": "trem-ninguem-de-pe-pediu",
+      "variante": 1,
+      "postura": "dado",
+      "texto": "As cogitações públicas de usar a Transnordestina para passageiros partiram do Ceará.\n\nEm Pernambuco, a audiência da Assembleia sobre a ferrovia tratou de cronograma e investimento, e os seminários no Araripe trataram de porto seco e gesso.\n\nPassageiro não entrou na pauta.",
+      "peso": 272,
+      "hash": "66c6950071fba619",
+      "fatos": [],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 80,
+      "dominios": [
+        "transnordestina"
+      ]
+    },
+    {
+      "id": "trem:dossie-publico:campanha",
+      "eixo": "trem",
+      "template": "trem-dossie-publico",
+      "variante": 3,
+      "postura": "campanha",
+      "texto": "Apurei se a Transnordestina pode levar gente de Araripina ao Recife. Hoje, não pode. Levantei também tudo que precisaria mudar para poder.\n\nDefendo que Pernambuco peça o seu trem de passageiros.\n\nHermes Alves, 2º suplente na chapa Carlos Sant'Anna 300 · NOVO",
+      "peso": 258,
+      "hash": "18680b15426a1e1a",
+      "fatos": [
+        {
+          "valor": 300,
+          "rotulo": "número de urna de HERMES ALVES (2º Suplente)"
+        }
+      ],
+      "chave": {
+        "pauta": "transnordestina"
+      },
+      "peso_editorial": 90,
+      "dominios": [
+        "transnordestina",
         "candidaturas"
       ]
     },

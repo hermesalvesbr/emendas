@@ -23,7 +23,9 @@ import {
   globais,
   liderPorMunicipio,
 } from "./agregados.ts";
+import { gabinetesOuNada } from "./agregados-gabinete.ts";
 import { pesoX } from "./post-x.ts";
+import { FATOS_TRANSNORDESTINA } from "./transnordestina.ts";
 import { POPULACAO_PE, POPULACAO_PE_TOTAL } from "./populacao-pe.ts";
 import { MUNICIPIO_REGIAO } from "./regioes-pe.ts";
 
@@ -61,8 +63,14 @@ const RE_NUMERO = /(R\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?)\s*(mil(?:hõe
  * Marcador de citação legal imediatamente antes do número: "EC 86/2015",
  * "art. 166-A", "Lei 9.504/97", "§ 5º". Também cobre a continuação depois da
  * barra ("/97"), que sozinha não casa com o padrão de ano.
+ *
+ * Portaria, decreto e acórdão entraram com a pauta da Transnordestina, que
+ * obriga a citar três acórdãos distintos do TCU pelo número (fundi-los é erro
+ * de fato). O "nº" opcional existe porque "Resolução nº 5.943/2021" tem o
+ * marcador separado do número — sem ele, o 5.943 pedia lastro.
  */
-const RE_CITACAO_LEGAL = /(?:\b(?:ECs?|emendas?\s+constitucionais?|arts?|artigos?|leis?|LCs?|res|resolu[çc][ãa]o|s[úu]mula|incisos?|MPs?)\.?\s*|§\s*|\d\/)$/i;
+const RE_CITACAO_LEGAL =
+  /(?:\b(?:ECs?|emendas?\s+constitucionais?|arts?|artigos?|leis?|LCs?|res|resolu[çc][ãa]o|portarias?|decretos?|ac[óo]rd[ãa]os?|s[úu]mula|incisos?|MPs?)\.?\s*(?:n[ºo°]\.?\s*)?|§\s*|\d\/)$/i;
 
 export function extrairNumeros(texto: string): NumeroCitado[] {
   const out: NumeroCitado[] = [];
@@ -133,7 +141,7 @@ export function extrairNumeros(texto: string): NumeroCitado[] {
  * Um post sobre emendas não pode ser validado por um fato de urna. "geo" é
  * transversal (população, malha) e entra em qualquer recorte.
  */
-export type DominioFato = "emendas" | "candidaturas" | "votacao" | "geo";
+export type DominioFato = "emendas" | "candidaturas" | "votacao" | "geo" | "gabinete" | "transnordestina";
 
 /** Um número que o banco confirma, com a frase que o descreve. */
 export type Fato = { valor: number; rotulo: string; dominio?: DominioFato };
@@ -356,6 +364,51 @@ export function indiceDeFatos(db: Database): Fato[] {
   add(g.municipiosComEmenda, "municípios com emenda (estadual ou federal)");
   add(g.municipiosSemEmenda, "municípios de PE sem nenhuma emenda no painel");
 
+  // ---- gabinetes da Alepe
+  //
+  // Domínio próprio, e não "emendas", porque os dois convivem no mesmo post
+  // só por acidente: um gabinete de 26 pessoas casaria com as 26 emendas de
+  // algum município e o post sobre pessoal seria validado por um fato de
+  // orçamento. Vem tudo de `agregados-gabinete.ts`, onde pessoas e custo
+  // saem das mesmas linhas.
+  //
+  // `gabinetesOuNada` contém a falha neste bloco: sem ele, uma divergência no
+  // snapshot de pessoal derrubaria o índice inteiro e pararia a série toda —
+  // inclusive os posts de cidade, que não citam pessoal nenhum.
+  dominioAtual = "gabinete";
+  const { linhas: gabinetes, totais: tg } = gabinetesOuNada(db);
+  for (const gab of gabinetes) {
+    add(gab.pessoas, `pessoas no gabinete de ${gab.deputado}`);
+    add(valorAfirmadoReais(gab.custoMensal), `custo mensal do gabinete de ${gab.deputado}`);
+    add(gab.custoMensal, `custo mensal do gabinete de ${gab.deputado}`);
+  }
+  if (tg) {
+    add(tg.gabinetes, "gabinetes da Alepe");
+    add(tg.pessoas, "pessoas lotadas em gabinete na Alepe");
+    add(valorAfirmadoReais(tg.custoMensal), "custo mensal dos gabinetes da Alepe");
+    add(valorAfirmadoReais(tg.custoAnualSimples), "custo dos gabinetes da Alepe em 12 meses");
+    add(tg.menorGabinete, "pessoas no menor gabinete da Alepe");
+    add(tg.maiorGabinete, "pessoas no maior gabinete da Alepe");
+    add(tg.razaoTopoBase, `vezes que ${tg.cargoTopo} custa ${tg.cargoBase}`);
+    for (const c of tg.cargos) {
+      if (c.venc > 0) {
+        add(valorAfirmadoReais(c.venc), `vencimento de tabela do cargo ${c.cargo}`);
+        add(c.venc, `vencimento de tabela do cargo ${c.cargo}`);
+        add(c.pessoas, `pessoas no cargo ${c.cargo} nos gabinetes da Alepe`);
+      }
+    }
+  }
+
+  // ---- Transnordestina
+  //
+  // Externo ao banco e versionado em `transnordestina.ts`, mesma solução da
+  // população do Censo: o número que vai para um post público não pode
+  // depender de alguém lembrar. O domínio isola a pauta — sem ele, "38%" do
+  // ramal casaria com qualquer percentual de emenda.
+  for (const f of FATOS_TRANSNORDESTINA) {
+    add(f.valor, `${f.rotulo} [${f.fonte}]`, "transnordestina");
+  }
+
   // Número de urna da chapa majoritária. Sem isto, TODO post que assina "300"
   // é reprovado por numero-sem-lastro e a série de campanha cai em bloco.
   // Restrito ao cargo_codigo 5 (Senado e chapa de governo): incluir os 333
@@ -421,6 +474,24 @@ const FRASES_PROIBIDAS: ReadonlyArray<{ re: RegExp; motivo: string }> = [
   {
     re: /\brepresent[oa]\s+(?:a|o)\s+regi[ãa]o\b/i,
     motivo: "não existe distrito eleitoral no Brasil; ninguém representa uma região específica",
+  },
+  {
+    // A Alepe publica vencimento POR CARGO, nunca contracheque (NOTAS 40/41).
+    // "O assessor Fulano ganha R$ X" não é afirmável com esta fonte; "ocupa
+    // cargo cujo vencimento de tabela é R$ X" é.
+    re: /\bsal[áa]ri(?:o|os)\s+d[eoa]s?\s+(?:assessor|servidor|comissionad)/i,
+    motivo: "a Alepe não publica remuneração individual — o dado é o vencimento DO CARGO (NOTAS 40)",
+  },
+  {
+    // Possibilidade não é promessa (dossiê da Transnordestina, nota 1 de
+    // redação). Não existe projeto, estudo, contrato nem interessado: post que
+    // trate a hipótese como agendada afirma o que nenhuma fonte sustenta.
+    re: /\bquando\s+o\s+trem\s+(?:chegar|passar|vier)\b/i,
+    motivo: "não há projeto de trem de passageiros neste eixo; possibilidade não é promessa",
+  },
+  {
+    re: /\b(?:vou|vamos|irei)\s+(?:trazer|construir|levar)\s+(?:o\s+)?(?:trem|ferrovia)\b/i,
+    motivo: "promessa de obra ferroviária que nenhum documento sustenta",
   },
 ];
 

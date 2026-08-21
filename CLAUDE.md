@@ -4,7 +4,7 @@ Coletor resiliente + painel público das emendas parlamentares de Pernambuco
 (estaduais da ALEPE e federais com foco em PE). Bun + TypeScript, SQLite,
 site estático em `docs/` no GitHub Pages.
 
-`README.md` tem fontes e comandos. `NOTAS.md` tem 31 achados numerados — cada
+`README.md` tem fontes e comandos. `NOTAS.md` tem 43 achados numerados — cada
 um documenta uma armadilha real, medida contra a fonte. **Leia o item citado
 antes de mexer na área correspondente**; o resto pode ficar fora do contexto.
 
@@ -54,11 +54,16 @@ memória (NOTAS 31, e a errata no topo de `POSTS-X.md`).
 | docs/ | Fonte do redesign é Gotham (licenciada, não redistribuível). O site usa Montserrat (SIL OFL) | NOTAS 42 |
 | docs/ | Item de grid precisa de `min-width: 0`: o canvas do ECharts fixa largura em px e arrasta a página inteira no celular | NOTAS 39 |
 | Verificação | Casar por valor não é casar por assunto: "R$ 45 por habitante" em Caruaru casava com a **contagem** de emendas de Caruaru. Use `rotulosEsperados` | `verificar-post.ts` |
-| Verificação | Ordinal e citação legal são ignorados de propósito — "2º" casava com Afrânio, "EC 86/2015" com um per capita | `verificar-post.ts` |
+| Verificação | Ordinal e citação legal são ignorados de propósito — "2º" casava com Afrânio, "EC 86/2015" com um per capita. Portaria, decreto e acórdão entraram depois, com "nº" opcional | `verificar-post.ts` |
+| Gabinete | Post nominal traz pessoas **e** custo, sempre. Cabeças contradizem custo, e o tamanho é fixado por ato da Mesa — citar posição sem essa ressalva acusa alguém de decisão que não é dele | NOTAS 43, `agregados-gabinete.ts` |
+| Gabinete | Nome de deputado com cifra sai **sem assinatura**. A opinião em 1ª pessoa só nos posts de agregado, onde não há alvo individual | NOTAS 43 |
+| Trem | Não existe projeto de passageiros neste eixo. Possibilidade não é promessa: "quando o trem chegar" é frase proibida, e os km em Araripina nunca saem com casa decimal | NOTAS 43, `temas-trem.ts` |
+| Trem | Número da ferrovia é fato EXTERNO versionado com id de fonte (`[F25]`), nunca `fatosExternos` na hora — declarar o próprio cálculo transforma o verificador em carimbo | `transnordestina.ts` |
+| Série | Tema assinado tem UMA camada, e curta: assinatura + fecho comem ~140 dos 280. Com duas, os 12 primeiros temas de campanha foram descartados em bloco | NOTAS 43 |
 
 ## Verificar
 
-`bun run check` (tsc + 255 testes) antes de qualquer commit. Nenhum teste toca
+`bun run check` (tsc + 280 testes + 40 evals + as travas dos dois jobs) antes de qualquer commit. Nenhum teste toca
 a rede: as fixtures são respostas reais capturadas, e é assim que devem
 continuar.
 

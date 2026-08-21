@@ -149,6 +149,51 @@ describe("frases que a lei ou o dado não sustentam", () => {
     expect(regras(achado("A bancada priorizou a saúde.", []))).toContain("piso-como-escolha");
     expect(regras(achado("Saúde lidera por obrigação constitucional.", []))).not.toContain("piso-como-escolha");
   });
+
+  /**
+   * A Alepe publica o vencimento de cada CARGO, nunca contracheque (NOTAS
+   * 40/41). "O assessor Fulano ganha R$ X" não é afirmável com esta fonte;
+   * "ocupa cargo cujo vencimento de tabela é R$ X" é.
+   */
+  test('"salário do assessor" é erro — a fonte não sustenta valor individual', () => {
+    expect(achado("O salário do assessor é de R$ 10.363,58.", []).ok).toBe(false);
+    expect(achado("A soma dos salários dos servidores comissionados.", []).ok).toBe(false);
+    expect(achado("O vencimento do cargo é de R$ 10.363,58.", [{ valor: 10363.58, rotulo: "x" }]).ok).toBe(true);
+  });
+
+  /**
+   * Possibilidade não é promessa: não há projeto, estudo, contrato nem
+   * interessado em trem de passageiros no eixo do Araripe. Tratar a hipótese
+   * como agendada afirma o que nenhuma fonte sustenta.
+   */
+  test("promessa de trem é erro; a hipótese declarada como hipótese, não", () => {
+    expect(achado("Quando o trem chegar, o sertão muda.", []).ok).toBe(false);
+    expect(achado("Vou trazer o trem para Araripina.", []).ok).toBe(false);
+    expect(achado("O contrato já obriga a concessionária a deixar passar trem de passageiros.", []).ok).toBe(true);
+  });
+});
+
+describe("citação de norma", () => {
+  /**
+   * A pauta da Transnordestina obriga a citar acórdão pelo número (fundir os
+   * três do TCU é erro de fato) e resolução com "nº" no meio. Sem estas duas
+   * extensões, o post que cita a norma corretamente era reprovado por
+   * numero-sem-lastro.
+   */
+  test("portaria, decreto e acórdão são identificadores, como lei e EC", () => {
+    expect(extrairNumeros("instituída pela Portaria 870/2025").length).toBe(0);
+    expect(extrairNumeros("o Decreto 1.832/1996").length).toBe(0);
+    expect(extrairNumeros("o Acórdão 1.217/2026 do TCU").length).toBe(0);
+  });
+
+  test('"nº" entre o marcador e o número não quebra a regra', () => {
+    expect(extrairNumeros("a Resolução nº 5.943/2021 da ANTT").length).toBe(0);
+    expect(extrairNumeros("a Lei nº 14.273/2021").length).toBe(0);
+  });
+
+  test("número solto depois de palavra comum continua sendo conferido", () => {
+    expect(extrairNumeros("são 870 quilômetros").map((n) => n.bruto)).toEqual(["870"]);
+  });
 });
 
 describe("regras herdadas", () => {

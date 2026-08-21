@@ -21,7 +21,7 @@ type Caso = {
   /** Quando presente, casar por valor não basta: o rótulo tem de ser um destes. */
   rotulosEsperados?: string[];
   /** Domínios que o texto cita. Sem isto, um post de emenda casa com voto. */
-  dominios?: Array<"emendas" | "candidaturas" | "votacao" | "geo">;
+  dominios?: Array<"emendas" | "candidaturas" | "votacao" | "geo" | "gabinete" | "transnordestina">;
   nota?: string;
 };
 

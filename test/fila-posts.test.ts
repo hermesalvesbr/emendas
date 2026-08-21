@@ -95,6 +95,13 @@ describe("distribuição", () => {
     ...Array.from({ length: 120 }, (_, i) => fake(`autor:A${i}:total`, "autor", "dado", undefined, 120 - i)),
     ...Array.from({ length: 80 }, (_, i) => fake(`funcao:F${i}:total`, "funcao", "dado", undefined, 80 - i)),
     ...Array.from({ length: 200 }, (_, i) => fake(`cidade:D${i}:total:campanha`, "cidade", "campanha", `D${i}`, 200 - i)),
+    // Trem e gabinete levam as duas posturas no MESMO balde: nessas pautas a
+    // postura é do tema, não uma segunda versão do recorte. Por isso a mistura
+    // de "dado" e "campanha" aqui — é assim que o pool real é.
+    ...Array.from({ length: 40 }, (_, i) => fake(`trem:T${i}`, "trem", "dado", undefined, 60 - i)),
+    ...Array.from({ length: 20 }, (_, i) => fake(`trem:P${i}:campanha`, "trem", "campanha", undefined, 20 - i)),
+    ...Array.from({ length: 60 }, (_, i) => fake(`gabinete:G${i}:custo`, "gabinete", "dado", undefined, 60 - i)),
+    ...Array.from({ length: 5 }, (_, i) => fake(`gabinete:alepe:X${i}:campanha`, "gabinete", "campanha", undefined, 5 - i)),
   ];
 
   test("preenche todos os slots com ids distintos", () => {
@@ -106,21 +113,29 @@ describe("distribuição", () => {
   });
 
   /**
-   * Ciclo de 8 = um dia: 3 cidade, 2 curiosidade, 1 autor, 1 função, 1
-   * campanha. Curiosidade entrou porque naturalidade e votação de 2022 falam
-   * de gente e lugar, não de rubrica — é o eixo que o leitor local reconhece.
+   * Ciclo de 8 = um dia: 2 cidade, 1 curiosidade, 1 autor, 1 função, 1 trem,
+   * 1 gabinete, 1 campanha. Trem e gabinete entraram em 21/08/2026 no lugar
+   * de uma cidade e de uma curiosidade — um de cada por dia, decisão do
+   * candidato. Curiosidade continua porque naturalidade e votação de 2022
+   * falam de gente e lugar, não de rubrica.
+   *
+   * O campanha aqui conta SÓ o balde genérico (cidade, autor, função,
+   * curiosidade): post assinado de trem ou de gabinete é contado no seu
+   * próprio eixo, que é de onde ele sai.
    */
   test("respeita o ciclo do dia", () => {
     const { slots: mapa } = distribuir(slotsEntre("2026-08-16", "2026-10-03"), posts);
-    const conta = { cidade: 0, curiosidade: 0, autor: 0, funcao: 0, campanha: 0 };
+    const conta = { cidade: 0, curiosidade: 0, autor: 0, funcao: 0, trem: 0, gabinete: 0, campanha: 0 };
     for (const id of Object.values(mapa)) {
-      if (id.endsWith(":campanha")) conta.campanha++;
+      if (id.startsWith("trem:")) conta.trem++;
+      else if (id.startsWith("gabinete:")) conta.gabinete++;
+      else if (id.endsWith(":campanha")) conta.campanha++;
       else if (id.startsWith("cidade:")) conta.cidade++;
       else if (id.startsWith("curiosidade:")) conta.curiosidade++;
       else if (id.startsWith("autor:")) conta.autor++;
       else conta.funcao++;
     }
-    expect(conta).toEqual({ cidade: 147, curiosidade: 98, autor: 49, funcao: 49, campanha: 49 });
+    expect(conta).toEqual({ cidade: 98, curiosidade: 49, autor: 49, funcao: 49, trem: 49, gabinete: 49, campanha: 49 });
     expect(Object.values(conta).reduce((a, b) => a + b, 0)).toBe(392);
   });
 

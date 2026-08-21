@@ -76,6 +76,30 @@ isso os posts gerados passam `rotulosEsperados`: o fato que casou tem de ser
 o que o post afirma, não qualquer um do mesmo valor. Ao escrever à mão, leia
 o rótulo que o verificador imprime em cada `numero-conferido`.
 
+## 3.1 Os dois eixos que citam gente e o que não está no banco
+
+**Gabinete (nomes de deputado).** Todo post nominal traz **pessoas e custo
+juntos** — o ranking de cabeças contradiz o de custo, e publicar um só engana
+(NOTAS 40). O tamanho do gabinete **não é escolha do deputado**: os cargos são
+fixados por ato da Mesa e a amplitude é de 23 a 32. Post que cita posição no
+ranking sai obrigatoriamente com essa ressalva; há teste varrendo o pool que
+falha se algum sair sem ela. Posição vai em palavra ("o maior da Alepe"),
+nunca em número. E **post com nome de deputado não leva assinatura** — a
+opinião em primeira pessoa fica nos posts de agregado.
+
+**Transnordestina.** O dossiê (`~/Projetos/CHINA/transnordestina/`) responde
+**não** à pergunta: não há projeto, estudo, contrato, autorização, orçamento
+nem interessado em passageiros neste eixo. O que se afirma é a porta aberta —
+o contrato de 2014 obriga a concessionária a dar passagem a trem de
+passageiros, a lei criou o operador desvinculado, e a janela concreta é o
+contrato de desestatização do ramal. **Possibilidade não é promessa:** o
+verificador reprova "quando o trem chegar" e "vou trazer o trem".
+
+Número dessa pauta **não está no banco**. Ele vive em `src/transnordestina.ts`,
+versionado com o id da fonte do dossiê. Se o número que você quer escrever não
+está lá, o caminho é acrescentá-lo **com o `[Fxx]`**, nunca declará-lo como
+fato externo na hora.
+
 ## 4. A série não se escreve à mão
 
 ```bash
@@ -84,6 +108,11 @@ bun run agendar         # pool -> data/fila-posts.json, 392 slots de 16/08 a 03/
 bun run ensaiar:fila    # verifica os 392 contra o banco de agora, sem rede
 bun run postar:slot     # ensaio de um slot; --confirmar publica
 ```
+
+**Tema assinado tem UMA camada de dado, e curta.** A assinatura tem 62
+caracteres e o fecho outros 50 a 90: sobram ~140 para o texto. Com duas
+camadas, os 12 primeiros temas assinados dos eixos novos foram descartados em
+bloco por `campanha-nao-coube`.
 
 Escrever um post da série à mão é sinal de que **falta um template**. O
 caminho é acrescentar o template em `src/gerar-posts.ts` e regerar — assim o
@@ -113,6 +142,15 @@ um ou o motivo de não ter saído.
 - **"Emendas" sem esfera no líder por cidade.** É "emendas ESTADUAIS de
   autoria confirmada" — o líder federal do mesmo município pode ser outro,
   com mais dinheiro, e o painel mostra os dois.
+- **Dizer "salário do assessor".** A Alepe publica o vencimento de cada CARGO;
+  ninguém sabe o que a pessoa recebe. O verificador reprova a frase.
+- **Citar o tamanho de um gabinete como escolha do deputado.** Os cargos vêm
+  de ato da Mesa. É a mesma armadilha do piso da saúde.
+- **Escrever os quilômetros de ferrovia em Araripina com casa decimal.** O
+  quadro do estudo ambiental não fecha consigo mesmo: use "mais de vinte
+  quilômetros" e a comparação com Trindade.
+- **Dizer que a ferrovia chega ao Recife.** Ela termina em Suape, e a bitola
+  muda no caminho.
 
 - Afirmar que alguém **não** é candidato — a lista do TSE só sustenta o
   positivo (NOTAS.md 29). O verificador reprova a frase.

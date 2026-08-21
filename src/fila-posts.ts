@@ -129,14 +129,17 @@ export function ordenarIntercalado(posts: PostGerado[]): PostGerado[] {
  * mesmo eixo não caia sempre na mesma hora — sem isso, quem acompanha às 12h
  * veria só função, todo dia.
  */
+// 21/08/2026: "trem" e "gabinete" entraram no lugar de uma cidade e de uma
+// curiosidade — um de cada por dia, decisão do candidato. Cidade continua
+// sendo o maior estoque e o substituto quando um eixo acaba.
 export const CICLO: ReadonlyArray<Eixo | "campanha"> = [
   "cidade",
   "curiosidade",
   "autor",
   "funcao",
   "cidade",
-  "curiosidade",
-  "cidade",
+  "trem",
+  "gabinete",
   "campanha",
 ];
 
@@ -160,12 +163,25 @@ export function distribuir(slots: string[], posts: PostGerado[], horas: readonly
   const porEixo = (eixo: Eixo, postura: Postura): PostGerado[] =>
     ordenarIntercalado(posts.filter((p) => p.eixo === eixo && p.postura === postura));
 
+  // "trem" e "gabinete" levam as duas posturas no mesmo balde: nessas pautas a
+  // postura é do tema, não uma segunda versão do mesmo recorte. Por isso eles
+  // saem do balde "campanha" — senão o mesmo post disputaria dois slots e o
+  // eixo esvaziaria pela metade.
+  const porPauta = (eixo: Eixo): PostGerado[] => ordenarIntercalado(posts.filter((p) => p.eixo === eixo));
+
   const filas = new Map<string, PostGerado[]>([
     ["cidade", porEixo("cidade", "dado")],
     ["curiosidade", porEixo("curiosidade", "dado")],
     ["autor", porEixo("autor", "dado")],
     ["funcao", porEixo("funcao", "dado")],
-    ["campanha", ordenarIntercalado(posts.filter((p) => p.postura === "campanha"))],
+    ["trem", porPauta("trem")],
+    ["gabinete", porPauta("gabinete")],
+    [
+      "campanha",
+      ordenarIntercalado(
+        posts.filter((p) => p.postura === "campanha" && p.eixo !== "trem" && p.eixo !== "gabinete"),
+      ),
+    ],
   ]);
 
   const pedidos = new Map<string, number>();

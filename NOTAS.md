@@ -1532,3 +1532,144 @@ As telas antigas viraram redirecionamentos que **preservam o parâmetro**:
 `/deputado.html?d=socorro-pimentel` cai em `#tab=deputados&dep=socorro-pimentel`.
 São links já compartilhados e já citados em post publicado — o `LINK_REPLY` de
 `cli.ts` apontava para `/candidatos.html` e passou a apontar para a aba.
+
+---
+
+## 43. Dois eixos novos na série: gabinetes com nome e a Transnordestina de passageiros
+
+Pedido do usuário em 21/08/2026: acrescentar à série de 3 em 3 horas (a) os
+deputados com mais assessores, com "crítica leve citando nomes", e (b) posts
+positivos sobre a hipótese de a Transnordestina levar passageiros. Um post de
+cada por dia, decisão tomada depois de quatro perguntas com as alternativas na
+mesa.
+
+O primeiro achado apareceu antes da primeira linha de código, e mudou o pedido.
+
+### O ranking de assessores é quase plano — e a pauta é outra
+
+| | |
+|---|---|
+| Maior gabinete | 32 pessoas (France Hacker, PP) |
+| Menor gabinete | 23 pessoas (Antonio Coelho) |
+| Média | 26,4 |
+| Amplitude | 1,39x |
+
+Crítica montada sobre isso é frágil: responde-se com "a média é 26" e o post
+vira material do adversário. Some-se que **o tamanho não é escolha do
+deputado** — os cargos são fixados por ato da Mesa (NOTAS 38) —, e "fulano tem
+o maior gabinete" acusa alguém de uma decisão que não é dele. É a mesma classe
+de erro do piso da saúde tratado como escolha política (NOTAS 31).
+
+O que se sustenta é o contraste que NOTAS 40 já tinha medido: **cabeças
+contradizem custo**. France Hacker é o maior em pessoas e está entre os mais
+baratos; Dani Portela é um dos menores em pessoas e um dos mais caros; Álvaro
+Porto é o único no topo dos dois. A causa é a composição de cargos, que **é**
+escolha do gabinete: um Chefe de Gabinete custa 5,2x um Coordenador de
+Expediente.
+
+Daí a decisão de enquadramento: todo post nominal traz pessoas **e** custo, e
+os 49 gabinetes entram — cobrir a Casa inteira é o que separa levantamento de
+perseguição, e é o que torna o recorte defensável se alguém pedir direito de
+resposta.
+
+### Postura: dado no nome, opinião no agregado
+
+Post nominal sai **sem assinatura**, como já era a regra de `cidade-lider`:
+nome de deputado com cifra em post de candidato é pedido de direito de resposta
+em período eleitoral. A opinião em primeira pessoa fica nos cinco posts de
+agregado (custo total, custo em 12 meses, amplitude, tabela de cargos,
+transparência), onde não há alvo individual. `Candidato.posturas` passou a
+existir para isso, e `Candidato.fechosCampanha` porque o fecho genérico da
+série fala do painel de emendas — colado num post sobre ferrovia, muda de
+assunto no último parágrafo.
+
+### O que só apareceu medindo
+
+**(a) A ressalva que mais importa era a primeira a cair.** `montar()` derruba
+por prioridade, e no post de "Claudiano Martins Filho (PP)" — o nome mais longo
+entre os que citam posição no ranking — o texto estourava 280 e a camada
+derrubada era justamente a do ato da Mesa. Ou seja: **o único post que citava
+posição era o único que saía sem dizer que a posição não é escolha do
+deputado.** Corrigido de duas formas: a ressalva sobe de prioridade **quando há
+faixa de ranking no texto** (`faixa ? 87 : 70`), e as duas ressalvas foram
+encurtadas até caberem juntas com o nome mais longo da Casa. Há teste que
+varre o pool inteiro e falha se algum post com posição sair sem ela.
+
+**(b) Todo post assinado dos dois eixos novos foi descartado na primeira
+geração.** `campanha-nao-coube`, 12 de 12. A assinatura tem 62 caracteres e o
+fecho outros 50 a 90; sobram ~140 para o dado, e os temas tinham duas ou três
+camadas. A correção não é técnica, é de redação: **tema assinado tem uma
+camada, e curta**. Está travado em teste (`test/temas-trem.test.ts`), que monta
+cada tema de campanha com o fecho mais longo e exige 280.
+
+**(c) "fase 1" pedia lastro.** `extrairNumeros` ignora ano solto, ordinal e
+citação legal — não ordinal de fase. "A fase 1 da Transnordestina" fazia o `1`
+ser cobrado do índice. Virou "a primeira fase". Não se afrouxou a regra: um `1`
+solto em texto público *deve* ser conferido; o que não podia era o gerador
+escrever numeral onde a palavra serve.
+
+**(d) Portaria, decreto e acórdão não eram citação legal.** `RE_CITACAO_LEGAL`
+cobria lei, EC, artigo, resolução e súmula. A pauta da ferrovia obriga a citar
+**três acórdãos distintos do TCU** (1.121, 1.217 e 1.875/2026 — fundi-los é
+erro de fato) e a Portaria 870/2025. Pior: o marcador exigia o número colado,
+e "Resolução nº 5.943/2021" tem o `nº` no meio, então o 5.943 era cobrado. Os
+dois casos entraram na regex, com teste.
+
+### Fato externo versionado, não declarado na hora
+
+Nenhum número da Transnordestina existe no banco. A saída **não** foi
+`fatosExternos` no momento da geração — isso é tautologia (o gerador declara o
+próprio número como conferido e o verificador vira carimbo, NOTAS 33). Foi
+`src/transnordestina.ts`, no mesmo espírito de `populacao-pe.ts`: cada valor
+versionado no projeto **com o id da fonte no dossiê** (`[F25]`, `[F32]`), e o
+rótulo publicado no índice carrega esse id. Dois domínios novos em
+`DominioFato` (`gabinete`, `transnordestina`) isolam as pautas — sem isso, um
+gabinete de 26 pessoas casaria com as 26 emendas de algum município, e "38% do
+ramal" com qualquer percentual de orçamento.
+
+Um detalhe que já quase virou erro: **100 mil toneladas é ao mesmo tempo o teto
+do que a rodovia move hoje e a expectativa da ferrovia amanhã**. Valor igual,
+assunto diferente — a colisão de "R$ 45 por habitante" em Caruaru outra vez.
+São duas entradas com rótulos distintos, e há teste exigindo que valores
+repetidos tenham rótulos diferentes.
+
+### As regras de redação do dossiê que viraram código
+
+O dossiê (`~/Projetos/CHINA/transnordestina/`, apuração encerrada em
+20/08/2026) responde **não** à pergunta central: não existe projeto, estudo,
+contrato, autorização, orçamento nem interessado em transporte de passageiros
+neste eixo. O positivo que se sustenta é a porta aberta que ninguém atravessou
+— o contrato de 2014 **obriga** a concessionária a assegurar passagem de trens
+de passageiros quando um operador requerer, a Lei 14.273/2021 criou o operador
+desvinculado da infraestrutura, e a janela concreta é o contrato de
+desestatização do ramal, em estudo agora.
+
+Três notas de redação do dossiê viraram trava mecânica:
+
+1. **Possibilidade não é promessa.** "Quando o trem chegar" e "vou trazer o
+   trem" são `frase-proibida`, com eval.
+2. **Os quilômetros em Araripina não têm casa decimal** — o quadro do estudo
+   ambiental é internamente inconsistente (28,25 + 6,60 > 29,00 do
+   subcompartimento inteiro). Só "mais de vinte" e a comparação com Trindade.
+   Há eval que reprova o 28,25.
+3. **Suape não é o Recife, e a bitola quebra no caminho** (1,60 m contra a
+   métrica da CBTU). A ressalva entra com prioridade alta para sobreviver ao
+   corte de 280.
+
+Ficam também duas ressalvas obrigatórias que nenhum post pode omitir: o ganho
+do gesso **não é automático** (o TCU aponta desvantagem da bitola larga para
+granel leve), e percentual de obra declarado pela concessionária **não é
+auditado**.
+
+### O ciclo do dia
+
+`CICLO` trocou uma cidade e uma curiosidade por `trem` e `gabinete`: 2 cidade,
+1 curiosidade, 1 autor, 1 função, 1 trem, 1 gabinete, 1 campanha. Os dois
+eixos novos levam as duas posturas **no mesmo balde** — nessas pautas a
+postura é do tema, não uma segunda versão do mesmo recorte —, e por isso saem
+do balde genérico de campanha; sem isso o mesmo post disputaria dois slots e o
+eixo esvaziaria pela metade.
+
+Estoque contra os 44 dias restantes: 50 temas de trem e 74 posts de gabinete
+(49 nominais, 20 de contraste, 5 de agregado). A fila regerada usa 43 de cada,
+com `0 reprovados` no `ensaiar:fila`.

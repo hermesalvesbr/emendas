@@ -28,11 +28,13 @@ import {
   curiosidadesPorMunicipio,
   liderPorMunicipio,
 } from "./agregados.ts";
+import { type AgregadoGabinete, agregadoPorGabinete, type TotaisGabinete, totaisGabinete } from "./agregados-gabinete.ts";
 import { MUNICIPIO_REGIAO } from "./regioes-pe.ts";
 import { pesoX } from "./post-x.ts";
+import { FECHOS_TREM, temasTrem } from "./temas-trem.ts";
 import { type DominioFato, type Fato, indiceDeFatos, verificarPost } from "./verificar-post.ts";
 
-export type Eixo = "cidade" | "autor" | "funcao" | "curiosidade";
+export type Eixo = "cidade" | "autor" | "funcao" | "curiosidade" | "gabinete" | "trem";
 export type Postura = "dado" | "campanha";
 
 export type PostGerado = {
@@ -67,6 +69,10 @@ const DOMINIO_DO_EIXO: Record<Eixo, DominioFato[]> = {
   autor: ["emendas"],
   funcao: ["emendas"],
   curiosidade: ["candidaturas", "votacao"],
+  // Pessoal não empresta lastro de orçamento e vice-versa: um gabinete de 26
+  // pessoas casaria com as 26 emendas de algum município.
+  gabinete: ["gabinete"],
+  trem: ["transnordestina"],
 };
 
 // ------------------------------------------------------------- formatação
@@ -594,6 +600,129 @@ function templateCuriosidadeUrna(c: CuriosidadeMunicipio): { camadas: Camada[]; 
   };
 }
 
+// --------------------------------------------------------- eixo: gabinete
+//
+// Aqui o número sai com o nome de uma pessoa ao lado, então três travas valem
+// mais do que em qualquer outro eixo (NOTAS 40):
+//
+//   1. **Cabeças e custo saem juntos.** France Hacker é o maior gabinete em
+//      pessoas e está entre os mais baratos; Dani Portela é um dos menores em
+//      pessoas e um dos mais caros. Publicar só um dos dois rankings engana, e
+//      `agregados-gabinete.ts` entrega os dois postos justamente para que
+//      escolher um dê trabalho.
+//   2. **Tamanho de gabinete não é escolha do deputado.** Os cargos são
+//      fixados por ato da Mesa e a amplitude é pequena (23 a 32). Publicar o
+//      número sem isso convida a leitura de excesso onde há variação de ±17%.
+//      É a mesma classe de erro do piso da saúde tratado como escolha.
+//   3. **Nunca "salário".** A Alepe publica o vencimento de cada CARGO, não o
+//      contracheque de ninguém. O verificador reprova a frase, mas o template
+//      também não a escreve.
+//
+// Post nominal sai só como dado, sem assinatura: nome de deputado com cifra
+// num post de candidato é pedido de direito de resposta. A opinião em primeira
+// pessoa fica nos posts de agregado, onde não há alvo individual.
+
+/** Reais com centavos, para vencimento de tabela ("R$ 10.363,58"). */
+export function reaisExatos(v: number): string {
+  return `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Posição no ranking em PALAVRAS, nunca em número.
+ *
+ * O verificador ignora ordinal de propósito (o "2" de "2º Suplente" casava com
+ * as emendas de Afrânio), então um "38º lugar" errado passaria sem lastro
+ * nenhum. Faixa em palavra é conferível por quem tiver a tabela e não depende
+ * do índice.
+ */
+export function faixaDoPosto(posto: number, total: number, maior: string, menor: string): string | null {
+  if (posto === 1) return `o ${maior}`;
+  if (posto <= 5) return `entre os cinco ${maior}es`;
+  if (posto <= 10) return `entre os dez ${maior}es`;
+  if (posto === total) return `o ${menor}`;
+  if (posto > total - 5) return `entre os cinco ${menor}es`;
+  if (posto > total - 10) return `entre os dez ${menor}es`;
+  return null;
+}
+
+// As duas ressalvas do post nominal, encurtadas até caberem JUNTAS com o nome
+// mais longo da Casa. Não é economia de estilo: com a redação anterior, o post
+// de "Claudiano Martins Filho" estourava 280 e o `montar()` derrubava
+// justamente a ressalva do ato da Mesa — ou seja, o post que citava posição no
+// ranking era o único que saía sem dizer que o tamanho não é escolha do
+// deputado. A versão longa da ressalva de vencimento vive no post de agregado
+// "transparencia", que tem espaço para ela.
+const RESSALVA_VENCIMENTO = "Vencimento de cargo, não salário individual — a Alepe não publica o nominal.";
+const RESSALVA_MESA = "O número de cargos é fixado por ato da Mesa, não por cada deputado.";
+
+function partidoDe(g: AgregadoGabinete): string {
+  return g.partido ? ` (${g.partido})` : "";
+}
+
+function templateGabineteNominal(g: AgregadoGabinete, total: number): { camadas: Camada[]; fatos: Fato[] } | null {
+  if (g.pessoas <= 0 || g.custoMensal <= 0) return null;
+
+  const faixa = faixaDoPosto(g.postoPessoas, total, "maior", "menor");
+  const abertura = faixa
+    ? `O gabinete de ${g.deputado}${partidoDe(g)} tem ${formatarInteiro(g.pessoas)} pessoas, ${faixa} da Alepe.`
+    : `O gabinete de ${g.deputado}${partidoDe(g)} tem ${formatarInteiro(g.pessoas)} pessoas na Alepe.`;
+
+  return {
+    camadas: [
+      { texto: abertura, prioridade: 100 },
+      { texto: `Custo estimado: ${formatarReais(g.custoMensal)} por mês.`, prioridade: 90 },
+      // Quando o post cita posição no ranking, a ressalva do ato da Mesa passa
+      // à frente da de vencimento: é ela que impede a leitura de excesso onde
+      // a amplitude é de ±17%.
+      { texto: RESSALVA_MESA, prioridade: faixa ? 87 : 70 },
+      { texto: RESSALVA_VENCIMENTO, prioridade: 85 },
+    ],
+    fatos: [
+      { valor: g.pessoas, rotulo: `pessoas no gabinete de ${g.deputado}` },
+      { valor: valorAfirmado(g.custoMensal), rotulo: `custo mensal do gabinete de ${g.deputado}` },
+    ],
+  };
+}
+
+/**
+ * O post que só existe porque os dois rankings se contradizem. Sem ele, quem
+ * lesse a série veria "fulano tem o maior gabinete" e concluiria "fulano é o
+ * que mais gasta" — o que é falso no caso mais chamativo do conjunto.
+ */
+function templateGabineteContraste(
+  g: AgregadoGabinete,
+  total: number,
+  razao: number,
+  cargoTopo: string,
+  cargoBase: string,
+): { camadas: Camada[]; fatos: Fato[] } | null {
+  const distancia = Math.abs(g.postoPessoas - g.postoCusto);
+  if (distancia < 15 || g.custoMensal <= 0 || razao <= 0) return null;
+
+  const maisGenteQueCaro = g.postoPessoas < g.postoCusto;
+  const abertura = maisGenteQueCaro
+    ? `O gabinete de ${g.deputado}${partidoDe(g)} é um dos maiores da Alepe em número de pessoas e um dos mais baratos.`
+    : `O gabinete de ${g.deputado}${partidoDe(g)} é um dos menores da Alepe em número de pessoas e um dos mais caros.`;
+
+  // Este post não leva a ressalva do ato da Mesa: ele É a ressalva. Dizer que
+  // o ranking de cabeças não explica o de custo é exatamente o que impede a
+  // leitura de excesso. O que não pode faltar é "vencimento de tabela", e por
+  // isso ela entra na mesma linha do número, e não numa camada que cai.
+  return {
+    camadas: [
+      { texto: abertura, prioridade: 100 },
+      { texto: `São ${formatarInteiro(g.pessoas)} pessoas e ${formatarReais(g.custoMensal)} por mês em vencimento de tabela.`, prioridade: 95 },
+      { texto: `A composição explica: um ${cargoTopo} custa ${pct(razao)} vezes um ${cargoBase}.`, prioridade: 85 },
+      { texto: "Contar cabeças engana.", prioridade: 60 },
+    ],
+    fatos: [
+      { valor: g.pessoas, rotulo: `pessoas no gabinete de ${g.deputado}` },
+      { valor: valorAfirmado(g.custoMensal), rotulo: `custo mensal do gabinete de ${g.deputado}` },
+      { valor: valorAfirmadoDecimal(razao), rotulo: `vezes que ${cargoTopo} custa ${cargoBase}` },
+    ],
+  };
+}
+
 // ----------------------------------------------------------- posicionamento
 
 /**
@@ -623,6 +752,103 @@ const FECHO_SERTAO = `Sou de Araripina e comecei este levantamento pelo sertão,
 
 const FATO_URNA: Fato = { valor: 300, rotulo: "número de urna de HERMES ALVES (2º Suplente)" };
 
+/**
+ * Fechos da pauta de gabinete. Só encostam em post de AGREGADO — o nominal
+ * sai sem assinatura. E nenhum deles pede corte de pessoal: a série publica a
+ * conta, não uma proposta de folha que o dado não sustenta.
+ */
+const FECHOS_GABINETE = [
+  `Não é sobre gastar menos: é sobre poder conferir.\n\n${ASSINATURA}`,
+  `Defendo que a Alepe publique quanto cada servidor recebe.\n\n${ASSINATURA}`,
+  `Orçamento que ninguém consegue abrir não é orçamento público.\n\n${ASSINATURA}`,
+] as const;
+
+/** Fechos da pauta da Transnordestina, definidos junto com os temas. */
+const FECHOS_TREM_ASSINADOS = FECHOS_TREM.map((f) => `${f}\n\n${ASSINATURA}`);
+
+// ------------------------------------------- eixo: gabinete (agregado)
+
+function templatesGabineteAgregado(t: TotaisGabinete): Array<{
+  slug: string;
+  camadas: Camada[];
+  fatos: Fato[];
+  peso_editorial: number;
+}> {
+  const out: Array<{ slug: string; camadas: Camada[]; fatos: Fato[]; peso_editorial: number }> = [];
+
+  out.push({
+    slug: "custo-total",
+    peso_editorial: 100,
+    camadas: [
+      { texto: `Os ${formatarInteiro(t.gabinetes)} gabinetes da Alepe reúnem ${formatarInteiro(t.pessoas)} pessoas e ${formatarReais(t.custoMensal)} por mês em vencimento de tabela.`, prioridade: 100 },
+      { texto: "Valor bruto, sem 13º, férias e encargo patronal — o número real é maior.", prioridade: 60 },
+    ],
+    fatos: [
+      { valor: t.gabinetes, rotulo: "gabinetes da Alepe" },
+      { valor: t.pessoas, rotulo: "pessoas lotadas em gabinete na Alepe" },
+      { valor: valorAfirmado(t.custoMensal), rotulo: "custo mensal dos gabinetes da Alepe" },
+    ],
+  });
+
+  out.push({
+    slug: "custo-ano",
+    peso_editorial: 96,
+    camadas: [
+      { texto: `Doze meses de gabinete na Alepe dão ${formatarReais(t.custoAnualSimples)} em vencimento de tabela.`, prioridade: 100 },
+      { texto: "Sem 13º, férias e encargo patronal, que a estimativa não cobre.", prioridade: 60 },
+    ],
+    fatos: [{ valor: valorAfirmado(t.custoAnualSimples), rotulo: "custo dos gabinetes da Alepe em 12 meses" }],
+  });
+
+  out.push({
+    slug: "amplitude",
+    peso_editorial: 92,
+    camadas: [
+      { texto: `O menor gabinete da Alepe tem ${formatarInteiro(t.menorGabinete)} pessoas e o maior tem ${formatarInteiro(t.maiorGabinete)}. ${RESSALVA_MESA}`, prioridade: 100 },
+      { texto: "A diferença entre gabinetes está mais na composição dos cargos do que no número de gente.", prioridade: 60 },
+    ],
+    fatos: [
+      { valor: t.menorGabinete, rotulo: "pessoas no menor gabinete da Alepe" },
+      { valor: t.maiorGabinete, rotulo: "pessoas no maior gabinete da Alepe" },
+    ],
+  });
+
+  const topo = t.cargos.find((c) => c.cargo === t.cargoTopo);
+  const base = t.cargos.find((c) => c.cargo === t.cargoBase);
+  if (topo && base && t.razaoTopoBase > 0) {
+    out.push({
+      slug: "tabela-cargos",
+      peso_editorial: 88,
+      camadas: [
+        { texto: `Na Alepe, um ${t.cargoTopo} tem vencimento de tabela de ${reaisExatos(topo.venc)} e um ${t.cargoBase}, ${reaisExatos(base.venc)}: ${pct(t.razaoTopoBase)} vezes menos.`, prioridade: 100 },
+        { texto: "Por isso gabinete com menos gente pode custar mais que gabinete cheio.", prioridade: 60 },
+        { texto: "Vencimento do cargo, bruto, não o que a pessoa recebe.", prioridade: 55 },
+      ],
+      fatos: [
+        { valor: topo.venc, rotulo: `vencimento de tabela do cargo ${t.cargoTopo}` },
+        { valor: base.venc, rotulo: `vencimento de tabela do cargo ${t.cargoBase}` },
+        { valor: valorAfirmadoDecimal(t.razaoTopoBase), rotulo: `vezes que ${t.cargoTopo} custa ${t.cargoBase}` },
+      ],
+    });
+  }
+
+  // Sem dígito nenhum de propósito: a nota do ITGP e a contagem de assembleias
+  // são fato externo, e versionar mais um índice só para escrever "27" não
+  // paga o risco. Em palavra, a frase é conferível e não pede lastro.
+  out.push({
+    slug: "transparencia",
+    peso_editorial: 94,
+    camadas: [
+      { texto: "A Alepe não publica quanto cada servidor recebe, e tira nota zero no item do índice da Transparência Internacional que mede exatamente isso.", prioridade: 100 },
+      { texto: "Ela publica o vencimento de cada cargo, e o resto é cruzamento nosso.", prioridade: 60 },
+      { texto: "Só quatro assembleias do país tiram nota cheia nesse item.", prioridade: 55 },
+    ],
+    fatos: [],
+  });
+
+  return out;
+}
+
 // -------------------------------------------------------------------- pool
 
 type Candidato = {
@@ -633,6 +859,22 @@ type Candidato = {
   fatos: Fato[];
   chave: Record<string, string | number>;
   peso_editorial: number;
+  /**
+   * Posturas em que este recorte pode sair. O padrão são as duas, mas há
+   * recortes de uma só:
+   *
+   *   - gabinete nominal só existe como "dado". Nome de deputado com cifra
+   *     num post assinado por candidato é pedido de direito de resposta — a
+   *     mesma trava que cidade-lider já tinha;
+   *   - cada tema da Transnordestina nasce já com a sua: o que é documento
+   *     sai como dado, o que é defesa de ideia sai assinado.
+   */
+  posturas?: readonly Postura[];
+  /**
+   * Fechos de campanha do próprio tema. Sem isto, um post sobre ferrovia
+   * fecharia com "construí este painel", que é sobre outra coisa.
+   */
+  fechosCampanha?: readonly string[];
 };
 
 function candidatos(db: Database): Candidato[] {
@@ -644,8 +886,12 @@ function candidatos(db: Database): Candidato[] {
     chave: Record<string, string | number>,
     peso_editorial: number,
     r: { camadas: Camada[]; fatos: Fato[] } | null,
+    posturas?: readonly Postura[],
+    fechosCampanha?: readonly string[],
   ): void => {
-    if (r) out.push({ id, eixo, template, chave, peso_editorial, camadas: r.camadas, fatos: r.fatos });
+    if (r) {
+      out.push({ id, eixo, template, chave, peso_editorial, camadas: r.camadas, fatos: r.fatos, posturas, fechosCampanha });
+    }
   };
 
   for (const m of agregadoPorMunicipio(db)) {
@@ -670,6 +916,68 @@ function candidatos(db: Database): Candidato[] {
   for (const s of agregadoPorSubfuncao(db)) {
     push(`funcao:sub:${s.subfuncao}`, "funcao", "funcao-subfuncao", { subfuncao: s.subfuncao }, s.v, templateSubfuncao(s));
   }
+  // ---- gabinetes da Alepe
+  //
+  // Os 49 entram todos, com o mesmo template: cobrir a Casa inteira é o que
+  // separa levantamento de perseguição, e é também o que torna o recorte
+  // defensável se alguém pedir direito de resposta.
+  const gabinetes = agregadoPorGabinete(db);
+  const totais = totaisGabinete(db);
+  for (const g of gabinetes) {
+    push(
+      `gabinete:${g.slug}:custo`,
+      "gabinete",
+      "gabinete-nominal",
+      { deputado: g.deputado },
+      g.custoMensal,
+      templateGabineteNominal(g, gabinetes.length),
+      ["dado"],
+    );
+    if (totais) {
+      push(
+        `gabinete:${g.slug}:contraste`,
+        "gabinete",
+        "gabinete-contraste",
+        { deputado: g.deputado },
+        g.custoMensal,
+        templateGabineteContraste(g, gabinetes.length, totais.razaoTopoBase, totais.cargoTopo, totais.cargoBase),
+        ["dado"],
+      );
+    }
+  }
+  if (totais) {
+    for (const a of templatesGabineteAgregado(totais)) {
+      push(
+        `gabinete:alepe:${a.slug}`,
+        "gabinete",
+        `gabinete-${a.slug}`,
+        { escopo: "alepe" },
+        a.peso_editorial,
+        { camadas: a.camadas, fatos: a.fatos },
+        ["dado", "campanha"],
+        FECHOS_GABINETE,
+      );
+    }
+  }
+
+  // ---- Transnordestina
+  //
+  // Cada tema já nasce com a sua postura: documento sai como dado, defesa de
+  // ideia sai assinada. Não há versão dupla — o mesmo fato dito duas vezes,
+  // uma com assinatura e outra sem, é repetição, não cobertura.
+  for (const tema of temasTrem()) {
+    push(
+      `trem:${tema.slug}`,
+      "trem",
+      `trem-${tema.slug}`,
+      { pauta: "transnordestina" },
+      tema.peso_editorial,
+      { camadas: tema.camadas, fatos: tema.fatos },
+      [tema.postura],
+      FECHOS_TREM_ASSINADOS,
+    );
+  }
+
   for (const c of curiosidadesPorMunicipio(db)) {
     // Peso editorial = população: cidade grande nos horários de pico, cauda
     // longa na madrugada. Mesmo critério dos outros eixos, outro campo.
@@ -704,7 +1012,7 @@ export function gerarPool(db: Database): Pool {
 
   for (const c of candidatos(db)) {
     // A versão de campanha é o mesmo recorte com a última camada trocada.
-    for (const postura of ["dado", "campanha"] as const) {
+    for (const postura of c.posturas ?? (["dado", "campanha"] as const)) {
       // Post que cita terceiro NUNCA leva a assinatura do candidato: citar
       // adversário com cifra em post assinado é pedido de direito de resposta
       // em bandeja (decisão do candidato, 16/08/2026).
@@ -725,7 +1033,11 @@ export function gerarPool(db: Database): Pool {
       if (postura === "campanha") {
         const regiao = typeof c.chave.municipio === "string" ? MUNICIPIO_REGIAO.get(c.chave.municipio) : undefined;
         const doSertao = typeof regiao === "string" && regiao.startsWith("Sertão");
-        const fechos = doSertao ? [...FECHOS_CAMPANHA, FECHO_SERTAO] : [...FECHOS_CAMPANHA];
+        const fechos = c.fechosCampanha
+          ? [...c.fechosCampanha]
+          : doSertao
+            ? [...FECHOS_CAMPANHA, FECHO_SERTAO]
+            : [...FECHOS_CAMPANHA];
         camadas = [
           ...c.camadas.filter((x) => x.prioridade >= 70),
           { texto: fechos[varianteDe(id, fechos.length)] ?? fechos[0] ?? "", prioridade: 90 },
