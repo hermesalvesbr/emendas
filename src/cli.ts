@@ -1197,7 +1197,6 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
   let liUrn: string | null = null;
   try {
     const credLi = lerCredenciaisLinkedIn();
-    const link = LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string);
     // Texto redigido por modelo, se existir E ainda corresponder a este
     // recorte. O hash é a trava: dado recoletado invalida a redação antiga, e
     // o molde determinístico assume — nunca se publica texto de um número que
@@ -1206,7 +1205,7 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
     const redigido = (await lerTextosLinkedIn()).textos.find(
       (t) => t.post_id === postId && t.hash === post.hash,
     );
-    const textoLi = redigido?.texto ?? textoParaLinkedIn(post.texto, post.eixo, link);
+    const textoLi = redigido?.texto ?? textoParaLinkedIn(post.texto, post.eixo);
     liUrn = await publicarNoLinkedIn(credLi, textoLi);
     const ultimo = publicados.publicados.at(-1);
     if (ultimo) (ultimo as { linkedin_urn?: string }).linkedin_urn = liUrn;
@@ -1362,8 +1361,7 @@ async function cmdGerarLinkedIn(values: Record<string, unknown>): Promise<void> 
     const fatos = indiceDeFatos(db.raw);
 
     for (const [i, post] of alvos.entries()) {
-      const link = LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string);
-      const r = await redigirVerificado(post, { db: db.raw, link, fatos, modelo });
+      const r = await redigirVerificado(post, { db: db.raw, fatos, modelo });
 
       if (r.ok) {
         guardados.textos = guardados.textos.filter((t) => t.post_id !== post.id);

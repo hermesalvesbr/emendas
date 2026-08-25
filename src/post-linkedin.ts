@@ -250,6 +250,9 @@ export function urlDoPost(urn: string): string {
  * 3. **Verbo de empenho.** "Empenhado para", nunca "recebeu"/"chegou" — o
  *    banco tem município com empenho alto e pagamento zero.
  */
+/** Fecho de todo post. Aponta o endereço sem gastar uma URL. */
+const FECHO = "O painel completo, com a fonte oficial de cada linha, está no perfil.";
+
 const MOLDURA: Record<string, string> = {
   cidade:
     "Emenda parlamentar tem autor, valor e destino. Os três são públicos e quase nunca aparecem juntos: este painel reúne o que a Alepe e a CGU abrem em dado aberto, município por município.\n\n" +
@@ -358,18 +361,20 @@ export function escolherAbertura(texto: string, eixo: string): string | undefine
  * ninguém precise clicar em "…mais". Moldura e link, com quebra dupla, ficam
  * para quem expandir.
  *
- * O link vai no CORPO porque não há alternativa: comentar por API exige o
- * escopo `w_member_social_feed`, de parceiro aprovado, e "Share on LinkedIn"
- * não concede — a tentativa devolve `403 ACCESS_DENIED
- * partnerApiSocialActions.CREATE` (medido em 25/08/2026). A penalidade de
- * alcance por link no corpo é medida no X (§36), não aqui.
+ * SEM URL NENHUMA. Link externo custa ~60% de alcance, e as três saídas
+ * conhecidas estão fechadas: comentar por API exige `w_member_social_feed`, de
+ * parceiro aprovado (403 medido em 25/08/2026); o link no 1º comentário
+ * deixou de funcionar em 2026, com o LinkedIn soterrando o comentário do
+ * autor; e "comenta aqui que eu mando" é engagement bait, que os
+ * classificadores do 360Brew suprimem desde março de 2026. Decisão do
+ * candidato: o endereço do painel vive no perfil, e o post aponta para lá.
  */
-export function textoParaLinkedIn(texto: string, eixo: string, link: string): string {
+export function textoParaLinkedIn(texto: string, eixo: string): string {
   const abertura = escolherAbertura(texto, eixo);
   // Quebra SIMPLES entre abertura e dado: a dupla cortaria o snippet aqui.
   const cabeca = abertura === undefined ? texto : `${abertura}\n${texto}`;
   const moldura = MOLDURA[eixo];
-  const partes = moldura === undefined ? [cabeca, link] : [cabeca, moldura, link];
+  const partes = moldura === undefined ? [cabeca, FECHO] : [cabeca, moldura, FECHO];
   return partes.join("\n\n");
 }
 

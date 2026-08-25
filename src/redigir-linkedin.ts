@@ -47,9 +47,14 @@ export type TextoLinkedIn = {
   em: string;
 };
 
-/** Haiku por escolha do candidato: a tarefa é reescrever dentro de regra dura,
- *  e quem garante o número é o verificador. Trocável por --modelo. */
-export const MODELO_PADRAO = "haiku";
+/**
+ * Sonnet por escolha do candidato: qualidade importa mais que velocidade aqui.
+ * Medido em 25/08/2026 no mesmo recorte, o Haiku produziu frase sem verbo
+ * ("um resultado que se sobressaiu na votação local daquele município"); o
+ * Sonnet, prosa limpa. Como o transporte é o `claude -p`, nenhum dos dois vira
+ * fatura por token — o que se paga é cota e tempo. Trocável por --modelo.
+ */
+export const MODELO_PADRAO = "sonnet";
 
 // -------------------------------------------------------------------- prompt
 
@@ -79,7 +84,9 @@ REGRAS DURAS (violar qualquer uma reprova o texto):
 9. NÃO prometa. Sobre ferrovia: possibilidade não é promessa; nada de "quando
    o trem chegar".
 10. NÃO afirme que alguém não é candidato, e não diga "represento a região X".
-11. Sem markdown, sem asterisco, sem emoji. O LinkedIn não renderiza nada disso.
+11. NENHUMA URL, domínio ou endereço de site no texto. Link externo custa
+    ~60% de alcance no LinkedIn, e as saídas conhecidas estão fechadas.
+12. Sem markdown, sem asterisco, sem emoji. O LinkedIn não renderiza nada disso.
 `.trim();
 
 const ESTRATEGIA = `
@@ -101,7 +108,8 @@ O CORPO:
   curtas. Sem jargão de campanha, sem adjetivo de indignação.
 - Parágrafos de uma a três linhas, com linha em branco entre eles.
 - Entre 600 e 1200 caracteres. Não existe limite de 280 aqui.
-- Termine com a linha de link exatamente como fornecida.
+- Termine apontando que o painel completo, com a fonte de cada linha, está
+  no perfil do autor. NUNCA escreva uma URL, endereço de site ou domínio.
 
 NÃO SOE COMO TEXTO DE MÁQUINA. Desde março de 2026 o LinkedIn rebaixa em até
 47% o alcance de texto que soa gerado, e diz acertar a detecção em 94% dos
@@ -138,7 +146,7 @@ export function numerosForaDoRecorte(gerado: string, recorte: string): string[] 
   return [...new Set(usados.filter((n) => !doRecorte.has(n)))];
 }
 
-export function montarPrompt(post: PostDaSerie, link: string): string {
+export function montarPrompt(post: PostDaSerie): string {
   const fatos = post.fatos.map((f) => `  - ${f.rotulo}: ${f.valor}`).join("\n");
   return `Você reescreve, para o LinkedIn, um recorte de um levantamento público sobre
 emendas parlamentares de Pernambuco. O recorte abaixo JÁ FOI CONFERIDO contra
@@ -152,11 +160,6 @@ ${post.texto}
 
 NÚMEROS CONFERIDOS (rótulo: valor) — nenhum outro número pode aparecer:
 ${fatos || "  (nenhum)"}
-
-LINHA DE LINK, para terminar o texto, copiada sem alteração:
-"""
-${link}
-"""
 
 ${ESTRATEGIA}
 
@@ -200,7 +203,6 @@ export type Resultado =
 
 export type OpcoesRedacao = {
   db: Database;
-  link: string;
   fatos?: Fato[];
   modelo?: string;
   maxTentativas?: number;
@@ -220,7 +222,7 @@ export async function redigirVerificado(post: PostDaSerie, opts: OpcoesRedacao):
   const modelo = opts.modelo ?? MODELO_PADRAO;
   const max = opts.maxTentativas ?? 3;
   const redigir = opts.redigir ?? redigirComClaude;
-  const prompt = montarPrompt(post, opts.link);
+  const prompt = montarPrompt(post);
   const motivos: string[] = [];
 
   for (let tentativa = 1; tentativa <= max; tentativa++) {
@@ -246,14 +248,23 @@ export async function redigirVerificado(post: PostDaSerie, opts: OpcoesRedacao):
     // igualmente proibida: a série é afirmativa porque ninguém responde nos
     // 30 minutos seguintes, e isso não muda por a pergunta estar no meio.
     const perguntas = (texto.match(/\?/g) ?? []).length;
+    // Uma URL escapando aqui reintroduz a penalidade de 60% pela porta dos
+    // fundos, e o `permitirLink: true` do verificador não a barraria.
+    // Primeira pessoa é assinatura por outro nome, e post que cita terceiro
+    // com cifra nunca leva assinatura (§43). O Sonnet escreveu "perto dos
+    // números que a gente vê em capital" — plural inclusivo, mesma coisa.
+    const pessoal = texto.match(/\b(?:eu|nós|a gente|nosso|nossa|nossos|nossas|meu|minha|vamos)\b/gi) ?? [];
+    const urls = texto.match(/https?:\/\/\S+|\b[a-z0-9-]+\.(?:com|br|org|net|io|gov)\b/gi) ?? [];
     const inventados = numerosForaDoRecorte(texto, post.texto);
-    if (veredito.ok && inventados.length === 0 && perguntas === 0) {
+    if (veredito.ok && inventados.length === 0 && perguntas === 0 && urls.length === 0 && pessoal.length === 0) {
       return { ok: true, texto, tentativas: tentativa };
     }
 
     const extras: string[] = [];
     if (inventados.length > 0) extras.push(`numero-fora-do-recorte (${inventados.join(", ")})`);
     if (perguntas > 0) extras.push(`pergunta-no-texto (${perguntas})`);
+    if (urls.length > 0) extras.push(`url-no-texto (${urls.join(", ")})`);
+    if (pessoal.length > 0) extras.push(`primeira-pessoa (${[...new Set(pessoal)].join(", ")})`);
     if (extras.length > 0) {
       motivos.push(`tentativa ${tentativa}: ${extras.join("; ")}`);
       continue;

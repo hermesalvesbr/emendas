@@ -115,12 +115,11 @@ describe("autorização", () => {
 });
 
 describe("moldura do LinkedIn", () => {
-  const LINK = "Confira linha a linha:\nhttps://hermesalvesbr.github.io/emendas/";
   const EIXOS = ["cidade", "autor", "funcao", "gabinete", "trem", "curiosidade"];
 
   test("todo eixo do pool tem moldura", () => {
     for (const eixo of EIXOS) {
-      const t = textoParaLinkedIn("DADO", eixo, LINK);
+      const t = textoParaLinkedIn("DADO", eixo);
       expect(t).toContain("\nDADO\n\n");
       expect(t.length).toBeGreaterThan(200);
     }
@@ -132,7 +131,7 @@ describe("moldura do LinkedIn", () => {
     // errados já publicados nasceram. Exceção: as ECs do eixo funcao, que
     // vivem no texto gerado, não aqui.
     for (const eixo of EIXOS) {
-      const t = textoParaLinkedIn("", eixo, "");
+      const t = textoParaLinkedIn("", eixo);
       const moldura = t.split("\n\n").slice(1).join("\n\n").trim();
       expect({ eixo, digitos: moldura.match(/\d/g) ?? [] }).toEqual({ eixo, digitos: [] });
     }
@@ -140,7 +139,7 @@ describe("moldura do LinkedIn", () => {
 
   test("o dado vem antes da moldura", () => {
     const dado = "R$ 81,2 mi em emendas foram empenhados para o município de Recife (PE).";
-    const t = textoParaLinkedIn(dado, "cidade", LINK);
+    const t = textoParaLinkedIn(dado, "cidade");
     expect(t.indexOf("Emenda parlamentar tem autor")).toBeGreaterThan(t.indexOf(dado));
   });
 
@@ -149,7 +148,7 @@ describe("moldura do LinkedIn", () => {
     // foi o que cortou a 1ª versão publicada na cifra crua. Por isso abertura
     // e primeira linha do dado são separadas por UMA quebra só.
     const dado = "R$ 81,2 mi em emendas foram empenhados para Recife (PE).\n\nSão 112 emendas.";
-    const t = textoParaLinkedIn(dado, "cidade", LINK);
+    const t = textoParaLinkedIn(dado, "cidade");
 
     const visivel = t.split("\n\n")[0] ?? "";
     expect(visivel).toContain("R$ 81,2 mi");
@@ -194,19 +193,28 @@ describe("moldura do LinkedIn", () => {
     expect(escolherAbertura("qualquer", "eixo-que-nao-existe")).toBeUndefined();
   });
 
-  test("o link é sempre a última coisa", () => {
-    for (const eixo of EIXOS) expect(textoParaLinkedIn("DADO", eixo, LINK).endsWith(LINK)).toBe(true);
+  test("nenhum post leva URL, e o fecho aponta o perfil", () => {
+    // Link externo custa ~60% de alcance; comentar por API é 403; link no 1º
+    // comentário o LinkedIn soterra; "comenta aqui" é engagement bait
+    // suprimido. Decisão: o endereço vive no perfil (25/08/2026).
+    for (const eixo of EIXOS) {
+      const t = textoParaLinkedIn("DADO", eixo);
+      expect(t).not.toMatch(/https?:\/\/|[a-z0-9-]+\.(?:com|br|org|io)\b/i);
+      expect(t.endsWith("está no perfil.")).toBe(true);
+    }
   });
 
   test("nenhuma moldura usa verbo de entrega", () => {
     // "recebeu"/"chegou" sobre vlrempenhado é refutável com o próprio banco.
     for (const eixo of EIXOS) {
-      expect(textoParaLinkedIn("", eixo, "")).not.toMatch(/receb[ei]|chegar|chegou|entregue/i);
+      expect(textoParaLinkedIn("", eixo)).not.toMatch(/receb[ei]|chegar|chegou|entregue/i);
     }
   });
 
-  test("eixo desconhecido não quebra: sai dado + link, sem moldura", () => {
-    expect(textoParaLinkedIn("DADO", "eixo-que-nao-existe", LINK)).toBe(`DADO\n\n${LINK}`);
+  test("eixo desconhecido não quebra: sai dado + fecho, sem moldura", () => {
+    const t = textoParaLinkedIn("DADO", "eixo-que-nao-existe");
+    expect(t.startsWith("DADO\n\n")).toBe(true);
+    expect(t.endsWith("está no perfil.")).toBe(true);
   });
 });
 
