@@ -217,6 +217,80 @@ export function urlDoPost(urn: string): string {
   return `https://www.linkedin.com/feed/update/${urn}/`;
 }
 
+// -------------------------------------------------------------- link do painel
+
+/**
+ * Monta o texto do LinkedIn com o link do painel NO CORPO.
+ *
+ * No X o link vai na 1ª resposta, porque no corpo derruba o alcance de 50–90%
+ * (§36). Aqui não dá para espelhar isso: comentar por API exige o escopo
+ * `w_member_social_feed`, que é de parceiro aprovado — "Share on LinkedIn" não
+ * concede, e a tentativa devolve
+ * `403 ACCESS_DENIED partnerApiSocialActions.CREATE` (medido em 25/08/2026).
+ *
+ * Das saídas possíveis, link no corpo é a única que preserva a decisão do
+ * candidato de que dado conferível tem endereço. A penalidade de alcance por
+ * link externo é medida no X, não aqui; e no LinkedIn não há custo por post
+ * nem limite de 280, então o link no corpo não tira nada de outra camada.
+ */
+/**
+ * Moldura por eixo: o que a série é, de onde vem o dado e o que o número não
+ * é. Existe porque o texto do X é o 68º de uma série de 6 em 6 horas — quem
+ * acompanha tem o contexto acumulado, quem chega pelo perfil não tem nenhum.
+ *
+ * Três regras a manter ao editar:
+ *
+ * 1. **Nenhum número aqui.** A garantia do `verificar-post.ts` vale sobre o
+ *    texto do X. Cifra ou contagem na moldura entraria sem lastro, e é
+ *    exatamente assim que os três números errados já publicados nasceram.
+ * 2. **Impessoal.** Não é a voz do candidato: eixos como `autor` e
+ *    `curiosidade` citam terceiros com cifra, e post que cita terceiro nunca
+ *    leva assinatura (§43). Uma abertura em 1ª pessoa seria assinatura por
+ *    outro nome.
+ * 3. **Verbo de empenho.** "Empenhado para", nunca "recebeu"/"chegou" — o
+ *    banco tem município com empenho alto e pagamento zero.
+ */
+const MOLDURA: Record<string, string> = {
+  cidade:
+    "Emenda parlamentar tem autor, valor e destino. Os três são públicos e quase nunca aparecem juntos: este painel reúne o que a Alepe e a CGU abrem em dado aberto, município por município.\n\n" +
+    "Empenhado é o compromisso formal com a despesa; pago é o que saiu do caixa. As duas colunas aparecem lado a lado, porque a distância entre elas costuma ser a parte que não se conta.",
+  autor:
+    "De quem é a emenda? A pergunta parece simples, mas nos arquivos oficiais a autoria vem em texto livre, e precisa ser reconstruída registro a registro.\n\n" +
+    "Entra na conta só o que tem autoria confirmada na fonte oficial. Onde o arquivo não nomeia quem propôs, o registro fica fora da soma.",
+  funcao:
+    "Para onde vai a emenda parlamentar em Pernambuco, por área de aplicação, a partir dos arquivos abertos da CGU e da Alepe.\n\n" +
+    "Empenhado é compromisso com a despesa, não pagamento efetuado. E liderança de uma área nem sempre é escolha política: onde existe piso legal, quem manda é a lei.",
+  gabinete:
+    "Quanto custa a estrutura de um gabinete na Assembleia Legislativa de Pernambuco, pelos próprios dados abertos da Casa.\n\n" +
+    "O custo é estimado e bruto: soma dos vencimentos dos cargos ocupados, sem décimo terceiro e sem encargos. Contar cabeças e contar custo produzem rankings diferentes, e o painel mostra os dois — o maior gabinete em pessoas não é o mais caro.",
+  trem:
+    "Sobre a Transnordestina e o transporte de passageiros, o que existe em documento — contrato, lei e prazo — e não em promessa.\n\n" +
+    "Possibilidade não é promessa. O que está acima é o que os documentos sustentam hoje, e nada além disso.",
+  curiosidade:
+    "O painel cruza a naturalidade declarada ao TSE com a população de cada município, para todos os candidatos de Pernambuco.\n\n" +
+    "Naturalidade é onde a pessoa nasceu, não onde vive nem onde concorre. O painel mostra também a votação por município na última eleição geral.",
+};
+
+/**
+ * Monta o texto do LinkedIn: dado primeiro, moldura depois, link no fim.
+ *
+ * A ordem não é estética. O LinkedIn corta o post em "…ver mais" por volta de
+ * 200 caracteres; contexto na frente empurraria o número para baixo da dobra,
+ * contra a regra de número na primeira linha. O dado fica no anzol, a moldura
+ * serve quem expandir.
+ *
+ * O link vai no CORPO porque não há alternativa: comentar por API exige o
+ * escopo `w_member_social_feed`, de parceiro aprovado, e "Share on LinkedIn"
+ * não concede — a tentativa devolve `403 ACCESS_DENIED
+ * partnerApiSocialActions.CREATE` (medido em 25/08/2026). A penalidade de
+ * alcance por link no corpo é medida no X (§36), não aqui.
+ */
+export function textoParaLinkedIn(texto: string, eixo: string, link: string): string {
+  const moldura = MOLDURA[eixo];
+  const partes = moldura === undefined ? [texto, link] : [texto, moldura, link];
+  return partes.join("\n\n");
+}
+
 /**
  * Apaga um post. Como no X, é irreversível. 204 é sucesso e a operação é
  * idempotente: apagar o que já sumiu também devolve 204.

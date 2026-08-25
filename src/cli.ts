@@ -15,6 +15,7 @@ import { harvestPessoal } from "./harvest-pessoal.ts";
 import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { exportarMalhaPE, exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal, exportarSiteOrigem, exportarSitePessoal, exportarSiteDeputados, exportarIndiceDeputados } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
+import { lerCredenciaisLinkedIn, publicarNoLinkedIn, textoParaLinkedIn } from "./post-linkedin.ts";
 import type { EstadoThread } from "./post-x.ts";
 import {
   apagarPost,
@@ -906,7 +907,17 @@ async function lerFila(): Promise<Fila> {
 
 type Publicados = {
   usuario: string;
-  publicados: Array<{ slot: string; post_id: string; hash: string; id: string; url: string; em: string }>;
+  publicados: Array<{
+    slot: string;
+    post_id: string;
+    hash: string;
+    id: string;
+    url: string;
+    em: string;
+    /** Ausentes nos 67 publicados antes de 25/08/2026, quando só havia o X. */
+    reply_id?: string;
+    linkedin_urn?: string;
+  }>;
 };
 
 async function lerPublicados(): Promise<Publicados> {
@@ -1166,7 +1177,38 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
     console.log(`aviso: post publicado, mas a resposta com o link falhou: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`);
   }
 
-  await appendJsonl(LOG_POSTS, { slot: alvo, post_id: postId, url, reply_id: replyId, peso: post.peso, em: new Date().toISOString() });
+  // O MESMO recorte vai para o LinkedIn, com o link no comentário — espelho
+  // exato da decisão do X. Publicar lá é de graça (o X cobra US$ 0,215 por
+  // slot, §45) e não há limite de 280, mas o texto é o mesmo de propósito:
+  // dois textos para o mesmo dado seriam duas versões para o verificador
+  // conferir, e é assim que nascem divergências publicadas.
+  //
+  // Falha no LinkedIn NÃO desfaz o post do X, pela mesma razão que a reply não
+  // desfaz: o post do X vale sozinho. Só o perfil pessoal — publicar sob a
+  // marca da Softagon é decisão do candidato, não default (§45.1).
+  let liUrn: string | null = null;
+  try {
+    const credLi = lerCredenciaisLinkedIn();
+    const link = LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string);
+    liUrn = await publicarNoLinkedIn(credLi, textoParaLinkedIn(post.texto, post.eixo, link));
+    const ultimo = publicados.publicados.at(-1);
+    if (ultimo) (ultimo as { linkedin_urn?: string }).linkedin_urn = liUrn;
+    await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
+  } catch (err) {
+    // Token do LinkedIn vence em 24/10/2026 e não há refresh. Quando vencer,
+    // é aqui que aparece — e o X continua saindo normalmente.
+    console.log(`aviso: publicado no X, mas o LinkedIn falhou: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`);
+  }
+
+  await appendJsonl(LOG_POSTS, {
+    slot: alvo,
+    post_id: postId,
+    url,
+    reply_id: replyId,
+    linkedin_urn: liUrn,
+    peso: post.peso,
+    em: new Date().toISOString(),
+  });
 
   // Sucesso é silencioso: a 8 posts/dia, avisar a cada acerto vira ruído e o
   // alerta perde valor. O que interessa está no log e no resumo das 21:30.

@@ -4,6 +4,7 @@ import {
   escaparLittle,
   ESCOPOS,
   lerCredenciaisLinkedIn,
+  textoParaLinkedIn,
   urlAutorizacao,
   urlDoPost,
 } from "../src/post-linkedin.ts";
@@ -109,6 +110,52 @@ describe("autorização", () => {
     expect(u.searchParams.get("state")).toBe("s1");
     expect(u.searchParams.get("redirect_uri")).toBe("http://localhost:8788/callback");
     expect(u.searchParams.get("scope")).toBe("openid profile w_member_social");
+  });
+});
+
+describe("moldura do LinkedIn", () => {
+  const LINK = "Confira linha a linha:\nhttps://hermesalvesbr.github.io/emendas/";
+  const EIXOS = ["cidade", "autor", "funcao", "gabinete", "trem", "curiosidade"];
+
+  test("todo eixo do pool tem moldura", () => {
+    for (const eixo of EIXOS) {
+      const t = textoParaLinkedIn("DADO", eixo, LINK);
+      expect(t.startsWith("DADO\n\n")).toBe(true);
+      expect(t.length).toBeGreaterThan(200);
+    }
+  });
+
+  test("NENHUMA moldura contém dígito", () => {
+    // A garantia do verificar-post.ts vale sobre o texto do X. Cifra ou
+    // contagem na moldura entraria sem lastro — é assim que os três números
+    // errados já publicados nasceram. Exceção: as ECs do eixo funcao, que
+    // vivem no texto gerado, não aqui.
+    for (const eixo of EIXOS) {
+      const moldura = textoParaLinkedIn("", eixo, "").trim();
+      expect({ eixo, digitos: moldura.match(/\d/g) ?? [] }).toEqual({ eixo, digitos: [] });
+    }
+  });
+
+  test("o dado vem antes da moldura — o corte em ~200 chars não pode comer o número", () => {
+    const dado = "R$ 81,2 mi em emendas foram empenhados para o município de Recife (PE).";
+    const t = textoParaLinkedIn(dado, "cidade", LINK);
+    expect(t.slice(0, 200)).toContain("R$ 81,2 mi");
+    expect(t.indexOf("Emenda parlamentar tem autor")).toBeGreaterThan(t.indexOf(dado));
+  });
+
+  test("o link é sempre a última coisa", () => {
+    for (const eixo of EIXOS) expect(textoParaLinkedIn("DADO", eixo, LINK).endsWith(LINK)).toBe(true);
+  });
+
+  test("nenhuma moldura usa verbo de entrega", () => {
+    // "recebeu"/"chegou" sobre vlrempenhado é refutável com o próprio banco.
+    for (const eixo of EIXOS) {
+      expect(textoParaLinkedIn("", eixo, "")).not.toMatch(/receb[ei]|chegar|chegou|entregue/i);
+    }
+  });
+
+  test("eixo desconhecido não quebra: sai dado + link, sem moldura", () => {
+    expect(textoParaLinkedIn("DADO", "eixo-que-nao-existe", LINK)).toBe(`DADO\n\n${LINK}`);
   });
 });
 
