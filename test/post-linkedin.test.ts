@@ -120,7 +120,7 @@ describe("moldura do LinkedIn", () => {
   test("todo eixo do pool tem moldura", () => {
     for (const eixo of EIXOS) {
       const t = textoParaLinkedIn("DADO", eixo, LINK);
-      expect(t.startsWith("DADO\n\n")).toBe(true);
+      expect(t).toContain("\nDADO\n\n");
       expect(t.length).toBeGreaterThan(200);
     }
   });
@@ -136,11 +136,30 @@ describe("moldura do LinkedIn", () => {
     }
   });
 
-  test("o dado vem antes da moldura — o corte em ~200 chars não pode comer o número", () => {
+  test("o dado vem antes da moldura", () => {
     const dado = "R$ 81,2 mi em emendas foram empenhados para o município de Recife (PE).";
     const t = textoParaLinkedIn(dado, "cidade", LINK);
-    expect(t.slice(0, 200)).toContain("R$ 81,2 mi");
     expect(t.indexOf("Emenda parlamentar tem autor")).toBeGreaterThan(t.indexOf(dado));
+  });
+
+  test("o número cabe na dobra de 140 do celular, junto com a abertura", () => {
+    // Dois "\n" seguidos encerram o trecho visível ANTES dos 140 caracteres —
+    // foi o que cortou a 1ª versão publicada na cifra crua. Por isso abertura
+    // e primeira linha do dado são separadas por UMA quebra só.
+    const dado = "R$ 81,2 mi em emendas foram empenhados para Recife (PE).\n\nSão 112 emendas.";
+    const t = textoParaLinkedIn(dado, "cidade", LINK);
+
+    const visivel = t.split("\n\n")[0] ?? "";
+    expect(visivel).toContain("R$ 81,2 mi");
+    expect(visivel.indexOf("R$ 81,2 mi")).toBeLessThan(140);
+  });
+
+  test("toda abertura deixa espaço para o dado dentro dos 140", () => {
+    // Abertura longa demais empurra a cifra para fora da dobra no celular.
+    for (const eixo of EIXOS) {
+      const abertura = textoParaLinkedIn("", eixo, "").split("\n")[0] ?? "";
+      expect({ eixo, cabe: abertura.length <= 80 }).toEqual({ eixo, cabe: true });
+    }
   });
 
   test("o link é sempre a última coisa", () => {

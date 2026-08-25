@@ -46,7 +46,22 @@ if os.path.exists("data/x-publicados.json"):
     pub={p["slot"] for p in json.load(open("data/x-publicados.json"))["publicados"]}
 print(next(s for s in sorted(fila["slots"]) if s not in pub))
 ')
-echo "travas do job emendas-post-slot (slot de teste: $ALVO)"
+# O caso 3 (rótulo divergente) injeta um recorte de CIDADE, e o índice de
+# fatos é restrito pelos `dominios` do post substituído. Num post de
+# curiosidade ou trem o valor não acha lastro nenhum e a trava reprova por
+# numero-sem-lastro — segura, mas pelo motivo errado, testando outra coisa.
+# Por isso esse caso tem slot próprio, do eixo que ele de fato exercita.
+export ALVO_CIDADE=$(python3 -c '
+import json,os
+fila=json.load(open("data/fila-posts.json"))
+pool={p["id"]: p for p in json.load(open("data/pool-posts.json"))["posts"]}
+pub=set()
+if os.path.exists("data/x-publicados.json"):
+    pub={p["slot"] for p in json.load(open("data/x-publicados.json"))["publicados"]}
+print(next(s for s in sorted(fila["slots"])
+           if s not in pub and pool.get(fila["slots"][s], {}).get("eixo") == "cidade"))
+')
+echo "travas do job emendas-post-slot (slot de teste: $ALVO, cidade: $ALVO_CIDADE)"
 
 # 1. Slot fora da fila = silêncio. O job não incomoda fora da série.
 caso "slot sem nada agendado fica em silêncio" "nada agendado" \
@@ -75,7 +90,7 @@ restaurar
 python3 - <<'PY'
 import json,os
 d=json.load(open('data/pool-posts.json'))
-alvo=json.load(open('data/fila-posts.json'))['slots'][os.environ['ALVO']]
+alvo=json.load(open('data/fila-posts.json'))['slots'][os.environ['ALVO_CIDADE']]
 for p in d['posts']:
     if p['id']==alvo:
         p['texto']="Araripina recebeu R$ 8,0 mi em emendas parlamentares."
@@ -83,7 +98,7 @@ for p in d['posts']:
 json.dump(d,open('data/pool-posts.json','w'),ensure_ascii=False,indent=2)
 PY
 caso "valor certo de outra cidade é barrado pelo rótulo" "numero-rotulo-divergente" \
-  $BUN run src/cli.ts postar:slot --slot "$ALVO"
+  $BUN run src/cli.ts postar:slot --slot "$ALVO_CIDADE"
 restaurar
 
 # 4. Fila apontando para id que não existe no pool = erro alto, não silêncio.

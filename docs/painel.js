@@ -274,7 +274,6 @@
       }
 
       const b = baseOption();
-      const max = pontos.reduce((m, x) => Math.max(m, x.value || 0), 0) || 1;
       this.montar(id, {
         ...b,
         tooltip: {
@@ -283,16 +282,17 @@
             `${esc(p.name)}<br><strong>${p.value == null || Number.isNaN(p.value) ? "sem registro" : fmt(p.value)}</strong> ${esc(unidade)}`,
         },
         visualMap: {
-          min: 0,
-          max,
+          type: "piecewise",
           left: 6,
-          bottom: 10,
-          orient: "vertical",
-          calculable: false,
-          showLabel: true,
+          bottom: 8,
+          orient: "horizontal",
+          itemGap: 4,
+          itemWidth: 16,
+          itemHeight: 11,
           textStyle: { color: cor("--pe-text3"), fontSize: 10 },
-          inRange: { color: [cor("--pe-blue-soft"), cor("--pe-cyan"), cor("--pe-blue"), cor("--pe-deep")] },
-          formatter: (x) => fmt(Math.round(x)),
+          formatter: (min, mx) =>
+            min === 0 && mx === 0 ? "nenhum" : mx === undefined || mx === Infinity ? `${fmt(min)}+` : `${fmt(min)}–${fmt(mx)}`,
+          pieces: faixasPorQuantil(pontos),
         },
         series: [
           {
@@ -311,6 +311,34 @@
       });
     },
   };
+
+  /**
+   * Faixas de cor do mapa por QUANTIL, não por escala linear.
+   *
+   * Linear apaga o estado: o Recife tem 387 candidatos e o segundo colocado
+   * tem 31, então tudo menos a capital cai na primeira cor. Com quantis cada
+   * faixa recebe um naco parecido de municípios e o mapa volta a informar.
+   */
+  function faixasPorQuantil(pontos) {
+    const valores = pontos.map((p) => p.value || 0).filter((v) => v > 0).sort((a, b) => a - b);
+    const q = (p) => (valores.length ? valores[Math.min(valores.length - 1, Math.floor(valores.length * p))] : 0);
+    const cortes = [...new Set([q(0.35), q(0.6), q(0.8), q(0.93)])].filter((v) => v > 0);
+
+    const base = cor("--pe-line");
+    const forte = cor("--pe-blue");
+    const tons = ["18%", "38%", "58%", "78%", "100%"]
+      .slice(0, cortes.length + 1)
+      .map((pct) => `color-mix(in srgb, ${forte} ${pct}, ${base})`);
+
+    const faixas = [{ value: 0, label: "nenhum", color: base }];
+    let anterior = 0;
+    cortes.forEach((c, i) => {
+      faixas.push({ min: anterior + 1e-9, max: c, color: tons[i] });
+      anterior = c;
+    });
+    faixas.push({ min: anterior + 1e-9, color: tons[cortes.length] ?? forte });
+    return faixas;
+  }
 
   /* ============================================================== auxiliares */
 

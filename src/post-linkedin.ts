@@ -272,12 +272,35 @@ const MOLDURA: Record<string, string> = {
 };
 
 /**
- * Monta o texto do LinkedIn: dado primeiro, moldura depois, link no fim.
+ * Abertura por eixo — o anzol, e o que faltava na primeira versão: solto no
+ * feed, o post abria numa cifra sem dizer do que se tratava.
  *
- * A ordem não é estética. O LinkedIn corta o post em "…ver mais" por volta de
- * 200 caracteres; contexto na frente empurraria o número para baixo da dobra,
- * contra a regra de número na primeira linha. O dado fica no anzol, a moldura
- * serve quem expandir.
+ * Curta de propósito. A dobra do LinkedIn no celular fica por volta de **140
+ * caracteres** (57% do tráfego é mobile), e a abertura precisa caber com a
+ * primeira linha do dado ainda visível.
+ *
+ * Enquadramento de estudo, não de campanha: conteúdo educativo alcança de 3 a
+ * 5 vezes mais que os outros formatos, e é o que estes posts de fato são.
+ * Vale aqui a mesma regra da moldura: nenhum número.
+ */
+const ABERTURA: Record<string, string> = {
+  cidade: "Um estudo aberto das emendas parlamentares de Pernambuco, cidade por cidade.",
+  autor: "Um estudo aberto das emendas parlamentares de Pernambuco, autor por autor.",
+  funcao: "Um estudo aberto das emendas parlamentares de Pernambuco, área por área.",
+  gabinete: "Um estudo aberto da estrutura dos gabinetes na Assembleia de Pernambuco.",
+  trem: "Um estudo aberto sobre a Transnordestina, a partir dos documentos.",
+  curiosidade: "Um estudo aberto sobre de onde vêm os candidatos de Pernambuco.",
+};
+
+/**
+ * Monta o texto do LinkedIn: abertura + dado, moldura depois, link no fim.
+ *
+ * A ordem não é estética, e a QUEBRA também não. O trecho visível termina no
+ * primeiro parágrafo em branco — dois "\n" seguidos encerram o snippet antes
+ * mesmo dos 140 caracteres. Por isso a abertura se une à primeira linha do
+ * dado com UMA quebra só: as duas cabem na dobra, e o número aparece sem que
+ * ninguém precise clicar em "…mais". Moldura e link, com quebra dupla, ficam
+ * para quem expandir.
  *
  * O link vai no CORPO porque não há alternativa: comentar por API exige o
  * escopo `w_member_social_feed`, de parceiro aprovado, e "Share on LinkedIn"
@@ -286,8 +309,11 @@ const MOLDURA: Record<string, string> = {
  * alcance por link no corpo é medida no X (§36), não aqui.
  */
 export function textoParaLinkedIn(texto: string, eixo: string, link: string): string {
+  const abertura = ABERTURA[eixo];
+  // Quebra SIMPLES entre abertura e dado: a dupla cortaria o snippet aqui.
+  const cabeca = abertura === undefined ? texto : `${abertura}\n${texto}`;
   const moldura = MOLDURA[eixo];
-  const partes = moldura === undefined ? [texto, link] : [texto, moldura, link];
+  const partes = moldura === undefined ? [cabeca, link] : [cabeca, moldura, link];
   return partes.join("\n\n");
 }
 
