@@ -1673,3 +1673,34 @@ eixo esvaziaria pela metade.
 Estoque contra os 44 dias restantes: 50 temas de trem e 74 posts de gabinete
 (49 nominais, 20 de contraste, 5 de agregado). A fila regerada usa 43 de cada,
 com `0 reprovados` no `ensaiar:fila`.
+
+## 44. A conta passou a ser dividida com o estudo da Alepe: 8 slots viraram 4
+
+Decisão do usuário em 25/08/2026. O projeto irmão
+(`~/Projetos/probabilidade`, https://estaduais.softagon.app) ganhou uma série
+própria de posts, e as duas publicam pela MESMA conta, `@hermes_alves`. Manter
+os dois a 8 por dia daria 16 posts diários — volume que a timeline não
+sustenta. Então a grade foi partida ao meio:
+
+| | horários (America/Recife) |
+|---|---|
+| emendas-pe | **00, 06, 12, 18** |
+| Prognóstico Alepe | 03, 09, 15, 21 |
+
+`bun run agendar --horas 0,6,12,18` foi o único comando; o ledger congelou os
+dois slots já publicados de 25/08 e nenhum post publicado voltou para o futuro
+(conferido antes e depois). A fila caiu de **392 para 160 slots**.
+
+**O que se perde, e por que a perda é ordenada.** Cabem 160 recortes onde
+cabiam 392. Como `ordenarIntercalado()` classifica por `peso_editorial`
+decrescente e `distribuir()` serve o pico primeiro, o que fica de fora é o
+material de menor valor em R$ — degradação graciosa, não corte cego. Nada a
+fazer: é consequência aceita da decisão.
+
+**Cuidado ao reagendar daqui em diante.** `agendar` sem `--horas` volta para as
+8 horas padrão de `fila-posts.ts` e reocupa os horários do estudo, criando
+colisão de dois posts no mesmo minuto. Passe `--horas 0,6,12,18` sempre. O job
+`emendas-post-slot` em `~/.hermes/cron/jobs.json` já roda só nesses quatro.
+
+O rótulo do eval que dizia "os 392 slots" virou "a fila inteira" — contagem
+fixa em texto de teste envelhece no primeiro reagendamento.

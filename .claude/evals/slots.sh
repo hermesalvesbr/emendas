@@ -138,7 +138,7 @@ caso "mesmo recorte em outro slot é barrado pelo hash" "já publicado" \
 restaurar
 
 # 7. A fila inteira ainda é verdade contra o banco de agora.
-caso "os 392 slots conferem com o banco" "0 reprovados" \
+caso "a fila inteira confere com o banco" "0 reprovados" \
   $BUN run src/cli.ts ensaiar:fila
 
 echo

@@ -39,6 +39,7 @@ memória (NOTAS 31, e a errata no topo de `POSTS-X.md`).
 | Função federal | Saúde lidera por **piso constitucional de 50%**, não por escolha. "Encargos especiais" são as emendas Pix | NOTAS 31 |
 | CLI | `parseArgs` roda em `strict:false`; opção com valor **precisa** estar em `options`, senão vira booleano e o valor some | `cli.ts` |
 | X | Link dentro do post derruba o alcance de 50–90% — vai na primeira resposta | `POSTS-X.md` |
+| X | A conta é DIVIDIDA com o estudo da Alepe: esta série só usa 00, 06, 12 e 18h. `agendar` sem `--horas 0,6,12,18` reocupa os horários do irmão | NOTAS 44 |
 | X | `publicarThread` encadeia como resposta e o X esconde isso da aba "Posts". A série usa `publicarAvulso` | `post-x.ts` |
 | Agregados | `n` e `v` **sempre** da mesma query. Duas cópias do SQL divergindo foi o que inflou 12 posts em até 1,9x | `agregados.ts` |
 | Autoria | `confianca='alta'` tem `"APORTE FINANCEIRO"` e `": EDUI"` — sobras de regex. Cruze com `autoria_oficial` | `agregados.ts` |
