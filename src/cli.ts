@@ -16,6 +16,8 @@ import { consolidarLote, gerarCoberturaMarkdown } from "./normalize.ts";
 import { exportarMalhaPE, exportarSite, exportarSiteBens, exportarSiteCandidatos, exportarSiteFederal, exportarSiteOrigem, exportarSitePessoal, exportarSiteDeputados, exportarIndiceDeputados } from "./export-site.ts";
 import { MUNICIPIO_REGIAO, REGIOES_PE } from "./regioes-pe.ts";
 import { lerCredenciaisLinkedIn, publicarNoLinkedIn, textoParaLinkedIn } from "./post-linkedin.ts";
+import type { TextoLinkedIn } from "./redigir-linkedin.ts";
+import { MODELO_PADRAO, redigirVerificado } from "./redigir-linkedin.ts";
 import type { EstadoThread } from "./post-x.ts";
 import {
   apagarPost,
@@ -60,6 +62,7 @@ const COMMANDS = [
   "agendar",
   "ensaiar:fila",
   "postar:slot",
+  "gerar:linkedin",
   "cron:install",
   "cron:remove",
 ] as const satisfies readonly string[];
@@ -97,6 +100,8 @@ async function main(): Promise<void> {
       horas: { type: "string" },
       tolerancia: { type: "string" },
       resumo: { type: "boolean" },
+      modelo: { type: "string" },
+      limite: { type: "string" },
     },
   });
   const command = positionals[0];
@@ -173,6 +178,9 @@ async function main(): Promise<void> {
       break;
     case "postar:slot":
       await cmdPostarSlot(values);
+      break;
+    case "gerar:linkedin":
+      await cmdGerarLinkedIn(values);
       break;
     case "cron:install":
       await cmdCronInstall();
@@ -1190,7 +1198,16 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
   try {
     const credLi = lerCredenciaisLinkedIn();
     const link = LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string);
-    liUrn = await publicarNoLinkedIn(credLi, textoParaLinkedIn(post.texto, post.eixo, link));
+    // Texto redigido por modelo, se existir E ainda corresponder a este
+    // recorte. O hash é a trava: dado recoletado invalida a redação antiga, e
+    // o molde determinístico assume — nunca se publica texto de um número que
+    // mudou. Sem redação guardada, o molde também assume: falha aberta aqui é
+    // aceitável porque o molde é seguro por construção.
+    const redigido = (await lerTextosLinkedIn()).textos.find(
+      (t) => t.post_id === postId && t.hash === post.hash,
+    );
+    const textoLi = redigido?.texto ?? textoParaLinkedIn(post.texto, post.eixo, link);
+    liUrn = await publicarNoLinkedIn(credLi, textoLi);
     const ultimo = publicados.publicados.at(-1);
     if (ultimo) (ultimo as { linkedin_urn?: string }).linkedin_urn = liUrn;
     await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
@@ -1289,4 +1306,87 @@ if (import.meta.main) {
     console.error("erro fatal:", err instanceof Error ? err.stack : err);
     process.exitCode = 1;
   });
+}
+
+const TEXTOS_LI = "data/linkedin-posts.json";
+
+type TextosLinkedIn = { textos: TextoLinkedIn[] };
+
+async function lerTextosLinkedIn(): Promise<TextosLinkedIn> {
+  const f = Bun.file(TEXTOS_LI);
+  if (!(await f.exists())) return { textos: [] };
+  return (await f.json()) as TextosLinkedIn;
+}
+
+/**
+ * Redige os textos do LinkedIn para os recortes da fila — em lote, à parte,
+ * NUNCA dentro do cron.
+ *
+ * O cron é silencioso em sucesso. Um modelo escrevendo texto lá dentro, sem
+ * ninguém lendo, é como uma alegação sem lastro chega ao feed de um candidato.
+ * Aqui o produto vira arquivo: revisável, versionável, e reconferido pelo
+ * hash na hora de publicar.
+ *
+ * Cada texto passa por `verificarPost` com o limite de 280 desligado e só ele.
+ * Reprovado três vezes, o recorte fica sem redação e o molde determinístico
+ * assume na publicação. Falha fechada em relação ao dado, aberta em relação ao
+ * canal: nunca publica número não conferido, e nunca deixa de publicar.
+ */
+async function cmdGerarLinkedIn(values: Record<string, unknown>): Promise<void> {
+  const fila = await lerFila();
+  const pool = await lerPool();
+  const guardados = await lerTextosLinkedIn();
+  const modelo = typeof values.modelo === "string" ? values.modelo : MODELO_PADRAO;
+  const limite = typeof values.limite === "string" ? Number(values.limite) : Number.POSITIVE_INFINITY;
+
+  const jaTem = new Set(guardados.textos.map((t) => `${t.post_id}|${t.hash}`));
+  const naFila = [...new Set(Object.values(fila.slots))];
+  const pendentes = naFila
+    .map((id) => pool.posts.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined && !jaTem.has(`${p.id}|${p.hash}`));
+
+  if (pendentes.length === 0) {
+    console.log("nada a redigir: todos os recortes da fila já têm texto para o hash atual.");
+    return;
+  }
+
+  const alvos = pendentes.slice(0, limite);
+  console.log(`redigindo ${alvos.length} de ${pendentes.length} pendentes com "${modelo}"…\n`);
+
+  const db = openDb();
+  let ok = 0;
+  let falhou = 0;
+  try {
+    // Índice de fatos construído UMA vez: reconstruir por post custa ~300 ms
+    // cada, e aqui são centenas de chamadas (mesma razão da §36).
+    const fatos = indiceDeFatos(db.raw);
+
+    for (const [i, post] of alvos.entries()) {
+      const link = LINK_REPLY[post.eixo] ?? (LINK_REPLY.cidade as string);
+      const r = await redigirVerificado(post, { db: db.raw, link, fatos, modelo });
+
+      if (r.ok) {
+        guardados.textos = guardados.textos.filter((t) => t.post_id !== post.id);
+        guardados.textos.push({
+          post_id: post.id,
+          hash: post.hash,
+          texto: r.texto,
+          modelo,
+          tentativas: r.tentativas,
+          em: new Date().toISOString(),
+        });
+        await Bun.write(TEXTOS_LI, `${JSON.stringify(guardados, null, 2)}\n`);
+        ok++;
+        console.log(`  ok    [${i + 1}/${alvos.length}] ${post.id} (${r.tentativas}x, ${r.texto.length} chars)`);
+      } else {
+        falhou++;
+        console.log(`  FALHA [${i + 1}/${alvos.length}] ${post.id} — ${r.motivos.at(-1)?.slice(0, 160)}`);
+      }
+    }
+  } finally {
+    db.close();
+  }
+
+  console.log(`\n${ok} redigidos, ${falhou} sem texto (vão sair com o molde determinístico).`);
+  console.log(`Revise ${TEXTOS_LI} antes de deixar o cron publicar.`);
 }

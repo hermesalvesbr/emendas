@@ -449,6 +449,13 @@ export type OpcoesVerificacao = {
    */
   tom?: "afirmativo" | "pergunta";
   /**
+   * Teto de peso. 280 é do X; o LinkedIn não tem limite, e o mesmo recorte
+   * redigido para lá reprovaria sempre por um limite que não é dele. `null`
+   * desliga a regra — as OUTRAS continuam valendo, e são elas que importam:
+   * todo número segue tendo de casar com o banco e com o rótulo certo.
+   */
+  limitePeso?: number | null;
+  /**
    * Rótulos dos fatos que o post AFIRMA citar. Quando presente, casar por
    * valor não basta — o fato que casou precisa ser um destes.
    */
@@ -502,8 +509,9 @@ export function verificarPost(texto: string, db: Database, opts: OpcoesVerificac
   const achados: Achado[] = [];
   const peso = pesoX(texto);
 
-  if (peso > 280) {
-    achados.push({ severidade: "erro", regra: "peso", detalhe: `${peso}/280 — não cabe num post` });
+  const limitePeso = opts.limitePeso === undefined ? 280 : opts.limitePeso;
+  if (limitePeso !== null && peso > limitePeso) {
+    achados.push({ severidade: "erro", regra: "peso", detalhe: `${peso}/${limitePeso} — não cabe num post` });
   }
 
   const temLink = /https?:\/\/\S+/.test(texto);
