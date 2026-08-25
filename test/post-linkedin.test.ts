@@ -4,6 +4,7 @@ import {
   escaparLittle,
   ESCOPOS,
   lerCredenciaisLinkedIn,
+  escolherAbertura,
   textoParaLinkedIn,
   urlAutorizacao,
   urlDoPost,
@@ -131,7 +132,8 @@ describe("moldura do LinkedIn", () => {
     // errados já publicados nasceram. Exceção: as ECs do eixo funcao, que
     // vivem no texto gerado, não aqui.
     for (const eixo of EIXOS) {
-      const moldura = textoParaLinkedIn("", eixo, "").trim();
+      const t = textoParaLinkedIn("", eixo, "");
+      const moldura = t.split("\n\n").slice(1).join("\n\n").trim();
       expect({ eixo, digitos: moldura.match(/\d/g) ?? [] }).toEqual({ eixo, digitos: [] });
     }
   });
@@ -154,12 +156,42 @@ describe("moldura do LinkedIn", () => {
     expect(visivel.indexOf("R$ 81,2 mi")).toBeLessThan(140);
   });
 
-  test("toda abertura deixa espaço para o dado dentro dos 140", () => {
-    // Abertura longa demais empurra a cifra para fora da dobra no celular.
+  test("TODA abertura do repertório cabe em 80 e não tem dígito", () => {
+    // Abertura longa demais empurra a cifra para fora da dobra do celular;
+    // dígito aqui entraria sem lastro do verificador. Varre o repertório
+    // inteiro variando o texto, não só a que calha de sair hoje.
+    const vistas = new Set<string>();
     for (const eixo of EIXOS) {
-      const abertura = textoParaLinkedIn("", eixo, "").split("\n")[0] ?? "";
-      expect({ eixo, cabe: abertura.length <= 80 }).toEqual({ eixo, cabe: true });
+      for (let i = 0; i < 400; i++) {
+        const a = escolherAbertura(`texto de amostra ${i}`, eixo);
+        if (a !== undefined) vistas.add(`${eixo}|${a}`);
+      }
     }
+    expect(vistas.size).toBeGreaterThanOrEqual(EIXOS.length * 2);
+    for (const v of vistas) {
+      const a = v.split("|")[1] ?? "";
+      expect({ a, longa: a.length > 80, digito: /\d/.test(a) }).toEqual({ a, longa: false, digito: false });
+    }
+  });
+
+  test("a abertura é determinística — o mesmo recorte sai sempre igual", () => {
+    // Math.random() daria cara nova a cada republicação e quebraria a
+    // reprodutibilidade que o resto do projeto assume.
+    const texto = "R$ 81,2 mi em emendas foram empenhados para Recife (PE).";
+    const primeira = escolherAbertura(texto, "cidade");
+    for (let i = 0; i < 20; i++) expect(escolherAbertura(texto, "cidade")).toBe(primeira);
+  });
+
+  test("textos diferentes do mesmo eixo variam a abertura", () => {
+    // A queixa que originou isto: 4 posts por dia abrindo com a mesma frase.
+    const vistas = new Set(
+      Array.from({ length: 40 }, (_, i) => escolherAbertura(`recorte ${i} de Pernambuco`, "cidade")),
+    );
+    expect(vistas.size).toBeGreaterThan(1);
+  });
+
+  test("eixo sem repertório devolve undefined, não quebra", () => {
+    expect(escolherAbertura("qualquer", "eixo-que-nao-existe")).toBeUndefined();
   });
 
   test("o link é sempre a última coisa", () => {

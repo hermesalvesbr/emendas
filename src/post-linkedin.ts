@@ -272,7 +272,7 @@ const MOLDURA: Record<string, string> = {
 };
 
 /**
- * Abertura por eixo — o anzol, e o que faltava na primeira versão: solto no
+ * Aberturas por eixo — o anzol, e o que faltava na primeira versão: solto no
  * feed, o post abria numa cifra sem dizer do que se tratava.
  *
  * Curta de propósito. A dobra do LinkedIn no celular fica por volta de **140
@@ -281,16 +281,72 @@ const MOLDURA: Record<string, string> = {
  *
  * Enquadramento de estudo, não de campanha: conteúdo educativo alcança de 3 a
  * 5 vezes mais que os outros formatos, e é o que estes posts de fato são.
+ * São VÁRIAS por eixo, e não uma: a 4 posts por dia, abertura fixa vira
+ * assinatura de robô em dois dias, e o leitor para de ler antes do número.
  * Vale aqui a mesma regra da moldura: nenhum número.
  */
-const ABERTURA: Record<string, string> = {
-  cidade: "Um estudo aberto das emendas parlamentares de Pernambuco, cidade por cidade.",
-  autor: "Um estudo aberto das emendas parlamentares de Pernambuco, autor por autor.",
-  funcao: "Um estudo aberto das emendas parlamentares de Pernambuco, área por área.",
-  gabinete: "Um estudo aberto da estrutura dos gabinetes na Assembleia de Pernambuco.",
-  trem: "Um estudo aberto sobre a Transnordestina, a partir dos documentos.",
-  curiosidade: "Um estudo aberto sobre de onde vêm os candidatos de Pernambuco.",
+const ABERTURAS: Record<string, readonly string[]> = {
+  cidade: [
+    "Um estudo aberto das emendas parlamentares de Pernambuco, cidade por cidade.",
+    "Emenda parlamentar tem autor, valor e destino. Aqui os três aparecem juntos.",
+    "Quanto foi empenhado em emendas para cada município de Pernambuco.",
+    "Dinheiro de emenda tem endereço. Este levantamento mostra qual.",
+    "O que a Alepe e a CGU publicam sobre emendas, reunido município a município.",
+  ],
+  autor: [
+    "Um estudo aberto das emendas parlamentares de Pernambuco, autor por autor.",
+    "Nos arquivos oficiais, a autoria da emenda vem em texto livre, não em campo.",
+    "Levantamento por autor das emendas parlamentares destinadas a Pernambuco.",
+    "Só entra na conta a emenda cuja autoria a fonte oficial confirma.",
+    "Quanto cada parlamentar tem empenhado em emendas para Pernambuco.",
+  ],
+  funcao: [
+    "Um estudo aberto das emendas parlamentares de Pernambuco, área por área.",
+    "Para onde vai a emenda parlamentar em Pernambuco, por área de aplicação.",
+    "Saúde, educação, infraestrutura: em que área a emenda de PE é aplicada.",
+    "Levantamento por área das emendas federais destinadas a Pernambuco.",
+    "Nem toda liderança de área é escolha política. Às vezes é piso legal.",
+  ],
+  gabinete: [
+    "Um estudo aberto da estrutura dos gabinetes na Assembleia de Pernambuco.",
+    "Quanto custa por mês a estrutura de um gabinete na Alepe.",
+    "Contar cabeças e contar custo produzem rankings diferentes na Alepe.",
+    "O tamanho do gabinete não é escolha do deputado: vem de ato da Mesa.",
+    "Levantamento dos gabinetes da Alepe pelos dados abertos da própria Casa.",
+  ],
+  trem: [
+    "Um estudo aberto sobre a Transnordestina, a partir dos documentos.",
+    "O que o contrato da Transnordestina diz sobre trem de passageiros.",
+    "Sobre a ferrovia, o que está em documento — e não em promessa.",
+    "Transnordestina e passageiros: o que existe hoje em contrato e em lei.",
+    "Levantamento documental sobre a Transnordestina em Pernambuco.",
+  ],
+  curiosidade: [
+    "Um estudo aberto sobre de onde vêm os candidatos de Pernambuco.",
+    "A naturalidade declarada ao TSE, cruzada com a população de cada cidade.",
+    "De onde vêm os candidatos de Pernambuco, segundo o próprio TSE.",
+    "Onde nasceram os candidatos deste ano em Pernambuco.",
+    "Levantamento das naturalidades declaradas por quem concorre em PE.",
+  ],
 };
+
+/**
+ * Escolhe a abertura pelo texto do post — determinístico, nunca aleatório.
+ *
+ * `Math.random()` daria abertura diferente a cada chamada, e o mesmo recorte
+ * republicado (por falha de rede, por retomada) sairia com outra cara. Pior:
+ * quebraria a reprodutibilidade que o resto do projeto assume, dos hashes de
+ * idempotência aos testes. Somar os códigos do texto é estável entre execuções
+ * e distribui bem o suficiente para o que se quer aqui — não é criptografia,
+ * é evitar que 4 posts por dia abram com a mesma frase.
+ */
+export function escolherAbertura(texto: string, eixo: string): string | undefined {
+  const opcoes = ABERTURAS[eixo];
+  if (opcoes === undefined || opcoes.length === 0) return undefined;
+  let soma = 0;
+  for (let i = 0; i < texto.length; i++) soma = (soma + texto.charCodeAt(i) * (i + 1)) % 100_000;
+  return opcoes[soma % opcoes.length];
+}
 
 /**
  * Monta o texto do LinkedIn: abertura + dado, moldura depois, link no fim.
@@ -309,7 +365,7 @@ const ABERTURA: Record<string, string> = {
  * alcance por link no corpo é medida no X (§36), não aqui.
  */
 export function textoParaLinkedIn(texto: string, eixo: string, link: string): string {
-  const abertura = ABERTURA[eixo];
+  const abertura = escolherAbertura(texto, eixo);
   // Quebra SIMPLES entre abertura e dado: a dupla cortaria o snippet aqui.
   const cabeca = abertura === undefined ? texto : `${abertura}\n${texto}`;
   const moldura = MOLDURA[eixo];
