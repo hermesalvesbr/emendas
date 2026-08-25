@@ -1795,3 +1795,46 @@ Três coisas mudam em relação ao X:
 
 Página de empresa (`w_organization_social`) é outra história: passa pela
 Community Management API, com revisão de parceiro. Perfil pessoal não precisa.
+
+### 45.1 O LinkedIn ligado, e o que a autorização revelou (25/08/2026, mesmo dia)
+
+O caminho da §45 foi percorrido e é mais curto do que parecia — **o app do X
+já servia**. `social-softagon-app` (id 226108894), criado em 13/05/2025, já
+tinha "Share on LinkedIn" e "Sign In with LinkedIn using OpenID Connect"
+provisionados e a página Softagon Sistemas verificada. Os dois obstáculos que
+a doc anuncia (associar a uma Page, esperar o super admin verificar) já
+estavam vencidos havia mais de um ano. Nenhuma aprovação foi pedida.
+
+Única alteração no portal: `http://localhost:8788/callback` somado aos
+Authorized redirect URLs. Os três de `social.softagon.app` continuam lá — e
+aquele domínio está morto (não resolve em DNS), resquício de integração
+antiga. O `mission-control` declara esperar um `LINKEDIN_ACCESS_TOKEN`, mas
+não guarda nenhum: não havia token reaproveitável.
+
+**Token vence em 24/10/2026** — depois do 1º turno, então a série cabe inteira
+num token só. App self-serve não recebe refresh token; renovar é rodar
+`src/linkedin-auth.ts` de novo.
+
+**Medido, não suposto:**
+
+- `POST /rest/posts` aceitou de primeira, duas vezes, texto com `( ) # % —` e
+  cifra. Escape faltando dá 422; não deu. O `escaparLittle()` está correto no
+  que a API valida.
+- **O id do post vem no header `x-restli-id`, não no corpo.** A resposta 201
+  tem corpo vazio: `await res.json()` ali estoura.
+- `GET /rest/posts/{urn}` do próprio post devolve **403**. Ler exige
+  `r_member_social`, que é restrito a aprovados — o que "Share on LinkedIn"
+  não dá. Consequência prática: **não dá para verificar por API o que foi
+  publicado**. Diferente do X, aqui o único jeito de conferir o texto no ar é
+  olhar o post. Se algum dia entrar verificação pós-publicação, ela não pode
+  ser desenhada como no `verificar-post.ts`.
+- `DELETE` funciona com o escopo que temos, e é idempotente.
+
+Fica em aberto: **ninguém viu ainda um post renderizado**. Os dois testes
+foram apagados antes de serem olhados (o navegador fechou no meio). A barra
+invertida à vista no feed é a falha que o 201 não pegaria — conferir na
+estreia, a olho, antes de automatizar.
+
+`w_organization_social` também está liberado no app, o que permitiria publicar
+na página da Softagon. Não implementado por opção: conteúdo de campanha sob a
+marca da empresa é decisão do candidato, não default de código.
