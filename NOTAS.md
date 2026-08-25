@@ -1064,7 +1064,8 @@ Os posts assinados eram sistematicamente os menos documentados do conjunto.
 
 ### Decisões do candidato
 
-- **Link do painel na 1ª resposta de TODO post** (custo ~US$ 0,015/reply):
+- **Link do painel na 1ª resposta de TODO post** (custo ~US$ 0,015/reply — a
+  cifra está errada, é US$ 0,200 por post com URL; ver §45):
   "dado conferível" sem endereço era a definição de alegação não-verificável.
   `postar:slot` publica a reply após o post (falha na reply não desfaz o
   post); backfill feito nos 6 já publicados de 16/08.
@@ -1704,3 +1705,93 @@ colisão de dois posts no mesmo minuto. Passe `--horas 0,6,12,18` sempre. O job
 
 O rótulo do eval que dizia "os 392 slots" virou "a fila inteira" — contagem
 fixa em texto de teste envelhece no primeiro reagendamento.
+
+## 45. O saldo da X não tem endpoint — e a reply com link custa 13× o que estava anotado
+
+Duas perguntas de 25/08/2026: dá para publicar também no LinkedIn, e como
+conferir o saldo em R$ da API do X antes que ele esgote no meio da série.
+
+### Não existe API de saldo
+
+O índice de documentação da X (`docs.x.com/llms.txt`) não tem nada de
+billing/credits/balance, e a própria página de preços diz que o saldo mora no
+Developer Console (`console.x.com`) — só lá dá para ver crédito restante,
+mudar o auto-recharge e o spend cap. O único sinal programático é o
+`GET /2/usage/tweets`, que é **gratuito** (não aparece na tabela de preços),
+aceita app-only bearer e devolve consumo de LEITURA contra o teto do plano:
+
+```
+{"data":{"cap_reset_day":29,"project_cap":"3000000",
+         "project_id":"2087642834413273088","project_usage":"21"}}
+```
+
+21 de 3.000.000 — irrelevante para nós, que quase não lemos. **Esse número não
+é dinheiro**: o teto de 3M é de Post reads por ciclo, e escrita nem entra nele.
+Quem publica não tem como saber o saldo sem abrir o console.
+
+### A tabela de preços, e o item que ninguém tinha lido
+
+Escrita é cobrada por requisição:
+
+| Ação | Preço |
+|---|---|
+| Post: Create | US$ 0,015 |
+| **Post: Create (with URL)** | **US$ 0,200** |
+| Post: Create (summoned) | US$ 0,010 |
+
+A seção 36 anotou "Link do painel na 1ª resposta de TODO post (custo
+~US$ 0,015/reply)". Está errado: a reply do `LINK_REPLY` **é um post com URL**,
+US$ 0,200. Treze vezes mais. Cada slot custa 0,015 (post, sem link) + 0,200
+(reply, com link) = **US$ 0,215**.
+
+Conferido contra `data/x-publicados.json`: 67 publicados entre 16 e 25/08, os
+67 com `reply_id`. Gasto real ≈ **US$ 14,41 (R$ 74)** a 5,15 — não os US$ 2,01
+que a conta antiga previa. Até a véspera do 1º turno (39 dias), a 4 slots/dia
+da grade nova: **US$ 33,54 (R$ 173)**; se o Prognóstico Alepe usar a mesma
+conta e a mesma reply, dobra para ~R$ 345.
+
+### Por que a reply fica assim mesmo
+
+Passar o link para o corpo do post não economiza — o post é que passaria a ser
+"with URL", US$ 0,200, e ainda pagaria o preço de alcance que a seção 36 já
+tinha medido. Escrever o domínio sem `https://` não escapa: a X monta a
+entidade de URL do mesmo jeito. As saídas reais são cortar o link (perde a
+verificabilidade que foi decisão do candidato) ou reduzir a frequência da reply
+— e R$ 173 até a eleição é preço aceitável por "dado conferível com endereço".
+Fica como está; o que muda é a nota de custo e a obrigação de olhar o console.
+
+**Operacional: manter auto-recharge ligado no console com gatilho acima de
+US$ 5.** Sem ele, o saldo pode ficar negativo e a X bloqueia as requisições —
+num cron silencioso em sucesso, isso vira série interrompida sem aviso.
+
+### LinkedIn: possível, e sem custo — mas não com "API key"
+
+Não existe chave estática. Publicar exige OAuth 2.0 three-legged, token do
+membro. O caminho curto, sem fila de aprovação:
+
+1. App no Developer Portal, aba Products → adicionar **"Share on LinkedIn"**
+   (self-serve, liberação imediata) → concede o escopo `w_member_social`.
+2. Somar `openid profile` do "Sign In with LinkedIn using OpenID Connect" para
+   pegar o `sub`, que vira o `urn:li:person:{id}` do campo `author`.
+3. Fluxo de autorização uma vez no navegador, trocar o `code` por access token.
+4. `POST https://api.linkedin.com/rest/posts`, headers
+   `Authorization: Bearer`, `X-Restli-Protocol-Version: 2.0.0` e
+   `LinkedIn-Version: YYYYMM`. Corpo mínimo: `author`, `commentary`,
+   `visibility: PUBLIC`, `distribution.feedDistribution: MAIN_FEED`,
+   `lifecycleState: PUBLISHED`. Resposta 201, id no header `x-restli-id`.
+   (`/v2/ugcPosts` ainda responde, mas a Posts API o substitui.)
+
+Três coisas mudam em relação ao X:
+
+- **De graça.** A API do LinkedIn não cobra por post. Limite de 150
+  requisições/dia por membro — a 4 posts/dia sobra folga.
+- **O token expira em 60 dias e app self-serve não tem refresh token**
+  (refresh programático é só para parceiro MDP aprovado). Da autorização até
+  03/10/2026 são menos de 60 dias: **um token cobre a série inteira**. Se for
+  usado depois da eleição, precisa reautorizar à mão.
+- **Sem limite de 280.** O `pesoX` e os 662 descartes por `campanha-nao-coube`
+  são restrição da X, não do LinkedIn — o mesmo recorte cabe com a fonte e o
+  link no corpo, e lá link no corpo não custa nem penaliza alcance como no X.
+
+Página de empresa (`w_organization_social`) é outra história: passa pela
+Community Management API, com revisão de parceiro. Perfil pessoal não precisa.
