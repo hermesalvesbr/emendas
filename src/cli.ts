@@ -1185,36 +1185,15 @@ async function cmdPostarSlot(values: Record<string, unknown>): Promise<void> {
     console.log(`aviso: post publicado, mas a resposta com o link falhou: ${err instanceof Error ? err.message.slice(0, 160) : String(err)}`);
   }
 
-  // O MESMO recorte vai para o LinkedIn, com o link no comentário — espelho
-  // exato da decisão do X. Publicar lá é de graça (o X cobra US$ 0,215 por
-  // slot, §45) e não há limite de 280, mas o texto é o mesmo de propósito:
-  // dois textos para o mesmo dado seriam duas versões para o verificador
-  // conferir, e é assim que nascem divergências publicadas.
+  // LinkedIn DESLIGADO em 26/08/2026, por decisão do candidato: o perfil é
+  // profissional (CEO, GovTech) e misturar com conteúdo eleitoral não serve.
+  // Os quatro posts publicados foram apagados no mesmo dia.
   //
-  // Falha no LinkedIn NÃO desfaz o post do X, pela mesma razão que a reply não
-  // desfaz: o post do X vale sozinho. Só o perfil pessoal — publicar sob a
-  // marca da Softagon é decisão do candidato, não default (§45.1).
-  let liUrn: string | null = null;
-  try {
-    const credLi = lerCredenciaisLinkedIn();
-    // Texto redigido por modelo, se existir E ainda corresponder a este
-    // recorte. O hash é a trava: dado recoletado invalida a redação antiga, e
-    // o molde determinístico assume — nunca se publica texto de um número que
-    // mudou. Sem redação guardada, o molde também assume: falha aberta aqui é
-    // aceitável porque o molde é seguro por construção.
-    const redigido = (await lerTextosLinkedIn()).textos.find(
-      (t) => t.post_id === postId && t.hash === post.hash,
-    );
-    const textoLi = redigido?.texto ?? textoParaLinkedIn(post.texto, post.eixo);
-    liUrn = await publicarNoLinkedIn(credLi, textoLi);
-    const ultimo = publicados.publicados.at(-1);
-    if (ultimo) (ultimo as { linkedin_urn?: string }).linkedin_urn = liUrn;
-    await Bun.write(PUBLICADOS, `${JSON.stringify(publicados, null, 2)}\n`);
-  } catch (err) {
-    // Token do LinkedIn vence em 24/10/2026 e não há refresh. Quando vencer,
-    // é aqui que aparece — e o X continua saindo normalmente.
-    console.log(`aviso: publicado no X, mas o LinkedIn falhou: ${err instanceof Error ? err.message.slice(0, 200) : String(err)}`);
-  }
+  // O código continua inteiro em `post-linkedin.ts` e `redigir-linkedin.ts`,
+  // com token válido até 24/10/2026 — religar é reverter este bloco. Não foi
+  // removido porque a pesquisa embutida nele (§45, §45.1) custou caro e a
+  // decisão é de canal, não de qualidade do código.
+  const liUrn: string | null = null;
 
   await appendJsonl(LOG_POSTS, {
     slot: alvo,

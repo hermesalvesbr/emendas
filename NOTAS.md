@@ -1838,3 +1838,39 @@ estreia, a olho, antes de automatizar.
 `w_organization_social` também está liberado no app, o que permitiria publicar
 na página da Softagon. Não implementado por opção: conteúdo de campanha sob a
 marca da empresa é decisão do candidato, não default de código.
+
+### 45.2 LinkedIn desligado — o canal não serve, e o "Zona da Mata Sul" era erro meu (26/08/2026)
+
+Quatro posts foram ao ar entre 25 e 26/08 e todos foram apagados. **Decisão do
+candidato: o perfil do LinkedIn é profissional — CEO, GovTech, setor público —
+e misturá-lo com conteúdo eleitoral não serve.** É decisão de canal, não de
+qualidade: a máquina funcionou.
+
+`postar:slot` teve o bloco do LinkedIn desligado; `post-linkedin.ts` e
+`redigir-linkedin.ts` ficam inteiros, e o token vale até 24/10/2026. Religar é
+reverter um bloco.
+
+**Correção de fato registrada errado na §45.1 e na mensagem de commit
+correspondente.** Eu afirmei que Haiku e Sonnet inventavam "Escada, na Zona da
+Mata Sul", e usei isso como prova de que os modelos violavam a regra de não
+acrescentar fato externo. **Estava errado**: a região está no próprio recorte,
+porque `cidadeCom(nome, regiao)` nunca deixa cidade sair sem UF e sem região
+(NOTAS 33.1). Os modelos copiaram certo. A conclusão geral — que asserção não
+numérica não é checável por regex — continua de pé, mas com outro exemplo: o
+Opus escreveu "dá para reconstruir, urna por urna" (o TSE publica por
+município, não por urna) e "a maioria desses nomes não disputou nada em
+Escada", nenhuma das duas no dado.
+
+### O que ficou aprendido, e vale além deste canal
+
+- **O verificador não olha porcentagem.** "999 emendas" é barrado, "80%" passa.
+  Nunca importou enquanto os textos vinham de template. Se algum dia entrar
+  texto livre em qualquer canal, essa brecha volta.
+- **`tom: "afirmativo"` só olha o fecho.** Pergunta no meio do texto passa.
+- **Redação por modelo é segura no número e insegura na asserção.** As travas
+  numéricas seguraram 10 de 10; a extrapolação interpretativa escapou em 2 de
+  10 mesmo no Opus. Nenhuma regex pega. Só leitura humana.
+- **Gerar em lote, fora do cron, foi a decisão que salvou.** O texto do Opus
+  marcado como problemático estava no arquivo que o cron lê, e sairia à
+  meia-noite. Foi possível tirá-lo do caminho porque a geração e a publicação
+  são passos separados. Se o modelo escrevesse dentro do job, teria ido ao ar.
